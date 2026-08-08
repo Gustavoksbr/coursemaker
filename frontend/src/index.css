@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-slate-900 text-slate-100 antialiased;
+  }
+
+  /* Only show the focus ring for keyboard users. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-slate-900;
+  }
+
+  ::selection {
+    @apply bg-brand-500/30;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold
+      transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600;
+  }
+
+  .btn-secondary {
+    @apply btn border border-brand-500 text-brand-400 hover:bg-brand-500/10;
+  }
+
+  .btn-ghost {
+    @apply btn text-slate-300 hover:bg-slate-800 hover:text-slate-100;
+  }
+
+  .btn-danger {
+    @apply btn border border-red-500/60 text-red-400 hover:bg-red-500/10;
+  }
+
+  .card {
+    @apply rounded-xl border border-slate-700 bg-slate-800 transition-colors hover:border-brand-500;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100
+      placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-1
+      focus:ring-brand-500 disabled:opacity-60;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-300;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold;
+  }
+}
+
+/*
+ * Rendered rich text from `text` blocks. Tailwind's preflight strips heading and list styles, and
+ * the HTML comes from Tiptap rather than from JSX, so utility classes cannot reach it.
+ */
+.rich-text {
+  @apply text-[15px] leading-relaxed text-slate-300;
+}
+.rich-text > * + * {
+  @apply mt-4;
+}
+.rich-text h1 {
+  @apply text-2xl font-bold text-slate-100;
+}
+.rich-text h2 {
+  @apply text-xl font-bold text-slate-100;
+}
+.rich-text h3 {
+  @apply text-lg font-semibold text-slate-100;
+}
+.rich-text a {
+  @apply text-brand-400 underline underline-offset-2 hover:text-brand-300;
+}
+.rich-text strong {
+  @apply font-semibold text-slate-100;
+}
+.rich-text ul {
+  @apply list-disc space-y-1 pl-6;
+}
+.rich-text ol {
+  @apply list-decimal space-y-1 pl-6;
+}
+.rich-text blockquote {
+  @apply border-l-4 border-slate-600 pl-4 italic text-slate-400;
+}
+.rich-text code {
+  @apply rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[13px] text-brand-300;
+}
+.rich-text pre {
+  @apply overflow-x-auto rounded-lg bg-slate-950 p-4 font-mono text-[13px];
+}
+.rich-text pre code {
+  @apply bg-transparent p-0 text-slate-200;
+}
+.rich-text hr {
+  @apply border-slate-700;
+}
+.rich-text img {
+  @apply max-w-full rounded-lg;
+}
+
+/* Tiptap's editable surface, styled to match the rendered output above. */
+.ProseMirror {
+  @apply min-h-[140px] outline-none;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  @apply pointer-events-none float-left h-0 text-slate-500 content-[attr(data-placeholder)];
+}
+
+/* Shiki emits inline styles for its own theme; the container owns layout only. */
+.shiki-container pre {
+  @apply overflow-x-auto rounded-lg p-4 font-mono text-[13px] leading-relaxed;
+}

@@ -1,0 +1,29 @@
+# Backend (Java/Maven)
+backend/target/
+backend/.idea/
+backend/*.iml
+backend/*.log
+
+# Frontend (React/Node)
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Env files (anywhere in the tree)
+.env
+.env.local
+.env.production
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
