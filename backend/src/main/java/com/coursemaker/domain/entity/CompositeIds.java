@@ -80,4 +80,49 @@ public final class CompositeIds {
         @Column(name = "user_id", nullable = false)
         private UUID userId;
     }
+
+    @Embeddable
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    public static class UserTrilhaId implements Serializable {
+
+        @Column(name = "user_id", nullable = false)
+        private UUID userId;
+
+        @Column(name = "trilha_id", nullable = false)
+        private UUID trilhaId;
+    }
+
+    @Embeddable
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    public static class UserTrilhaItemId implements Serializable {
+
+        @Column(name = "user_id", nullable = false)
+        private UUID userId;
+
+        @Column(name = "trilha_item_id", nullable = false)
+        private UUID trilhaItemId;
+    }
+
+    @Embeddable
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    public static class CourseTrilhaId implements Serializable {
+
+        @Column(name = "course_id", nullable = false)
+        private UUID courseId;
+
+        @Column(name = "trilha_id", nullable = false)
+        private UUID trilhaId;
+    }
 }

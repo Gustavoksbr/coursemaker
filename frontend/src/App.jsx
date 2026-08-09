@@ -11,6 +11,8 @@ import CourseListPage from '@/pages/CourseListPage'
 import CourseViewPage from '@/pages/CourseViewPage'
 import PostListPage from '@/pages/PostListPage'
 import PostViewPage from '@/pages/PostViewPage'
+import TrilhaListPage from '@/pages/TrilhaListPage'
+import TrilhaViewPage from '@/pages/TrilhaViewPage'
 import ProfilePage from '@/pages/ProfilePage'
 import PublicProfilePage from '@/pages/PublicProfilePage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -19,6 +21,7 @@ import NotFoundPage from '@/pages/NotFoundPage'
 // useless to a reader. Splitting them keeps it out of the bundle everyone downloads.
 const CourseEditorPage = lazy(() => import('@/pages/CourseEditorPage'))
 const PostEditorPage = lazy(() => import('@/pages/PostEditorPage'))
+const TrilhaEditorPage = lazy(() => import('@/pages/TrilhaEditorPage'))
 
 export default function App() {
   return (
@@ -31,6 +34,8 @@ export default function App() {
           <Route path="/cursos" element={<CourseListPage />} />
           <Route path="/posts" element={<PostListPage />} />
           <Route path="/posts/:nickname/:slug" element={<PostViewPage />} />
+          <Route path="/trilhas" element={<TrilhaListPage />} />
+          <Route path="/trilhas/:nickname/:slug" element={<TrilhaViewPage />} />
           <Route path="/users/:nickname" element={<PublicProfilePage />} />
 
           {/* Reachable right after registering, before a nickname exists. */}
@@ -42,6 +47,7 @@ export default function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/posts/new" element={<PostEditorPage />} />
             <Route path="/posts/:id/edit" element={<PostEditorPage />} />
+            <Route path="/trilhas/:nickname/:slug/edit" element={<TrilhaEditorPage />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

@@ -23,6 +23,8 @@ import { BlockList } from '@/components/blocks/BlockRenderer'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { CurriculumNav, flattenLessons } from '@/components/course/CurriculumNav'
 import { PrivatePasswordModal } from '@/components/course/PrivatePasswordModal'
+import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
+import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { blockKeys } from '@/api/shared'
@@ -330,6 +332,10 @@ function Landing({
           </div>
         )}
       </section>
+
+      <CourseTrilhasSection contentId={course.id} kind="course" />
+
+      <RelatedItemsSection kind="course" contentId={course.id} />
 
       {detail.canViewContent && <CommentThread courseId={course.id} isOwner={isOwner} />}
     </div>

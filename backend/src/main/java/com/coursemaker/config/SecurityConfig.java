@@ -63,8 +63,10 @@ public class SecurityConfig {
                         // --- Reads that still need to know who is asking ---
                         .requestMatchers(HttpMethod.GET, "/api/v1/courses/slug-check").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/posts/slug-check").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/slug-check").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/courses/*/progress").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/courses/*/students").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/*/progress").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/enrollments/me").authenticated()
 
                         // --- Public reads (the service layer still hides drafts and private content) ---
@@ -74,6 +76,7 @@ public class SecurityConfig {
                                 "/api/v1/post-blocks/**",
                                 "/api/v1/modules/**",
                                 "/api/v1/lessons/**",
+                                "/api/v1/trilhas/**",
                                 "/api/v1/users/**",
                                 "/api/v1/search").permitAll()
 

@@ -6,6 +6,8 @@ import { CourseSettingsPanel } from '@/components/course/CourseSettingsPanel'
 import { CurriculumEditor } from '@/components/course/CurriculumEditor'
 import { StudentsModal } from '@/components/course/StudentsModal'
 import { BlockListEditor } from '@/components/blocks/BlockListEditor'
+import { TrilhaHighlightsPanel } from '@/components/trilha/TrilhaHighlightsPanel'
+import { RelatedItemsEditor } from '@/components/related/RelatedItemsEditor'
 import { ContentBadges } from '@/components/ui/Badge'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
@@ -115,6 +117,11 @@ export default function CourseEditorPage() {
           onDeleted={() => navigate('/cursos')}
           onOpenStudents={() => setStudentsOpen(true)}
         />
+
+        <div className="mt-6 grid gap-6 sm:grid-cols-2">
+          <TrilhaHighlightsPanel courseId={course.id} />
+          <RelatedItemsEditor kind="course" contentId={course.id} />
+        </div>
 
         <div className="mt-8 flex gap-6">
           <aside className="hidden w-72 shrink-0 md:block">

@@ -7,6 +7,7 @@ import { LikeButton } from '@/components/ui/LikeButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { BlockList } from '@/components/blocks/BlockRenderer'
+import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { getPostBySlug, likePost, postKeys, unlikePost } from '@/api/posts'
 import { errorMessage } from '@/lib/api'
 import { formatDate } from '@/lib/format'
@@ -94,6 +95,8 @@ export default function PostViewPage() {
       </header>
 
       <BlockList blocks={detail.blocks} emptyMessage="Este post ainda nao tem conteudo." />
+
+      <RelatedItemsSection kind="post" contentId={post.id} />
     </article>
   )
 }

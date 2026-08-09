@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { BookOpen, GraduationCap, LogOut, Menu, PenSquare, User as UserIcon, X } from 'lucide-react'
+import { BookOpen, GraduationCap, LogOut, Menu, PenSquare, User as UserIcon, Waypoints, X } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useNicknameGate } from '@/hooks/useNicknameGate'
 import { Avatar } from '@/components/ui/Avatar'
@@ -10,6 +10,7 @@ import { cn } from '@/lib/cn'
 const NAV_LINKS = [
   { to: '/cursos', label: 'Cursos', icon: GraduationCap },
   { to: '/posts', label: 'Posts', icon: BookOpen },
+  { to: '/trilhas', label: 'Trilhas', icon: Waypoints },
 ]
 
 export function Navbar() {

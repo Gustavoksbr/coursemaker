@@ -10,6 +10,7 @@ import { ConfirmModal } from '@/components/ui/Modal'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { BlockListEditor } from '@/components/blocks/BlockListEditor'
+import { RelatedItemsEditor } from '@/components/related/RelatedItemsEditor'
 import { useToast } from '@/context/ToastContext'
 import { blockKeys } from '@/api/shared'
 import {
@@ -256,15 +257,19 @@ export default function PostEditorPage() {
           Salve o post para comecar a adicionar blocos de conteudo.
         </p>
       ) : (
-        <section>
-          <h2 className="mb-4 text-lg font-bold text-slate-100">Conteudo</h2>
-          <BlockListEditor
-            parentId={id}
-            api={postBlockApi}
-            queryKey={blockKeys.post(id)}
-            emptyMessage="Adicione texto, codigo, imagens ou videos a este post."
-          />
-        </section>
+        <>
+          <section>
+            <h2 className="mb-4 text-lg font-bold text-slate-100">Conteudo</h2>
+            <BlockListEditor
+              parentId={id}
+              api={postBlockApi}
+              queryKey={blockKeys.post(id)}
+              emptyMessage="Adicione texto, codigo, imagens ou videos a este post."
+            />
+          </section>
+
+          <RelatedItemsEditor kind="post" contentId={id} />
+        </>
       )}
 
       <ConfirmModal
