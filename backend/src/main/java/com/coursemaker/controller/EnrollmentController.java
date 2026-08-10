@@ -59,6 +59,12 @@ public class EnrollmentController {
         return enrollmentService.myInProgressCourses(principal.user());
     }
 
+    @Operation(summary = "Cursos matriculados e concluidos, para a biblioteca")
+    @GetMapping("/api/v1/enrollments/me/completed")
+    public List<CourseSummary> myCompletedCourses(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return enrollmentService.myCompletedCourses(principal.user());
+    }
+
     @Operation(summary = "Curso matriculado aberto mais recentemente, ou null se nenhum. Para \"continuar assistindo\"")
     @GetMapping("/api/v1/enrollments/me/last-accessed")
     public CourseSummary lastAccessedCourse(@AuthenticationPrincipal AuthenticatedUser principal) {

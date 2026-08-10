@@ -112,6 +112,31 @@ public class TrilhaService {
         return trilhaMapper.toSummaries(trilhas, user);
     }
 
+    /** Followed trilhas the user has finished every item of, for the library's "concluidos". */
+    @Transactional(readOnly = true)
+    public List<TrilhaSummary> myCompletedTrilhas(User user) {
+        List<UUID> trilhaIds = trilhaEnrollmentRepository.findAllTrilhaIdsByUser(user.getId());
+        if (trilhaIds.isEmpty()) {
+            return List.of();
+        }
+        List<Trilha> trilhas = trilhaIds.stream()
+                .map(trilhaRepository::findByIdWithOwner)
+                .flatMap(java.util.Optional::stream)
+                .filter(trilha -> canView(trilha, user))
+                .filter(trilha -> isFinished(trilha, user))
+                .toList();
+        return trilhaMapper.toSummaries(trilhas, user);
+    }
+
+    private boolean isFinished(Trilha trilha, User user) {
+        long total = trilhaItemRepository.countByTrilhaId(trilha.getId());
+        if (total == 0) {
+            return false;
+        }
+        long completed = trilhaItemCompletionRepository.findCompletedItemIds(user.getId(), trilha.getId()).size();
+        return completed >= total;
+    }
+
     @Transactional(readOnly = true)
     public List<TrilhaSummary> listByOwner(UUID ownerId, User viewer) {
         List<Trilha> trilhas = trilhaRepository.findAllByOwnerId(ownerId).stream()

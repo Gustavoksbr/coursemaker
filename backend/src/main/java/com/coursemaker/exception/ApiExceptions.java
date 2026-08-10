@@ -65,6 +65,13 @@ public final class ApiExceptions {
         }
     }
 
+    /** 503 - a downstream dependency (e.g. the AI provider) is unavailable or misconfigured. */
+    public static class ServiceUnavailableException extends ApiException {
+        public ServiceUnavailableException(String message) {
+            super(HttpStatus.SERVICE_UNAVAILABLE, message);
+        }
+    }
+
     /** 429 - too many failed attempts; the caller is temporarily blocked. */
     public static class RateLimitExceededException extends ApiException {
 

@@ -94,6 +94,12 @@ public class TrilhaController {
         return trilhaService.myFollowedTrilhas(principal.user());
     }
 
+    @Operation(summary = "Trilhas seguidas que o usuario autenticado ja concluiu, para a biblioteca")
+    @GetMapping("/api/v1/trilhas/me/completed")
+    public List<TrilhaSummary> myCompletedTrilhas(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return trilhaService.myCompletedTrilhas(principal.user());
+    }
+
     @Operation(summary = "Cria uma trilha (nasce como rascunho)")
     @PostMapping("/api/v1/trilhas")
     public ResponseEntity<TrilhaSummary> create(@Valid @RequestBody CreateTrilhaRequest request,

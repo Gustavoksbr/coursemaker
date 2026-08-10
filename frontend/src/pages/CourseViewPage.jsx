@@ -11,6 +11,7 @@ import {
   UserMinus,
   UserPlus,
 } from 'lucide-react'
+import { ChatWidget } from '@/components/ai/ChatWidget'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
@@ -174,6 +175,8 @@ export default function CourseViewPage() {
           )}
         </div>
       </div>
+
+      {detail.canViewContent && <ChatWidget kind="course" contentId={course.id} />}
 
       <PrivatePasswordModal
         open={passwordOpen}

@@ -11,6 +11,7 @@ export const trilhaKeys = {
   courseTrilhasHighlighted: (courseId) => ['courses', courseId, 'trilhas', 'highlighted'],
   postTrilhas: (postId, page) => ['posts', postId, 'trilhas', page],
   following: ['trilhas', 'me', 'following'],
+  completed: ['trilhas', 'me', 'completed'],
 }
 
 export async function listTrilhas(filters) {
@@ -154,5 +155,10 @@ export async function getPostTrilhas(postId, page = 0, size = 12) {
 
 export async function myFollowedTrilhas() {
   const { data } = await api.get('/trilhas/me/following')
+  return data
+}
+
+export async function myCompletedTrilhas() {
+  const { data } = await api.get('/trilhas/me/completed')
   return data
 }

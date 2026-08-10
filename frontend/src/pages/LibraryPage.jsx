@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { FolderOpen, GraduationCap, History, Plus, Waypoints } from 'lucide-react'
+import { CheckCircle2, FolderOpen, GraduationCap, History, Plus, Waypoints } from 'lucide-react'
 import { CourseCard } from '@/components/course/CourseCard'
 import { TrilhaCard } from '@/components/trilha/TrilhaCard'
 import { FolderCard } from '@/components/library/FolderCard'
@@ -10,13 +10,14 @@ import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { EmptyState, Spinner } from '@/components/ui/Feedback'
-import { courseKeys, lastAccessedCourse, myInProgressCourses } from '@/api/courses'
-import { myFollowedTrilhas, trilhaKeys } from '@/api/trilhas'
+import { courseKeys, lastAccessedCourse, myCompletedCourses, myInProgressCourses } from '@/api/courses'
+import { myCompletedTrilhas, myFollowedTrilhas, trilhaKeys } from '@/api/trilhas'
 import { libraryKeys, listFolders } from '@/api/library'
 
 const SECTIONS = [
   { id: 'continuar', label: 'Continuar assistindo', icon: History },
   { id: 'em-andamento', label: 'Em andamento', icon: GraduationCap },
+  { id: 'concluidos', label: 'Concluidos', icon: CheckCircle2 },
   { id: 'trilhas', label: 'Trilhas que sigo', icon: Waypoints },
   { id: 'pastas', label: 'Pastas', icon: FolderOpen },
 ]
@@ -26,8 +27,16 @@ export default function LibraryPage() {
 
   const lastAccessedQuery = useQuery({ queryKey: courseKeys.lastAccessed, queryFn: lastAccessedCourse })
   const inProgressQuery = useQuery({ queryKey: courseKeys.inProgress, queryFn: myInProgressCourses })
+  const completedCoursesQuery = useQuery({ queryKey: courseKeys.completed, queryFn: myCompletedCourses })
+  const completedTrilhasQuery = useQuery({ queryKey: trilhaKeys.completed, queryFn: myCompletedTrilhas })
   const followingQuery = useQuery({ queryKey: trilhaKeys.following, queryFn: myFollowedTrilhas })
   const foldersQuery = useQuery({ queryKey: libraryKeys.folders, queryFn: listFolders })
+
+  const completedLoading = completedCoursesQuery.isPending || completedTrilhasQuery.isPending
+  const completedItems = [
+    ...(completedCoursesQuery.data ?? []).map((course) => ({ kind: 'course', data: course })),
+    ...(completedTrilhasQuery.data ?? []).map((trilha) => ({ kind: 'trilha', data: trilha })),
+  ]
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 gap-8 px-4 py-8 sm:px-6">
@@ -81,6 +90,27 @@ export default function LibraryPage() {
               {inProgressQuery.data.map((course) => (
                 <CardSlot key={course.id}>
                   <CourseCard course={course} />
+                </CardSlot>
+              ))}
+            </ScrollRow>
+          )}
+        </section>
+
+        <section id="concluidos" className="scroll-mt-20">
+          <SectionTitle icon={CheckCircle2} title="Concluidos" count={completedItems.length} />
+          {completedLoading ? (
+            <Loading />
+          ) : completedItems.length === 0 ? (
+            <EmptyState
+              icon={CheckCircle2}
+              title="Nada concluido ainda"
+              message="Cursos e trilhas que voce terminar aparecem aqui."
+            />
+          ) : (
+            <ScrollRow>
+              {completedItems.map(({ kind, data }) => (
+                <CardSlot key={`${kind}-${data.id}`}>
+                  {kind === 'course' ? <CourseCard course={data} /> : <TrilhaCard trilha={data} />}
                 </CardSlot>
               ))}
             </ScrollRow>

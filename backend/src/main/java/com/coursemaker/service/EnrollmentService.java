@@ -132,6 +132,22 @@ public class EnrollmentService {
         return courseMapper.toSummaries(inProgress, user);
     }
 
+    /** Enrolled courses the user has finished, for the library's "concluidos". */
+    @Transactional(readOnly = true)
+    public List<CourseSummary> myCompletedCourses(User user) {
+        List<UUID> courseIds = enrollmentRepository.findAllCourseIdsByUser(user.getId());
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        List<Course> completed = courseIds.stream()
+                .map(courseRepository::findByIdWithOwner)
+                .flatMap(Optional::stream)
+                .filter(course -> accessService.canView(course, user))
+                .filter(course -> isFinished(course, user))
+                .toList();
+        return courseMapper.toSummaries(completed, user);
+    }
+
     private boolean isFinished(Course course, User user) {
         if (!course.isProgressEnabled()) {
             return false;

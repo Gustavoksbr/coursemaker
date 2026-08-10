@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
-import { Bookmark, Folder } from 'lucide-react'
+import { FolderOpen, Heart } from 'lucide-react'
 import { plural } from '@/lib/format'
 
 export function FolderCard({ folder }) {
-  // Favoritos gets the same bookmark the save button uses, so the two read as the same thing.
-  const Icon = folder.isDefault ? Bookmark : Folder
+  // Favoritos gets a heart so it visually stands out from folders the user created themselves.
+  const Icon = folder.isDefault ? Heart : FolderOpen
 
   return (
     <Link

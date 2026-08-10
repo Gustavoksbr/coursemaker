@@ -11,6 +11,7 @@ export const courseKeys = {
   comments: (courseId) => ['courses', courseId, 'comments'],
   bans: (courseId) => ['courses', courseId, 'bans'],
   inProgress: ['enrollments', 'in-progress'],
+  completed: ['enrollments', 'completed'],
   lastAccessed: ['enrollments', 'last-accessed'],
 }
 
@@ -148,6 +149,11 @@ export async function myEnrollments() {
 
 export async function myInProgressCourses() {
   const { data } = await api.get('/enrollments/me/in-progress')
+  return data
+}
+
+export async function myCompletedCourses() {
+  const { data } = await api.get('/enrollments/me/completed')
   return data
 }
 

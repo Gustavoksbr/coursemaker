@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bookmark, Check, Folder, Loader2, Plus, Trash2 } from 'lucide-react'
+import { Check, FolderOpen, Heart, Loader2, Plus, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Feedback'
 import { useToast } from '@/context/ToastContext'
@@ -99,7 +99,7 @@ export function SaveToFolderModal({ open, onClose, kind, contentId, onChange }) 
           {foldersQuery.data.map((folder) => (
             <OptionRow
               key={folder.id}
-              icon={folder.isDefault ? Bookmark : Folder}
+              icon={folder.isDefault ? Heart : FolderOpen}
               label={folder.name}
               selected={currentFolderId === folder.id}
               disabled={busy}
