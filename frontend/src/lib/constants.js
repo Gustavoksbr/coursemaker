@@ -26,7 +26,6 @@ export const ROLE = {
 
 export const SORT_OPTIONS = [
   { value: 'recent', label: 'Mais recentes' },
-  { value: 'likes', label: 'Mais curtidos' },
   { value: 'name', label: 'Ordem alfabetica' },
 ]
 

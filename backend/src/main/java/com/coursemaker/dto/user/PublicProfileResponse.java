@@ -2,6 +2,7 @@ package com.coursemaker.dto.user;
 
 import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
+import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaSummary;
 
 import java.time.Instant;
 import java.util.List;
@@ -17,5 +18,6 @@ public record PublicProfileResponse(
         List<String> stacks,
         Instant createdAt,
         List<CourseSummary> courses,
-        List<PostSummary> posts) {
+        List<PostSummary> posts,
+        List<TrilhaSummary> trilhas) {
 }

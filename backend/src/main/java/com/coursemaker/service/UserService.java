@@ -24,6 +24,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final CourseService courseService;
     private final PostService postService;
+    private final TrilhaService trilhaService;
 
     @Transactional(readOnly = true)
     public PublicProfileResponse getPublicProfile(String nickname, User viewer) {
@@ -39,7 +40,8 @@ public class UserService {
                 user.getStacks(),
                 user.getCreatedAt(),
                 courseService.listByOwner(user.getId(), viewer),
-                postService.listByOwner(user.getId(), viewer));
+                postService.listByOwner(user.getId(), viewer),
+                trilhaService.listByOwner(user.getId(), viewer));
     }
 
     @Transactional

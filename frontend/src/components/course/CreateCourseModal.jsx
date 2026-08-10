@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
+import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { useDebounce } from '@/hooks/useDebounce'
 import { checkCourseSlug, courseKeys, createCourse } from '@/api/courses'
@@ -29,6 +30,7 @@ const BLANK = {
  */
 export function CreateCourseModal({ open, onClose }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   const toast = useToast()
   const [step, setStep] = useState(1)
@@ -149,7 +151,10 @@ export function CreateCourseModal({ open, onClose }) {
 
           {effectiveSlug && (
             <p className="break-all text-xs text-slate-500">
-              Ficara em <span className="font-mono text-slate-400">/courses/voce/{effectiveSlug}</span>
+              Ficara em{' '}
+              <span className="font-mono text-slate-400">
+                /courses/{user.nickname}/{effectiveSlug}
+              </span>
               {slugCheck && !slugCheck.available && !form.slug.trim() && (
                 <span className="ml-1 text-amber-400">
                   (voce ja tem um curso com esse nome; usaremos a variacao acima)
@@ -240,13 +245,18 @@ export function CreateCourseModal({ open, onClose }) {
             onChange={(event) => setForm({ ...form, progressEnabled: event.target.checked })}
           />
 
-          <div className="flex justify-between gap-2 pt-2">
+          <div className="flex items-center justify-between gap-2 pt-2">
             <Button variant="ghost" onClick={() => setStep(1)}>
               <ArrowLeft size={16} /> Voltar
             </Button>
-            <Button onClick={() => submit()} loading={isPending} disabled={!canSubmit}>
-              Criar curso
-            </Button>
+            <div className="flex items-center gap-3">
+              {form.visibility === VISIBILITY.PRIVATE && form.password.length < 4 && (
+                <p className="text-xs text-red-400">A senha precisa ter no minimo 4 caracteres.</p>
+              )}
+              <Button onClick={() => submit()} loading={isPending} disabled={!canSubmit}>
+                Criar curso
+              </Button>
+            </div>
           </div>
         </div>
       )}

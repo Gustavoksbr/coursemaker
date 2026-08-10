@@ -29,6 +29,7 @@ public final class PostDtos {
             UserSummary owner,
             long likeCount,
             boolean likedByMe,
+            boolean savedByMe,
             Instant createdAt,
             Instant updatedAt) {
     }

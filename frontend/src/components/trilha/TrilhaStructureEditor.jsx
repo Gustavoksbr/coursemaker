@@ -103,22 +103,23 @@ export function TrilhaStructureEditor({ trilhaId, structure, trilhaQueryKey }) {
         </button>
       </div>
 
-      {steps.length === 0 && ungroupedItems.length === 0 && (
-        <p className="rounded-lg border border-dashed border-slate-700 px-4 py-8 text-center text-sm text-slate-500">
-          Crie etapas para organizar a trilha (ex.: "1 - Fundamentos"), ou adicione itens direto.
+      {steps.length === 0 && (
+        <p className="text-xs text-slate-500">
+          Adicione cursos ou posts direto na trilha, ou crie etapas (ex.: "1 - Fundamentos") para
+          agrupa-los.
         </p>
       )}
 
-      {ungroupedItems.length > 0 && (
-        <ItemGroup
-          title="Sem etapa"
-          items={ungroupedItems}
-          steps={steps}
-          trilhaId={trilhaId}
-          refresh={refresh}
-          onAddClick={() => openPicker(null)}
-        />
-      )}
+      {/* Always rendered, even with zero items: it is the only place with an "Adicionar item"
+          button until a step exists, so hiding it here would leave no way to add the first item. */}
+      <ItemGroup
+        title={steps.length > 0 ? 'Sem etapa' : null}
+        items={ungroupedItems}
+        steps={steps}
+        trilhaId={trilhaId}
+        refresh={refresh}
+        onAddClick={() => openPicker(null)}
+      />
 
       <ul className="space-y-3">
         {steps.map((step) => (

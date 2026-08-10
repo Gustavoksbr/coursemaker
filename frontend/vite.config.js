@@ -16,5 +16,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.js',
+    // e2e/ holds Playwright specs, which use their own runner -- Vitest picking them up just
+    // crashes on the unfamiliar `test.describe` fixtures.
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
   },
 })

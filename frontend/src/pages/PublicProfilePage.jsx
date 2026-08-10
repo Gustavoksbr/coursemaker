@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, CalendarDays, GraduationCap } from 'lucide-react'
+import { BookOpen, CalendarDays, GraduationCap, Waypoints } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { CourseCard } from '@/components/course/CourseCard'
 import { PostCard } from '@/components/post/PostCard'
+import { TrilhaCard } from '@/components/trilha/TrilhaCard'
 import { EmptyState, ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
 import { getPublicProfile, userKeys } from '@/api/users'
@@ -35,7 +36,7 @@ export default function PublicProfilePage() {
   }
 
   const isMe = user?.id === profile.id
-  const items = tab === 'courses' ? profile.courses : profile.posts
+  const items = tab === 'courses' ? profile.courses : tab === 'posts' ? profile.posts : profile.trilhas
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6">
@@ -88,13 +89,22 @@ export default function PublicProfilePage() {
             label="Posts"
             count={profile.posts.length}
           />
+          <Tab
+            active={tab === 'trilhas'}
+            onClick={() => setTab('trilhas')}
+            icon={Waypoints}
+            label="Trilhas"
+            count={profile.trilhas.length}
+          />
         </div>
       </div>
 
       {items.length === 0 ? (
         <EmptyState
-          icon={tab === 'courses' ? GraduationCap : BookOpen}
-          title={tab === 'courses' ? 'Nenhum curso ainda' : 'Nenhum post ainda'}
+          icon={tab === 'courses' ? GraduationCap : tab === 'posts' ? BookOpen : Waypoints}
+          title={
+            tab === 'courses' ? 'Nenhum curso ainda' : tab === 'posts' ? 'Nenhum post ainda' : 'Nenhuma trilha ainda'
+          }
           message={
             isMe
               ? 'O que voce publicar vai aparecer aqui.'
@@ -105,7 +115,9 @@ export default function PublicProfilePage() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {tab === 'courses'
             ? items.map((course) => <CourseCard key={course.id} course={course} />)
-            : items.map((post) => <PostCard key={post.id} post={post} />)}
+            : tab === 'posts'
+              ? items.map((post) => <PostCard key={post.id} post={post} />)
+              : items.map((trilha) => <TrilhaCard key={trilha.id} trilha={trilha} />)}
         </div>
       )}
     </div>

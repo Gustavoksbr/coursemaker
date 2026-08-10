@@ -35,6 +35,7 @@ public final class TrilhaDtos {
             long itemCount,
             long enrollmentCount,
             boolean enrolledByMe,
+            boolean savedByMe,
             Instant createdAt,
             Instant updatedAt) {
     }

@@ -278,7 +278,7 @@ export default function PostEditorPage() {
         onConfirm={() => remove()}
         loading={deleting}
         title="Excluir post"
-        message="Os blocos e as curtidas deste post serao excluidos junto. Esta acao nao pode ser desfeita."
+        message="Os blocos deste post serao excluidos junto. Esta acao nao pode ser desfeita."
         confirmLabel="Excluir definitivamente"
       />
     </div>

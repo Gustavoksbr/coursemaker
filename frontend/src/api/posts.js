@@ -47,16 +47,6 @@ export async function togglePostFeatured(id) {
   return data
 }
 
-export async function likePost(id) {
-  const { data } = await api.post(`/posts/${id}/like`)
-  return data
-}
-
-export async function unlikePost(id) {
-  const { data } = await api.delete(`/posts/${id}/like`)
-  return data
-}
-
 // ------------------------------------------------------------------- blocks
 
 export async function listPostBlocks(postId) {

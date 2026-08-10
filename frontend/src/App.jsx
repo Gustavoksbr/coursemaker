@@ -13,6 +13,8 @@ import PostListPage from '@/pages/PostListPage'
 import PostViewPage from '@/pages/PostViewPage'
 import TrilhaListPage from '@/pages/TrilhaListPage'
 import TrilhaViewPage from '@/pages/TrilhaViewPage'
+import LibraryPage from '@/pages/LibraryPage'
+import LibraryFolderPage from '@/pages/LibraryFolderPage'
 import ProfilePage from '@/pages/ProfilePage'
 import PublicProfilePage from '@/pages/PublicProfilePage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -50,6 +52,12 @@ export default function App() {
             <Route path="/trilhas/:nickname/:slug/edit" element={<TrilhaEditorPage />} />
           </Route>
 
+          {/* Your library is just yours to look at, not content you publish, so it does not need
+              a nickname the way creating a course/post/trilha does. */}
+          <Route element={<ProtectedRoute requireNickname={false} />}>
+            <Route path="/biblioteca/pastas/:folderId" element={<LibraryFolderPage />} />
+          </Route>
+
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
@@ -57,6 +65,9 @@ export default function App() {
           <Route path="/courses/:nickname/:slug" element={<CourseViewPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/courses/:nickname/:slug/edit" element={<CourseEditorPage />} />
+          </Route>
+          <Route element={<ProtectedRoute requireNickname={false} />}>
+            <Route path="/biblioteca" element={<LibraryPage />} />
           </Route>
         </Route>
       </Routes>

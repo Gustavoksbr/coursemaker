@@ -2,8 +2,10 @@ package com.coursemaker.service;
 
 import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.Lesson;
+import com.coursemaker.domain.entity.LessonBlock;
 import com.coursemaker.domain.entity.Module;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.domain.enums.BlockType;
 import com.coursemaker.domain.enums.CourseStatus;
 import com.coursemaker.domain.enums.CourseVisibility;
 import com.coursemaker.dto.PageResponse;
@@ -19,6 +21,8 @@ import com.coursemaker.exception.ApiExceptions.BadRequestException;
 import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import com.coursemaker.repository.CourseRepository;
+import com.coursemaker.repository.EnrollmentRepository;
+import com.coursemaker.repository.LessonBlockRepository;
 import com.coursemaker.repository.LessonCompletionRepository;
 import com.coursemaker.repository.LessonRepository;
 import com.coursemaker.repository.ModuleRepository;
@@ -28,6 +32,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -45,15 +50,23 @@ public class CourseService {
     /** Separator used to pack the category filter into one bind parameter; see CourseRepository. */
     static final String CATEGORY_DELIMITER = String.valueOf((char) 1);
 
+    private static final String DEFAULT_MODULE_TITLE = "Módulo 1";
+    private static final String DEFAULT_LESSON_TITLE = "Aula 1";
+    private static final String DEFAULT_BLOCK_CONTENT =
+            "<p>Escreva aqui o conteúdo da sua aula.</p>";
+
     private final CourseRepository courseRepository;
     private final ModuleRepository moduleRepository;
     private final LessonRepository lessonRepository;
+    private final LessonBlockRepository lessonBlockRepository;
     private final LessonCompletionRepository lessonCompletionRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final CourseAccessService accessService;
     private final CourseMapper courseMapper;
     private final SlugGeneratorService slugGenerator;
     private final PasswordHasher passwordHasher;
     private final PrivateCourseAccessService privateAccessService;
+    private final HtmlSanitizer htmlSanitizer;
 
     // ------------------------------------------------------------------ reads
 
@@ -80,6 +93,7 @@ public class CourseService {
     public CourseDetail getById(UUID id, User viewer) {
         Course course = loadVisible(id, viewer);
         privateAccessService.restoreIfPreviouslyVerified(course, viewer);
+        touchLastAccessed(course, viewer);
         return toDetail(course, viewer);
     }
 
@@ -89,7 +103,16 @@ public class CourseService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Curso"));
         accessService.requireVisible(course, viewer);
         privateAccessService.restoreIfPreviouslyVerified(course, viewer);
+        touchLastAccessed(course, viewer);
         return toDetail(course, viewer);
+    }
+
+    /** Records this as the student's most recently opened course, for "continuar assistindo". */
+    private void touchLastAccessed(Course course, User viewer) {
+        if (viewer == null) {
+            return;
+        }
+        enrollmentRepository.touchLastAccessed(viewer.getId(), course.getId(), Instant.now());
     }
 
     @Transactional(readOnly = true)
@@ -140,7 +163,31 @@ public class CourseService {
                 .progressEnabled(Boolean.TRUE.equals(request.progressEnabled()))
                 .build();
 
-        return courseMapper.toSummary(courseRepository.save(course), owner);
+        Course saved = courseRepository.save(course);
+        seedDefaultCurriculum(saved);
+        return courseMapper.toSummary(saved, owner);
+    }
+
+    /** New courses start with one module/lesson/text block so the owner has something to edit. */
+    private void seedDefaultCurriculum(Course course) {
+        Module module = moduleRepository.save(Module.builder()
+                .course(course)
+                .title(DEFAULT_MODULE_TITLE)
+                .orderIndex(0)
+                .build());
+
+        Lesson lesson = lessonRepository.save(Lesson.builder()
+                .module(module)
+                .title(DEFAULT_LESSON_TITLE)
+                .orderIndex(0)
+                .build());
+
+        lessonBlockRepository.save(LessonBlock.builder()
+                .lesson(lesson)
+                .type(BlockType.TEXT)
+                .content(htmlSanitizer.sanitize(BlockType.TEXT, DEFAULT_BLOCK_CONTENT))
+                .orderIndex(0)
+                .build());
     }
 
     @Transactional

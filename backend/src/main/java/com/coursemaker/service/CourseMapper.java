@@ -7,6 +7,7 @@ import com.coursemaker.dto.user.UserSummary;
 import com.coursemaker.repository.CourseLikeRepository;
 import com.coursemaker.repository.EnrollmentRepository;
 import com.coursemaker.repository.LessonRepository;
+import com.coursemaker.repository.LibraryItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,7 @@ public class CourseMapper {
     private final CourseLikeRepository courseLikeRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final LessonRepository lessonRepository;
+    private final LibraryItemRepository libraryItemRepository;
 
     @Transactional(readOnly = true)
     public List<CourseSummary> toSummaries(List<Course> courses, User viewer) {
@@ -52,6 +54,8 @@ public class CourseMapper {
                 : new HashSet<>(courseLikeRepository.findLikedCourseIds(viewer.getId(), ids));
         Set<UUID> enrolled = viewer == null ? Set.of()
                 : new HashSet<>(enrollmentRepository.findEnrolledCourseIds(viewer.getId(), ids));
+        Set<UUID> saved = viewer == null ? Set.of()
+                : new HashSet<>(libraryItemRepository.findSavedCourseIds(viewer.getId(), ids));
 
         return courses.stream()
                 .map(course -> toSummary(course,
@@ -59,7 +63,8 @@ public class CourseMapper {
                         enrollmentCounts.getOrDefault(course.getId(), 0L),
                         lessonCounts.getOrDefault(course.getId(), 0L),
                         liked.contains(course.getId()),
-                        enrolled.contains(course.getId())))
+                        enrolled.contains(course.getId()),
+                        saved.contains(course.getId())))
                 .toList();
     }
 
@@ -69,7 +74,7 @@ public class CourseMapper {
     }
 
     private CourseSummary toSummary(Course course, long likeCount, long enrollmentCount, long lessonCount,
-                                    boolean likedByMe, boolean enrolledByMe) {
+                                    boolean likedByMe, boolean enrolledByMe, boolean savedByMe) {
         return new CourseSummary(
                 course.getId(),
                 course.getName(),
@@ -87,6 +92,7 @@ public class CourseMapper {
                 lessonCount,
                 likedByMe,
                 enrolledByMe,
+                savedByMe,
                 course.getCreatedAt(),
                 course.getUpdatedAt());
     }

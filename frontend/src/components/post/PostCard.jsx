@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
-import { LikeButton } from '@/components/ui/LikeButton'
+import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
-import { likePost, unlikePost } from '@/api/posts'
 import { formatRelative } from '@/lib/format'
 
-export function PostCard({ post, onLikeChange }) {
+export function PostCard({ post }) {
   const href = `/posts/${post.owner.nickname}/${post.slug}`
 
   return (
@@ -47,14 +46,7 @@ export function PostCard({ post, onLikeChange }) {
 
         <div className="flex items-center justify-between border-t border-slate-700/70 pt-3 text-xs text-slate-400">
           <time dateTime={post.createdAt}>{formatRelative(post.createdAt)}</time>
-          <LikeButton
-            liked={post.likedByMe}
-            count={post.likeCount}
-            size="sm"
-            onLike={() => likePost(post.id)}
-            onUnlike={() => unlikePost(post.id)}
-            onChange={onLikeChange}
-          />
+          <SaveToLibraryButton kind="post" contentId={post.id} saved={post.savedByMe} size="sm" />
         </div>
       </div>
     </article>

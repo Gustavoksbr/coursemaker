@@ -11,9 +11,12 @@ import com.coursemaker.dto.user.UserSummary;
 import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.repository.CourseRepository;
 import com.coursemaker.repository.EnrollmentRepository;
+import com.coursemaker.repository.LessonCompletionRepository;
+import com.coursemaker.repository.LessonRepository;
 import com.coursemaker.repository.PrivateCourseAccessRepository;
 import com.coursemaker.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,6 +41,8 @@ public class EnrollmentService {
     private final CourseAccessService accessService;
     private final CourseService courseService;
     private final CourseMapper courseMapper;
+    private final LessonRepository lessonRepository;
+    private final LessonCompletionRepository lessonCompletionRepository;
 
     @Transactional
     public EnrollmentStatusResponse enroll(UUID courseId, String password, User user) {
@@ -94,6 +100,48 @@ public class EnrollmentService {
                 .filter(course -> accessService.canView(course, user))
                 .toList();
         return courseMapper.toSummaries(courses, user);
+    }
+
+    /** The single most recently opened enrolled course, for the library's "continuar assistindo". */
+    @Transactional(readOnly = true)
+    public CourseSummary lastAccessedCourse(User user) {
+        return enrollmentRepository.findMostRecentlyAccessed(user.getId(), PageRequest.of(0, 1)).stream()
+                .findFirst()
+                .flatMap(enrollment -> courseRepository.findByIdWithOwner(enrollment.getId().getCourseId()))
+                .filter(course -> accessService.canView(course, user))
+                .map(course -> courseMapper.toSummary(course, user))
+                .orElse(null);
+    }
+
+    /**
+     * Enrolled courses the user has not finished: no progress tracking means there is no signal to
+     * prove it is done, so those always count as "em andamento" too.
+     */
+    @Transactional(readOnly = true)
+    public List<CourseSummary> myInProgressCourses(User user) {
+        List<UUID> courseIds = enrollmentRepository.findAllCourseIdsByUser(user.getId());
+        if (courseIds.isEmpty()) {
+            return List.of();
+        }
+        List<Course> inProgress = courseIds.stream()
+                .map(courseRepository::findByIdWithOwner)
+                .flatMap(Optional::stream)
+                .filter(course -> accessService.canView(course, user))
+                .filter(course -> !isFinished(course, user))
+                .toList();
+        return courseMapper.toSummaries(inProgress, user);
+    }
+
+    private boolean isFinished(Course course, User user) {
+        if (!course.isProgressEnabled()) {
+            return false;
+        }
+        long total = lessonRepository.countByCourseId(course.getId());
+        if (total == 0) {
+            return false;
+        }
+        long completed = lessonCompletionRepository.findCompletedLessonIds(user.getId(), course.getId()).size();
+        return completed >= total;
     }
 
     @Transactional(readOnly = true)

@@ -3,12 +3,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
-import { LikeButton } from '@/components/ui/LikeButton'
+import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { BlockList } from '@/components/blocks/BlockRenderer'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
-import { getPostBySlug, likePost, postKeys, unlikePost } from '@/api/posts'
+import { getPostBySlug, postKeys } from '@/api/posts'
 import { errorMessage } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 
@@ -34,6 +34,7 @@ export default function PostViewPage() {
   }
 
   const post = detail.summary
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: postKeys.bySlug(nickname, slug) })
 
   return (
     <article className="mx-auto max-w-3xl space-y-8 px-4 py-8 sm:px-6">
@@ -58,15 +59,7 @@ export default function PostViewPage() {
           </Link>
 
           <div className="ml-auto flex items-center gap-2">
-            <LikeButton
-              liked={post.likedByMe}
-              count={post.likeCount}
-              onLike={() => likePost(post.id)}
-              onUnlike={() => unlikePost(post.id)}
-              onChange={() =>
-                queryClient.invalidateQueries({ queryKey: postKeys.bySlug(nickname, slug) })
-              }
-            />
+            <SaveToLibraryButton kind="post" contentId={post.id} saved={post.savedByMe} onChange={invalidate} />
             {detail.isOwner && (
               <Link to={`/posts/${post.id}/edit`} className="btn-secondary">
                 <Pencil size={16} /> Editar

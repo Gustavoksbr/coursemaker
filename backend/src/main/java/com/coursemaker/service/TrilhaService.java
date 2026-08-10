@@ -97,6 +97,21 @@ public class TrilhaService {
         return toDetail(trilha, viewer);
     }
 
+    /** Trilhas the user follows (is enrolled in), for the library page. */
+    @Transactional(readOnly = true)
+    public List<TrilhaSummary> myFollowedTrilhas(User user) {
+        List<UUID> trilhaIds = trilhaEnrollmentRepository.findAllTrilhaIdsByUser(user.getId());
+        if (trilhaIds.isEmpty()) {
+            return List.of();
+        }
+        List<Trilha> trilhas = trilhaIds.stream()
+                .map(trilhaRepository::findByIdWithOwner)
+                .flatMap(java.util.Optional::stream)
+                .filter(trilha -> canView(trilha, user))
+                .toList();
+        return trilhaMapper.toSummaries(trilhas, user);
+    }
+
     @Transactional(readOnly = true)
     public List<TrilhaSummary> listByOwner(UUID ownerId, User viewer) {
         List<Trilha> trilhas = trilhaRepository.findAllByOwnerId(ownerId).stream()

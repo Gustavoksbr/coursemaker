@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const redirectTo = location.state?.from?.pathname ?? '/'
+  const redirectTo = location.state?.from?.pathname ?? '/biblioteca'
 
   if (!bootstrapping && isAuthenticated) {
     return <Navigate to={redirectTo} replace />

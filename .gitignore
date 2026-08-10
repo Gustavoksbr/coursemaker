@@ -12,6 +12,12 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 
+# Playwright (e2e)
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/playwright/.cache/
+
 # Env files (anywhere in the tree)
 .env
 .env.local

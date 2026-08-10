@@ -10,7 +10,7 @@ export default function SetupNicknamePage() {
 
   // Someone who already has a nickname has no business here.
   if (user && !needsNickname) {
-    return <Navigate to={location.state?.from?.pathname ?? '/'} replace />
+    return <Navigate to={location.state?.from?.pathname ?? '/biblioteca'} replace />
   }
 
   return (
@@ -18,7 +18,7 @@ export default function SetupNicknamePage() {
       title="Escolha seu nickname"
       subtitle="Ele forma a URL do seu perfil e dos seus cursos, e nao pode ser alterado depois."
     >
-      <NicknameForm onSuccess={() => navigate(location.state?.from?.pathname ?? '/', { replace: true })} />
+      <NicknameForm onSuccess={() => navigate(location.state?.from?.pathname ?? '/biblioteca', { replace: true })} />
     </AuthShell>
   )
 }

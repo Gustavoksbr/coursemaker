@@ -88,6 +88,12 @@ public class TrilhaController {
         return trilhaService.getByNicknameAndSlug(nickname, slug, AuthenticatedUser.userOrNull(principal));
     }
 
+    @Operation(summary = "Trilhas que o usuario autenticado segue, para a biblioteca")
+    @GetMapping("/api/v1/trilhas/me/following")
+    public List<TrilhaSummary> myFollowedTrilhas(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return trilhaService.myFollowedTrilhas(principal.user());
+    }
+
     @Operation(summary = "Cria uma trilha (nasce como rascunho)")
     @PostMapping("/api/v1/trilhas")
     public ResponseEntity<TrilhaSummary> create(@Valid @RequestBody CreateTrilhaRequest request,

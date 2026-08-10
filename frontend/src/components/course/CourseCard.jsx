@@ -2,12 +2,11 @@ import { Link } from 'react-router-dom'
 import { BookOpen, Users } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
-import { LikeButton } from '@/components/ui/LikeButton'
+import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
-import { likeCourse, unlikeCourse } from '@/api/courses'
 import { plural } from '@/lib/format'
 
-export function CourseCard({ course, onLikeChange }) {
+export function CourseCard({ course }) {
   const href = `/courses/${course.owner.nickname}/${course.slug}`
 
   return (
@@ -65,14 +64,7 @@ export function CourseCard({ course, onLikeChange }) {
               <Users size={13} /> {course.enrollmentCount}
             </span>
           </div>
-          <LikeButton
-            liked={course.likedByMe}
-            count={course.likeCount}
-            size="sm"
-            onLike={() => likeCourse(course.id)}
-            onUnlike={() => unlikeCourse(course.id)}
-            onChange={onLikeChange}
-          />
+          <SaveToLibraryButton kind="course" contentId={course.id} saved={course.savedByMe} size="sm" />
         </div>
       </div>
     </article>

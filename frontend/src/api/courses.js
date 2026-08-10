@@ -10,6 +10,8 @@ export const courseKeys = {
   progress: (courseId) => ['courses', courseId, 'progress'],
   comments: (courseId) => ['courses', courseId, 'comments'],
   bans: (courseId) => ['courses', courseId, 'bans'],
+  inProgress: ['enrollments', 'in-progress'],
+  lastAccessed: ['enrollments', 'last-accessed'],
 }
 
 export async function listCourses(filters) {
@@ -144,6 +146,17 @@ export async function myEnrollments() {
   return data
 }
 
+export async function myInProgressCourses() {
+  const { data } = await api.get('/enrollments/me/in-progress')
+  return data
+}
+
+/** The enrolled course this student opened most recently, or null. */
+export async function lastAccessedCourse() {
+  const { data } = await api.get('/enrollments/me/last-accessed')
+  return data
+}
+
 export async function validatePrivateAccess(courseId, password) {
   // 401 here means "wrong course password", not "your token expired": stay signed in.
   const { data } = await api.post(
@@ -179,16 +192,6 @@ export async function uncompleteLesson(lessonId) {
 }
 
 // ------------------------------------------------------------------ engagement
-
-export async function likeCourse(id) {
-  const { data } = await api.post(`/courses/${id}/like`)
-  return data
-}
-
-export async function unlikeCourse(id) {
-  const { data } = await api.delete(`/courses/${id}/like`)
-  return data
-}
 
 export async function listComments(courseId) {
   const { data } = await api.get(`/courses/${courseId}/comments`)

@@ -17,4 +17,7 @@ public interface TrilhaEnrollmentRepository extends JpaRepository<TrilhaEnrollme
 
     @Query("SELECT e.id.trilhaId FROM TrilhaEnrollment e WHERE e.id.userId = :userId AND e.id.trilhaId IN :trilhaIds")
     List<UUID> findEnrolledTrilhaIds(@Param("userId") UUID userId, @Param("trilhaIds") Collection<UUID> trilhaIds);
+
+    @Query("SELECT e.id.trilhaId FROM TrilhaEnrollment e WHERE e.id.userId = :userId")
+    List<UUID> findAllTrilhaIdsByUser(@Param("userId") UUID userId);
 }

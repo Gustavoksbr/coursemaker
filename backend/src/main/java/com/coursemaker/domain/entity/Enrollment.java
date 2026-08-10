@@ -29,9 +29,14 @@ public class Enrollment {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** When the student last opened this course; backs "continue assistindo" in the library. */
+    @Column(name = "last_accessed_at", nullable = false)
+    private Instant lastAccessedAt;
+
     public static Enrollment of(UUID userId, UUID courseId) {
         Enrollment enrollment = new Enrollment();
         enrollment.setId(new UserCourseId(userId, courseId));
+        enrollment.setLastAccessedAt(Instant.now());
         return enrollment;
     }
 }

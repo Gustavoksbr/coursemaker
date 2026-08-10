@@ -10,6 +10,7 @@ export const trilhaKeys = {
   courseTrilhas: (courseId, page) => ['courses', courseId, 'trilhas', page],
   courseTrilhasHighlighted: (courseId) => ['courses', courseId, 'trilhas', 'highlighted'],
   postTrilhas: (postId, page) => ['posts', postId, 'trilhas', page],
+  following: ['trilhas', 'me', 'following'],
 }
 
 export async function listTrilhas(filters) {
@@ -146,5 +147,12 @@ export async function unhighlightCourseTrilha(courseId, trilhaId) {
 
 export async function getPostTrilhas(postId, page = 0, size = 12) {
   const { data } = await api.get(`/posts/${postId}/trilhas`, { params: { page, size } })
+  return data
+}
+
+// ------------------------------------------------------------------ library
+
+export async function myFollowedTrilhas() {
+  const { data } = await api.get('/trilhas/me/following')
   return data
 }

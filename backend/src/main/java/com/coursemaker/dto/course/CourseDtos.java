@@ -34,6 +34,7 @@ public final class CourseDtos {
             long lessonCount,
             boolean likedByMe,
             boolean enrolledByMe,
+            boolean savedByMe,
             Instant createdAt,
             Instant updatedAt) {
     }

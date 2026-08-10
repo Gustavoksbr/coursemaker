@@ -13,6 +13,7 @@ import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaSummary;
 import com.coursemaker.dto.user.UserSummary;
 import com.coursemaker.repository.LessonCompletionRepository;
 import com.coursemaker.repository.LessonRepository;
+import com.coursemaker.repository.LibraryItemRepository;
 import com.coursemaker.repository.TrilhaEnrollmentRepository;
 import com.coursemaker.repository.TrilhaItemCompletionRepository;
 import com.coursemaker.repository.TrilhaItemRepository;
@@ -39,6 +40,7 @@ public class TrilhaMapper {
     private final TrilhaItemRepository trilhaItemRepository;
     private final TrilhaEnrollmentRepository trilhaEnrollmentRepository;
     private final TrilhaItemCompletionRepository trilhaItemCompletionRepository;
+    private final LibraryItemRepository libraryItemRepository;
     private final LessonCompletionRepository lessonCompletionRepository;
     private final LessonRepository lessonRepository;
     private final CourseMapper courseMapper;
@@ -52,8 +54,12 @@ public class TrilhaMapper {
         List<UUID> ids = trilhas.stream().map(Trilha::getId).toList();
         Set<UUID> enrolled = viewer == null ? Set.of()
                 : new HashSet<>(trilhaEnrollmentRepository.findEnrolledTrilhaIds(viewer.getId(), ids));
+        Set<UUID> saved = viewer == null ? Set.of()
+                : new HashSet<>(libraryItemRepository.findSavedTrilhaIds(viewer.getId(), ids));
 
-        return trilhas.stream().map(trilha -> toSummary(trilha, enrolled.contains(trilha.getId()))).toList();
+        return trilhas.stream()
+                .map(trilha -> toSummary(trilha, enrolled.contains(trilha.getId()), saved.contains(trilha.getId())))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -61,7 +67,7 @@ public class TrilhaMapper {
         return toSummaries(List.of(trilha), viewer).get(0);
     }
 
-    private TrilhaSummary toSummary(Trilha trilha, boolean enrolledByMe) {
+    private TrilhaSummary toSummary(Trilha trilha, boolean enrolledByMe, boolean savedByMe) {
         return new TrilhaSummary(
                 trilha.getId(),
                 trilha.getTitle(),
@@ -76,6 +82,7 @@ public class TrilhaMapper {
                 trilhaItemRepository.countByTrilhaId(trilha.getId()),
                 trilhaEnrollmentRepository.countByTrilhaId(trilha.getId()),
                 enrolledByMe,
+                savedByMe,
                 trilha.getCreatedAt(),
                 trilha.getUpdatedAt());
     }

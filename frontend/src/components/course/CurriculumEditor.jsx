@@ -205,6 +205,7 @@ export function CurriculumEditor({ courseId, modules, activeLessonId, onSelectLe
                     setEditing={setEditing}
                     onRename={renameLesson}
                     onDelete={(lesson) => setConfirm({ kind: 'lesson', item: lesson })}
+                    onAddLesson={() => addLesson(module.id)}
                     onReorder={refresh}
                     onError={onError}
                   />
@@ -243,6 +244,7 @@ function LessonList({
   setEditing,
   onRename,
   onDelete,
+  onAddLesson,
   onReorder,
   onError,
 }) {
@@ -256,12 +258,11 @@ function LessonList({
 
   const drag = useDragReorder(module.lessons, moveLessons)
 
-  if (module.lessons.length === 0) {
-    return <p className="ml-8 px-2 py-1.5 text-xs text-slate-600">Sem licoes.</p>
-  }
-
   return (
     <ul className="ml-6 space-y-0.5 border-l border-slate-700 pl-2">
+      {module.lessons.length === 0 && (
+        <li className="px-2 py-1 text-xs text-slate-600">Sem licoes.</li>
+      )}
       {module.lessons.map((lesson) => {
         const active = lesson.id === activeLessonId
         const isEditing = editing?.kind === 'lesson' && editing.id === lesson.id
@@ -325,6 +326,15 @@ function LessonList({
           </li>
         )
       })}
+      <li>
+        <button
+          type="button"
+          onClick={onAddLesson}
+          className="flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-left text-sm text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+        >
+          <Plus size={13} className="shrink-0" /> Nova licao
+        </button>
+      </li>
     </ul>
   )
 }

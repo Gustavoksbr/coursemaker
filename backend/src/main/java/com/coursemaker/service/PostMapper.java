@@ -4,6 +4,7 @@ import com.coursemaker.domain.entity.Post;
 import com.coursemaker.domain.entity.User;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
 import com.coursemaker.dto.user.UserSummary;
+import com.coursemaker.repository.LibraryItemRepository;
 import com.coursemaker.repository.PostLikeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class PostMapper {
 
     private final PostLikeRepository postLikeRepository;
+    private final LibraryItemRepository libraryItemRepository;
 
     @Transactional(readOnly = true)
     public List<PostSummary> toSummaries(List<Post> posts, User viewer) {
@@ -36,6 +38,8 @@ public class PostMapper {
         }
         Set<UUID> liked = viewer == null ? Set.of()
                 : new HashSet<>(postLikeRepository.findLikedPostIds(viewer.getId(), ids));
+        Set<UUID> saved = viewer == null ? Set.of()
+                : new HashSet<>(libraryItemRepository.findSavedPostIds(viewer.getId(), ids));
 
         return posts.stream()
                 .map(post -> new PostSummary(
@@ -51,6 +55,7 @@ public class PostMapper {
                         UserSummary.from(post.getOwner()),
                         likeCounts.getOrDefault(post.getId(), 0L),
                         liked.contains(post.getId()),
+                        saved.contains(post.getId()),
                         post.getCreatedAt(),
                         post.getUpdatedAt()))
                 .toList();

@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
 import { Checkbox } from '@/components/ui/Field'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
-import { LikeButton } from '@/components/ui/LikeButton'
+import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { BlockList } from '@/components/blocks/BlockRenderer'
@@ -33,11 +33,9 @@ import {
   courseKeys,
   enroll,
   getCourseBySlug,
-  likeCourse,
   listLessonBlocks,
   uncompleteLesson,
   unenroll,
-  unlikeCourse,
 } from '@/api/courses'
 import { errorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -131,6 +129,7 @@ export default function CourseViewPage() {
                     completed={detail.progress.completedLessons}
                     total={detail.progress.totalLessons}
                     percentage={detail.progress.percentage}
+                    ariaLabel="Progresso no curso"
                   />
                 </div>
               )}
@@ -168,7 +167,7 @@ export default function CourseViewPage() {
               onEnrollClick={handleEnrollClick}
               enrolling={enrolling}
               onUnlockClick={() => setPasswordOpen(true)}
-              onLikeChange={() =>
+              onSavedChange={() =>
                 queryClient.invalidateQueries({ queryKey: courseKeys.bySlug(nickname, slug) })
               }
             />
@@ -200,7 +199,7 @@ function Landing({
   onEnrollClick,
   enrolling,
   onUnlockClick,
-  onLikeChange,
+  onSavedChange,
 }) {
   const isOwner = detail.isOwner
 
@@ -231,13 +230,7 @@ function Landing({
           </Link>
 
           <div className="ml-auto flex items-center gap-2">
-            <LikeButton
-              liked={course.likedByMe}
-              count={course.likeCount}
-              onLike={() => likeCourse(course.id)}
-              onUnlike={() => unlikeCourse(course.id)}
-              onChange={onLikeChange}
-            />
+            <SaveToLibraryButton kind="course" contentId={course.id} saved={course.savedByMe} onChange={onSavedChange} />
             {isOwner ? (
               <Link
                 to={`/courses/${course.owner.nickname}/${course.slug}/edit`}
@@ -267,7 +260,6 @@ function Landing({
       <div className="flex flex-wrap gap-6 rounded-xl border border-slate-700 bg-slate-800/50 px-5 py-4 text-sm">
         <Stat label="Licoes" value={course.lessonCount} />
         <Stat label="Alunos" value={course.enrollmentCount} />
-        <Stat label="Curtidas" value={course.likeCount} />
         {course.categories?.length > 0 && (
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-wide text-slate-500">Categorias</p>
@@ -287,6 +279,7 @@ function Landing({
           completed={detail.progress.completedLessons}
           total={detail.progress.totalLessons}
           percentage={detail.progress.percentage}
+          ariaLabel="Progresso no curso"
         />
       )}
 

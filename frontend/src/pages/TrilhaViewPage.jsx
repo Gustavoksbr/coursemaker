@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
+import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { TrilhaItemsList } from '@/components/trilha/TrilhaItemsList'
@@ -94,6 +95,7 @@ export default function TrilhaViewPage() {
           </Link>
 
           <div className="ml-auto flex items-center gap-2">
+            <SaveToLibraryButton kind="trilha" contentId={trilha.id} saved={trilha.savedByMe} onChange={invalidate} />
             {detail.isOwner ? (
               <Link to={`/trilhas/${trilha.owner.nickname}/${trilha.slug}/edit`} className="btn-secondary">
                 <Pencil size={16} /> Editar trilha
@@ -141,6 +143,8 @@ export default function TrilhaViewPage() {
           completed={detail.progress.completedItems}
           total={detail.progress.totalItems}
           percentage={detail.progress.percentage}
+          unit={{ singular: 'item', plural: 'itens' }}
+          ariaLabel="Progresso na trilha"
         />
       )}
 

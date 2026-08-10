@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Layers, Users } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
+import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { plural } from '@/lib/format'
 
@@ -59,7 +60,10 @@ export function TrilhaCard({ trilha }) {
               <Users size={13} /> {trilha.enrollmentCount}
             </span>
           </div>
-          {trilha.enrolledByMe && <span className="badge bg-brand-500/15 text-brand-300">Seguindo</span>}
+          <div className="flex items-center gap-2">
+            {trilha.enrolledByMe && <span className="badge bg-brand-500/15 text-brand-300">Seguindo</span>}
+            <SaveToLibraryButton kind="trilha" contentId={trilha.id} saved={trilha.savedByMe} size="sm" />
+          </div>
         </div>
       </div>
     </article>

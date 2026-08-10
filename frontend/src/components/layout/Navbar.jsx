@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { BookOpen, GraduationCap, LogOut, Menu, PenSquare, User as UserIcon, Waypoints, X } from 'lucide-react'
+import { Bell, BookOpen, Bookmark, GraduationCap, LogOut, Menu, PenSquare, User as UserIcon, Waypoints, X } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { useNicknameGate } from '@/hooks/useNicknameGate'
 import { Avatar } from '@/components/ui/Avatar'
-import { NicknameGateModal } from '@/components/auth/NicknameGateModal'
 import { cn } from '@/lib/cn'
 
 const NAV_LINKS = [
@@ -13,13 +11,20 @@ const NAV_LINKS = [
   { to: '/trilhas', label: 'Trilhas', icon: Waypoints },
 ]
 
+const LIBRARY_LINK = { to: '/biblioteca', label: 'Biblioteca', icon: Bookmark }
+
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
-  const { requireNickname, nicknameModalProps } = useNicknameGate()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef(null)
+  const notificationsRef = useRef(null)
+
+  // A link to a page you cannot open (it is behind auth) is just confusing, so it only shows up
+  // once there is a library to look at.
+  const navLinks = isAuthenticated ? [...NAV_LINKS, LIBRARY_LINK] : NAV_LINKS
 
   useEffect(() => {
     if (!menuOpen) return undefined
@@ -29,6 +34,17 @@ export function Navbar() {
     document.addEventListener('mousedown', onClickOutside)
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!notificationsOpen) return undefined
+    const onClickOutside = (event) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setNotificationsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [notificationsOpen])
 
   const handleLogout = () => {
     logout()
@@ -53,7 +69,7 @@ export function Navbar() {
         </Link>
 
         <div className="hidden flex-1 items-center gap-1 md:flex">
-          {NAV_LINKS.map(({ to, label }) => (
+          {navLinks.map(({ to, label }) => (
             <NavLink key={to} to={to} className={linkClass}>
               {label}
             </NavLink>
@@ -63,15 +79,33 @@ export function Navbar() {
         <div className="ml-auto flex items-center gap-2">
           {isAuthenticated ? (
             <>
-              <button
-                type="button"
-                onClick={() => requireNickname(() => navigate('/posts/new'))}
-                className="btn-ghost hidden sm:inline-flex"
-                title="Escrever post"
-              >
-                <PenSquare size={16} />
-                <span className="hidden lg:inline">Escrever</span>
-              </button>
+              <div className="relative" ref={notificationsRef}>
+                <button
+                  type="button"
+                  onClick={() => setNotificationsOpen((open) => !open)}
+                  className="btn-ghost px-2"
+                  aria-haspopup="menu"
+                  aria-expanded={notificationsOpen}
+                  aria-label="Notificacoes"
+                  title="Notificacoes"
+                >
+                  <Bell size={18} />
+                </button>
+
+                {notificationsOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-2 w-72 animate-slide-up overflow-hidden rounded-lg border border-slate-700 bg-slate-800 shadow-xl"
+                  >
+                    <div className="border-b border-slate-700 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-100">Notificacoes</p>
+                    </div>
+                    <p className="px-4 py-6 text-center text-sm text-slate-500">
+                      Sua caixa de mensagens esta vazia.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               <div className="relative" ref={menuRef}>
                 <button
@@ -151,7 +185,7 @@ export function Navbar() {
 
       {mobileOpen && (
         <div className="border-t border-slate-800 px-4 py-2 md:hidden">
-          {NAV_LINKS.map(({ to, label, icon: Icon }) => (
+          {navLinks.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -163,8 +197,6 @@ export function Navbar() {
           ))}
         </div>
       )}
-
-      <NicknameGateModal {...nicknameModalProps} />
     </header>
   )
 }

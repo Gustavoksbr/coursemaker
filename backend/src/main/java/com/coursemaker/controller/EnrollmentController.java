@@ -53,6 +53,18 @@ public class EnrollmentController {
         return enrollmentService.myEnrollments(principal.user());
     }
 
+    @Operation(summary = "Cursos matriculados e ainda nao concluidos, para a biblioteca")
+    @GetMapping("/api/v1/enrollments/me/in-progress")
+    public List<CourseSummary> myInProgressCourses(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return enrollmentService.myInProgressCourses(principal.user());
+    }
+
+    @Operation(summary = "Curso matriculado aberto mais recentemente, ou null se nenhum. Para \"continuar assistindo\"")
+    @GetMapping("/api/v1/enrollments/me/last-accessed")
+    public CourseSummary lastAccessedCourse(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return enrollmentService.lastAccessedCourse(principal.user());
+    }
+
     @Operation(summary = "Valida a senha de um curso privado e libera o conteudo")
     @PostMapping("/api/v1/enrollments/private-access/validate")
     public PrivateAccessResponse validatePrivateAccess(
