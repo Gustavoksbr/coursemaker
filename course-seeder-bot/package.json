@@ -1,0 +1,17 @@
+{
+  "name": "course-seeder-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bot que cria uma conta de teste no Coursemaker e gera cursos aleatorios (modulos, aulas e blocos de texto/codigo) via Groq, guiado pelo swagger da API.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
