@@ -53,6 +53,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        // --- Liveness / keep-alive ---
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ping").permitAll()
+
                         // --- Authentication ---
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/google")
                         .permitAll()
