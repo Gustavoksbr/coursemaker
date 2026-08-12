@@ -24,7 +24,7 @@ import { Thumbnail } from '@/components/ui/Thumbnail'
 import { BlockList } from '@/components/blocks/BlockRenderer'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { CurriculumNav, flattenLessons } from '@/components/course/CurriculumNav'
-import { PrivatePasswordModal } from '@/components/course/PrivatePasswordModal'
+import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
 import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useAuth } from '@/context/AuthContext'
@@ -210,8 +210,9 @@ export default function CourseViewPage() {
       <PrivatePasswordModal
         open={passwordOpen}
         onClose={() => setPasswordOpen(false)}
-        courseId={course.id}
-        courseName={course.name}
+        kind="course"
+        contentId={course.id}
+        contentName={course.name}
         onUnlocked={() => {
           setPasswordOpen(false)
           toast.success('Acesso liberado!')
@@ -222,7 +223,7 @@ export default function CourseViewPage() {
   )
 }
 
-function Landing({
+export function Landing({
   detail,
   course,
   lessons,
@@ -376,7 +377,7 @@ function Stat({ label, value }) {
   )
 }
 
-function LessonView({
+export function LessonView({
   course,
   lesson,
   lessons,

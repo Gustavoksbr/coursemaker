@@ -15,7 +15,14 @@ import { LIMITS, STATUS, VISIBILITY } from '@/lib/constants'
  * Everything about the course itself - a full-width card above the curriculum, mirroring how
  * PostEditorPage lays out its own settings section above the block editor.
  */
-export function CourseSettingsPanel({ course, landingDescription, courseQueryKey, onDeleted, onOpenStudents }) {
+export function CourseSettingsPanel({
+  course,
+  landingDescription,
+  courseQueryKey,
+  onDeleted,
+  onOpenStudents,
+  onDraftChange,
+}) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [errors, setErrors] = useState({})
@@ -47,6 +54,12 @@ export function CourseSettingsPanel({ course, landingDescription, courseQueryKey
       progressEnabled: course.progressEnabled,
     }))
   }, [course, landingDescription])
+
+  // Mirrors the current form up to the editor page, so "preview" can show unsaved edits without
+  // lifting this whole form out of the panel.
+  useEffect(() => {
+    onDraftChange?.(form)
+  }, [form, onDraftChange])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: courseQueryKey })

@@ -1,14 +1,18 @@
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil } from 'lucide-react'
+import { Lock, Pencil } from 'lucide-react'
 import { ChatWidget } from '@/components/ai/ChatWidget'
 import { Avatar } from '@/components/ui/Avatar'
+import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { BlockList } from '@/components/blocks/BlockRenderer'
+import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
+import { useToast } from '@/context/ToastContext'
 import { getPostBySlug, postKeys } from '@/api/posts'
 import { errorMessage } from '@/lib/api'
 import { formatDate } from '@/lib/format'
@@ -16,11 +20,18 @@ import { formatDate } from '@/lib/format'
 export default function PostViewPage() {
   const { nickname, slug } = useParams()
   const queryClient = useQueryClient()
+  const toast = useToast()
+  const [passwordOpen, setPasswordOpen] = useState(false)
 
   const { data: detail, isPending, isError, error, refetch } = useQuery({
     queryKey: postKeys.bySlug(nickname, slug),
     queryFn: () => getPostBySlug(nickname, slug),
   })
+
+  // Ask for the password as soon as we learn the post is locked.
+  useEffect(() => {
+    if (detail?.requiresPassword) setPasswordOpen(true)
+  }, [detail?.requiresPassword])
 
   if (isPending) return <PageLoader label="Carregando post..." />
 
@@ -89,12 +100,36 @@ export default function PostViewPage() {
           )}
         </header>
 
-        <BlockList blocks={detail.blocks} emptyMessage="Este post ainda nao tem conteudo." />
+        {detail.requiresPassword ? (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-violet-500/30 bg-violet-500/5 px-6 py-10 text-center">
+            <Lock className="text-violet-400" size={28} />
+            <div>
+              <p className="font-semibold text-slate-200">Conteudo protegido por senha</p>
+              <p className="mt-1 text-sm text-slate-400">Informe a senha do post para ver o conteudo.</p>
+            </div>
+            <Button onClick={() => setPasswordOpen(true)}>Informar senha</Button>
+          </div>
+        ) : (
+          <BlockList blocks={detail.blocks} emptyMessage="Este post ainda nao tem conteudo." />
+        )}
 
         <RelatedItemsSection kind="post" contentId={post.id} />
       </article>
 
       <ChatWidget kind="post" contentId={post.id} />
+
+      <PrivatePasswordModal
+        open={passwordOpen}
+        onClose={() => setPasswordOpen(false)}
+        kind="post"
+        contentId={post.id}
+        contentName={post.title}
+        onUnlocked={() => {
+          setPasswordOpen(false)
+          toast.success('Acesso liberado!')
+          invalidate()
+        }}
+      />
     </>
   )
 }

@@ -170,7 +170,9 @@ public class TrilhaService {
                 .slug(slug)
                 .description(request.description())
                 .thumbnailUrl(request.thumbnailUrl())
-                .visibility(request.visibility() == null ? CourseVisibility.PUBLIC : request.visibility())
+                // Trilhas have no password gate (unlike courses), so private is not offered: every
+                // trilha is public regardless of what the request asks for.
+                .visibility(CourseVisibility.PUBLIC)
                 .status(CourseStatus.UNAVAILABLE)
                 .categories(CourseService.normalizeCategories(request.categories()))
                 .build();
@@ -191,9 +193,8 @@ public class TrilhaService {
         if (request.thumbnailUrl() != null) {
             trilha.setThumbnailUrl(request.thumbnailUrl());
         }
-        if (request.visibility() != null) {
-            trilha.setVisibility(request.visibility());
-        }
+        // Visibility is intentionally not settable here: trilhas have no password gate, so private
+        // is not a real state for them (see create() above).
         if (request.status() != null) {
             trilha.setStatus(request.status());
         }

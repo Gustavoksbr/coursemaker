@@ -40,6 +40,10 @@ public class RateLimitService {
         return "private-course:" + courseId + ":" + userId;
     }
 
+    public static String privatePostKey(UUID postId, UUID userId) {
+        return "private-post:" + postId + ":" + userId;
+    }
+
     /** Throws 429 if this identifier is currently blocked. Call before checking the credential. */
     @Transactional(readOnly = true)
     public void assertNotBlocked(String identifier) {

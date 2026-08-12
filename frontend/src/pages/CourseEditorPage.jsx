@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink, Pencil, Save } from 'lucide-react'
+import { Eye, Pencil, Save } from 'lucide-react'
+import { CoursePreview } from '@/components/course/CoursePreview'
 import { CourseSettingsPanel } from '@/components/course/CourseSettingsPanel'
 import { CurriculumEditor } from '@/components/course/CurriculumEditor'
 import { StudentsModal } from '@/components/course/StudentsModal'
@@ -58,6 +59,8 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
   const [studentsOpen, setStudentsOpen] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [settingsDraft, setSettingsDraft] = useState(null)
 
   const course = detail.summary
   const curriculumDraft = useCurriculumDraft(course.id, detail.modules)
@@ -142,12 +145,9 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
             </Button>
           )}
 
-          <Link
-            to={`/courses/${course.owner.nickname}/${course.slug}`}
-            className="btn-secondary text-xs"
-          >
-            <ExternalLink size={14} /> Ver como aluno
-          </Link>
+          <button type="button" onClick={() => setPreviewOpen(true)} className="btn-secondary text-xs">
+            <Eye size={14} /> Pre-visualizar
+          </button>
         </header>
 
         <CourseSettingsPanel
@@ -156,6 +156,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
           courseQueryKey={courseQueryKey}
           onDeleted={onDeleted}
           onOpenStudents={() => setStudentsOpen(true)}
+          onDraftChange={setSettingsDraft}
         />
 
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
@@ -217,6 +218,24 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
 
       <StudentsModal open={studentsOpen} onClose={() => setStudentsOpen(false)} course={course} />
       <UnsavedChangesPrompt blocker={blocker} />
+
+      {previewOpen && (
+        <CoursePreview
+          course={{
+            ...course,
+            name: settingsDraft?.name ?? course.name,
+            description: settingsDraft?.description ?? course.description,
+            thumbnailUrl: settingsDraft?.thumbnailUrl ?? course.thumbnailUrl,
+            visibility: settingsDraft?.visibility ?? course.visibility,
+            categories: settingsDraft?.categories ?? course.categories,
+            progressEnabled: settingsDraft?.progressEnabled ?? course.progressEnabled,
+          }}
+          landingDescription={settingsDraft?.landingDescription ?? detail.landingDescription}
+          modules={curriculumDraft.modules}
+          curriculumDraft={curriculumDraft}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </>
   )
 }

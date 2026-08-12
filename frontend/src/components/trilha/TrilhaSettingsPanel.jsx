@@ -2,17 +2,17 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Eye, EyeOff, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, Select, Textarea } from '@/components/ui/Field'
+import { Field, Input, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { useToast } from '@/context/ToastContext'
 import { deleteTrilha, trilhaKeys, updateTrilha } from '@/api/trilhas'
 import { errorMessage, fieldErrors } from '@/lib/api'
-import { LIMITS, STATUS, VISIBILITY } from '@/lib/constants'
+import { LIMITS, STATUS } from '@/lib/constants'
 
 /** Everything about the trilha itself, mirroring CourseSettingsPanel. */
-export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted }) {
+export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted, onDraftChange }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [errors, setErrors] = useState({})
@@ -22,7 +22,6 @@ export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted }) {
     title: trilha.title,
     description: trilha.description ?? '',
     thumbnailUrl: trilha.thumbnailUrl ?? '',
-    visibility: trilha.visibility,
     categories: trilha.categories ?? [],
   }))
 
@@ -32,10 +31,15 @@ export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted }) {
       title: trilha.title,
       description: trilha.description ?? '',
       thumbnailUrl: trilha.thumbnailUrl ?? '',
-      visibility: trilha.visibility,
       categories: trilha.categories ?? [],
     }))
   }, [trilha])
+
+  // Mirrors the current form up to the editor page, so "preview" can show unsaved edits without
+  // lifting this whole form out of the panel.
+  useEffect(() => {
+    onDraftChange?.(form)
+  }, [form, onDraftChange])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: trilhaQueryKey })
@@ -48,7 +52,6 @@ export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted }) {
         title: form.title.trim(),
         description: form.description,
         thumbnailUrl: form.thumbnailUrl,
-        visibility: form.visibility,
         categories: form.categories,
       }),
     onSuccess: () => {
@@ -88,28 +91,15 @@ export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted }) {
 
   return (
     <section className="space-y-4 rounded-xl border border-slate-700 bg-slate-800/40 p-5">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nome" htmlFor="trilha-settings-title" error={errors.title}>
-          <Input
-            id="trilha-settings-title"
-            maxLength={LIMITS.NAME}
-            value={form.title}
-            onChange={(event) => setForm({ ...form, title: event.target.value })}
-            invalid={Boolean(errors.title)}
-          />
-        </Field>
-
-        <Field label="Visibilidade" htmlFor="trilha-settings-visibility" error={errors.visibility}>
-          <Select
-            id="trilha-settings-visibility"
-            value={form.visibility}
-            onChange={(event) => setForm({ ...form, visibility: event.target.value })}
-          >
-            <option value={VISIBILITY.PUBLIC}>Publica</option>
-            <option value={VISIBILITY.PRIVATE}>Privada</option>
-          </Select>
-        </Field>
-      </div>
+      <Field label="Nome" htmlFor="trilha-settings-title" error={errors.title}>
+        <Input
+          id="trilha-settings-title"
+          maxLength={LIMITS.NAME}
+          value={form.title}
+          onChange={(event) => setForm({ ...form, title: event.target.value })}
+          invalid={Boolean(errors.title)}
+        />
+      </Field>
 
       <Field label="Descricao" htmlFor="trilha-settings-description" error={errors.description}>
         <Textarea

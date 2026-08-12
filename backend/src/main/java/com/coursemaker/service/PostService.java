@@ -33,8 +33,11 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final PostBlockRepository postBlockRepository;
+    private final PostAccessService accessService;
+    private final PrivatePostAccessService privateAccessService;
     private final PostMapper postMapper;
     private final SlugGeneratorService slugGenerator;
+    private final PasswordHasher passwordHasher;
 
     // ------------------------------------------------------------------ reads
 
@@ -55,23 +58,28 @@ public class PostService {
         return PageResponse.of(result, postMapper.toSummaries(result.getContent(), viewer));
     }
 
-    @Transactional(readOnly = true)
+    // Not read-only: opening a private post silently restores access for a reader who has already
+    // proven they know the password (see PrivatePostAccessService).
+    @Transactional
     public PostDetail getById(UUID id, User viewer) {
-        return toDetail(loadVisible(id, viewer), viewer);
+        Post post = loadVisible(id, viewer);
+        privateAccessService.restoreIfPreviouslyVerified(post, viewer);
+        return toDetail(post, viewer);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PostDetail getByNicknameAndSlug(String nickname, String slug, User viewer) {
         Post post = postRepository.findByOwnerNicknameAndSlug(nickname, slug)
                 .orElseThrow(() -> ResourceNotFoundException.of("Post"));
-        requireVisible(post, viewer);
+        accessService.requireVisible(post, viewer);
+        privateAccessService.restoreIfPreviouslyVerified(post, viewer);
         return toDetail(post, viewer);
     }
 
     @Transactional(readOnly = true)
     public List<PostSummary> listByOwner(UUID ownerId, User viewer) {
         List<Post> posts = postRepository.findAllByOwnerId(ownerId).stream()
-                .filter(post -> canView(post, viewer))
+                .filter(post -> accessService.canView(post, viewer))
                 .toList();
         return postMapper.toSummaries(posts, viewer);
     }
@@ -97,14 +105,22 @@ public class PostService {
         String slug = slugGenerator.uniqueSlug(desired,
                 postRepository.findSlugsStartingWith(owner.getId(), slugGenerator.slugify(desired)));
 
+        CourseVisibility visibility = request.visibility() == null ? CourseVisibility.PUBLIC : request.visibility();
+        String passwordHash = null;
+        if (visibility == CourseVisibility.PRIVATE) {
+            passwordHash = passwordHasher.hashRequired(request.password(),
+                    "Posts privados exigem uma senha de acesso");
+        }
+
         Post post = Post.builder()
                 .owner(owner)
                 .title(request.title().trim())
                 .slug(slug)
                 .description(request.description())
                 .thumbnailUrl(request.thumbnailUrl())
-                .visibility(request.visibility() == null ? CourseVisibility.PUBLIC : request.visibility())
+                .visibility(visibility)
                 .status(CourseStatus.UNAVAILABLE)
+                .passwordHash(passwordHash)
                 .categories(CourseService.normalizeCategories(request.categories()))
                 .build();
 
@@ -124,15 +140,14 @@ public class PostService {
         if (request.thumbnailUrl() != null) {
             post.setThumbnailUrl(request.thumbnailUrl());
         }
-        if (request.visibility() != null) {
-            post.setVisibility(request.visibility());
-        }
         if (request.status() != null) {
             post.setStatus(request.status());
         }
         if (request.categories() != null) {
             post.setCategories(CourseService.normalizeCategories(request.categories()));
         }
+        applyVisibility(post, request);
+
         return postMapper.toSummary(postRepository.save(post), viewer);
     }
 
@@ -158,40 +173,67 @@ public class PostService {
     public Post loadVisible(UUID id, User viewer) {
         Post post = postRepository.findByIdWithOwner(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Post"));
-        requireVisible(post, viewer);
+        accessService.requireVisible(post, viewer);
         return post;
     }
 
+    /**
+     * Loads a post for editing. Kept separate from {@link #loadVisible} so callers cannot forget
+     * the ownership check.
+     */
     @Transactional(readOnly = true)
     public Post loadForEditing(UUID id, User viewer) {
         Post post = postRepository.findByIdWithOwner(id)
                 .orElseThrow(() -> ResourceNotFoundException.of("Post"));
-        if (!isOwner(post, viewer)) {
-            requireVisible(post, viewer);
-            throw new ForbiddenException("Apenas o dono do post pode fazer isso");
-        }
+        accessService.requireOwner(post, viewer);
         return post;
     }
 
     public boolean isOwner(Post post, User viewer) {
-        return viewer != null && post.getOwner().getId().equals(viewer.getId());
-    }
-
-    private boolean canView(Post post, User viewer) {
-        return post.isPublished() || isOwner(post, viewer) || (viewer != null && viewer.isAdmin());
-    }
-
-    private void requireVisible(Post post, User viewer) {
-        if (!canView(post, viewer)) {
-            throw ResourceNotFoundException.of("Post");
-        }
+        return accessService.isOwner(post, viewer);
     }
 
     private PostDetail toDetail(Post post, User viewer) {
-        List<BlockResponse> blocks = postBlockRepository.findByPostOrdered(post.getId()).stream()
-                .map(BlockResponse::of)
-                .toList();
-        return new PostDetail(postMapper.toSummary(post, viewer), blocks, isOwner(post, viewer));
+        boolean owner = accessService.isOwner(post, viewer);
+        boolean canViewContent = accessService.canViewContent(post, viewer);
+
+        List<BlockResponse> blocks = canViewContent
+                ? postBlockRepository.findByPostOrdered(post.getId()).stream().map(BlockResponse::of).toList()
+                : List.of();
+
+        return new PostDetail(
+                postMapper.toSummary(post, viewer),
+                blocks,
+                owner,
+                post.isPrivate() && !canViewContent,
+                post.getPasswordHash() != null);
+    }
+
+    /** Mirrors {@code CourseService.applyVisibility}. */
+    private void applyVisibility(Post post, UpdatePostRequest request) {
+        boolean becomingPrivate = request.visibility() == CourseVisibility.PRIVATE;
+        boolean becomingPublic = request.visibility() == CourseVisibility.PUBLIC;
+
+        if (becomingPublic) {
+            post.setVisibility(CourseVisibility.PUBLIC);
+            post.setPasswordHash(null);
+            return;
+        }
+
+        if (becomingPrivate) {
+            post.setVisibility(CourseVisibility.PRIVATE);
+            if (request.password() != null && !request.password().isBlank()) {
+                post.setPasswordHash(passwordHasher.hash(request.password()));
+            } else if (post.getPasswordHash() == null) {
+                throw new BadRequestException("Posts privados exigem uma senha de acesso");
+            }
+            return;
+        }
+
+        // Visibility untouched: still allow rotating the password of an already-private post.
+        if (request.password() != null && !request.password().isBlank() && post.isPrivate()) {
+            post.setPasswordHash(passwordHasher.hash(request.password()));
+        }
     }
 
     private static String blankToNull(String value) {

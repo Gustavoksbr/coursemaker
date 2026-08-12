@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, Eye, EyeOff, Save, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
@@ -10,6 +10,7 @@ import { ConfirmModal } from '@/components/ui/Modal'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { BlockListEditor } from '@/components/blocks/BlockListEditor'
+import { PostPreview } from '@/components/post/PostPreview'
 import { RelatedItemsEditor } from '@/components/related/RelatedItemsEditor'
 import { UnsavedChangesPrompt } from '@/components/ui/UnsavedChangesPrompt'
 import { useRelatedItemsDraft } from '@/hooks/useRelatedItemsDraft'
@@ -50,6 +51,7 @@ export default function PostEditorPage() {
   const toast = useToast()
   const [errors, setErrors] = useState({})
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const [form, setForm] = useState({
     title: '',
@@ -57,6 +59,7 @@ export default function PostEditorPage() {
     thumbnailUrl: '',
     visibility: VISIBILITY.PUBLIC,
     categories: [],
+    password: '',
   })
 
   const isNew = !id
@@ -72,13 +75,14 @@ export default function PostEditorPage() {
   useEffect(() => {
     if (!detail) return
     const post = detail.summary
-    setForm({
+    setForm((current) => ({
+      ...current,
       title: post.title,
       description: post.description ?? '',
       thumbnailUrl: post.thumbnailUrl ?? '',
       visibility: post.visibility,
       categories: post.categories ?? [],
-    })
+    }))
   }, [detail])
 
   const invalidate = () => {
@@ -94,11 +98,14 @@ export default function PostEditorPage() {
         thumbnailUrl: form.thumbnailUrl,
         visibility: form.visibility,
         categories: form.categories,
+        // Only send a password when one was typed: the API reads null as "keep the current one".
+        password: form.password.trim() ? form.password : undefined,
       }
       return isNew ? createPost(payload) : updatePost(id, payload)
     },
     onSuccess: (post) => {
       setErrors({})
+      setForm((current) => ({ ...current, password: '' }))
       invalidate()
       toast.success(isNew ? 'Post criado! Agora adicione o conteudo.' : 'Post salvo.')
       if (isNew) navigate(`/posts/${post.id}/edit`, { replace: true })
@@ -147,6 +154,8 @@ export default function PostEditorPage() {
 
   const post = detail?.summary
   const published = post?.status === STATUS.AVAILABLE
+  const needsPassword = form.visibility === VISIBILITY.PRIVATE
+  const needsNewPassword = needsPassword && !detail?.hasPassword && !form.password.trim()
 
   const handleSaveRelated = async () => {
     try {
@@ -181,12 +190,9 @@ export default function PostEditorPage() {
               visibility={post.visibility}
               featured={post.featured}
             />
-            <Link
-              to={`/posts/${post.owner.nickname}/${post.slug}`}
-              className="btn-ghost ml-auto text-xs"
-            >
-              <ExternalLink size={14} /> Ver publicado
-            </Link>
+            <button type="button" onClick={() => setPreviewOpen(true)} className="btn-ghost ml-auto text-xs">
+              <Eye size={14} /> Pre-visualizar
+            </button>
           </>
         )}
       </header>
@@ -236,9 +242,31 @@ export default function PostEditorPage() {
             onChange={(event) => setForm({ ...form, visibility: event.target.value })}
           >
             <option value={VISIBILITY.PUBLIC}>Publico</option>
-            <option value={VISIBILITY.PRIVATE}>Privado</option>
+            <option value={VISIBILITY.PRIVATE}>Privado (senha)</option>
           </Select>
         </Field>
+
+        {needsPassword && (
+          <Field
+            label={detail?.hasPassword ? 'Trocar senha' : 'Senha de acesso'}
+            htmlFor="post-password"
+            error={errors.password}
+            hint={
+              detail?.hasPassword
+                ? 'Deixe em branco para manter a senha atual.'
+                : 'Obrigatoria ao tornar o post privado.'
+            }
+          >
+            <Input
+              id="post-password"
+              type="password"
+              maxLength={LIMITS.PASSWORD}
+              value={form.password}
+              onChange={(event) => setForm({ ...form, password: event.target.value })}
+              placeholder="••••••••"
+            />
+          </Field>
+        )}
 
         <div className="flex flex-wrap justify-end gap-2 pt-2">
           {!isNew && (
@@ -263,7 +291,7 @@ export default function PostEditorPage() {
               </Button>
             </>
           )}
-          <Button loading={saving} onClick={() => save()} disabled={!form.title.trim()}>
+          <Button loading={saving} onClick={() => save()} disabled={!form.title.trim() || needsNewPassword}>
             <Save size={16} /> {isNew ? 'Criar post' : 'Salvar'}
           </Button>
         </div>
@@ -307,6 +335,14 @@ export default function PostEditorPage() {
         message="Os blocos deste post serao excluidos junto. Esta acao nao pode ser desfeita."
         confirmLabel="Excluir definitivamente"
       />
+
+      {previewOpen && post && (
+        <PostPreview
+          post={{ ...post, ...form }}
+          postId={id}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
       <UnsavedChangesPrompt blocker={blocker} />
     </div>
   )

@@ -29,13 +29,19 @@ export function Modal({ open, onClose, title, description, size = 'md', dismissi
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
-    panelRef.current?.focus()
-
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
     }
   }, [open, onClose, dismissible])
+
+  // Separate from the effect above on purpose: `onClose` is a new function identity on every
+  // render of most callers (it's rarely memoized), which would otherwise re-run the focus call on
+  // every keystroke of a controlled input inside the modal and yank focus back to the panel.
+  // Keying only on `open` means this runs once when the dialog opens, not on every parent re-render.
+  useEffect(() => {
+    if (open) panelRef.current?.focus()
+  }, [open])
 
   if (!open) return null
 

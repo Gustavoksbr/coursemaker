@@ -1,6 +1,8 @@
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink, Save } from 'lucide-react'
+import { Eye, Save } from 'lucide-react'
+import { TrilhaPreview } from '@/components/trilha/TrilhaPreview'
 import { TrilhaSettingsPanel } from '@/components/trilha/TrilhaSettingsPanel'
 import { TrilhaStructureEditor } from '@/components/trilha/TrilhaStructureEditor'
 import { Button } from '@/components/ui/Button'
@@ -50,6 +52,8 @@ export default function TrilhaEditorPage() {
  */
 function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
   const toast = useToast()
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [settingsDraft, setSettingsDraft] = useState(null)
   const trilha = detail.summary
   const structureDraft = useTrilhaStructureDraft(trilha.id, detail.structure)
   const blocker = useUnsavedChangesGuard(structureDraft.isDirty)
@@ -82,15 +86,34 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
           </Button>
         )}
 
-        <Link to={`/trilhas/${trilha.owner.nickname}/${trilha.slug}`} className="btn-secondary text-xs">
-          <ExternalLink size={14} /> Ver publicada
-        </Link>
+        <button type="button" onClick={() => setPreviewOpen(true)} className="btn-secondary text-xs">
+          <Eye size={14} /> Pre-visualizar
+        </button>
       </header>
 
-      <TrilhaSettingsPanel trilha={trilha} trilhaQueryKey={trilhaQueryKey} onDeleted={onDeleted} />
+      <TrilhaSettingsPanel
+        trilha={trilha}
+        trilhaQueryKey={trilhaQueryKey}
+        onDeleted={onDeleted}
+        onDraftChange={setSettingsDraft}
+      />
 
       <TrilhaStructureEditor draft={structureDraft} />
       <UnsavedChangesPrompt blocker={blocker} />
+
+      {previewOpen && (
+        <TrilhaPreview
+          trilha={{
+            ...trilha,
+            title: settingsDraft?.title ?? trilha.title,
+            description: settingsDraft?.description ?? trilha.description,
+            thumbnailUrl: settingsDraft?.thumbnailUrl ?? trilha.thumbnailUrl,
+            categories: settingsDraft?.categories ?? trilha.categories,
+          }}
+          structureDraft={structureDraft}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   )
 }

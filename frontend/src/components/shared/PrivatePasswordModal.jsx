@@ -6,15 +6,26 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
 import { useAuth } from '@/context/AuthContext'
 import { validatePrivateAccess } from '@/api/courses'
+import { validatePostPrivateAccess } from '@/api/posts'
 import { errorMessage, statusOf } from '@/lib/api'
 
+const VALIDATE_BY_KIND = {
+  course: validatePrivateAccess,
+  post: validatePostPrivateAccess,
+}
+
+const LABEL_BY_KIND = {
+  course: 'Curso privado',
+  post: 'Post privado',
+}
+
 /**
- * Unlocks a private course.
+ * Unlocks a private course or post - which one is picked by `kind`.
  *
  * The backend answers 401 with "Senha incorreta. Tentativas restantes: N" for a wrong password and
  * 429 once the attempts run out, so the server's own message is the most accurate thing to show.
  */
-export function PrivatePasswordModal({ open, onClose, courseId, courseName, onUnlocked }) {
+export function PrivatePasswordModal({ open, onClose, kind, contentId, contentName, onUnlocked }) {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [password, setPassword] = useState('')
@@ -22,12 +33,15 @@ export function PrivatePasswordModal({ open, onClose, courseId, courseName, onUn
   const [blocked, setBlocked] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  const label = LABEL_BY_KIND[kind]
+  const validate = VALIDATE_BY_KIND[kind]
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setSubmitting(true)
     setError('')
     try {
-      await validatePrivateAccess(courseId, password)
+      await validate(contentId, password)
       setPassword('')
       onUnlocked()
     } catch (requestError) {
@@ -42,12 +56,12 @@ export function PrivatePasswordModal({ open, onClose, courseId, courseName, onUn
 
   if (!isAuthenticated) {
     return (
-      <Modal open={open} onClose={onClose} title="Curso privado" size="sm">
+      <Modal open={open} onClose={onClose} title={label} size="sm">
         <div className="space-y-4 text-sm text-slate-300">
           <p className="flex items-start gap-2">
             <Lock size={16} className="mt-0.5 shrink-0 text-violet-400" />
             <span>
-              <strong className="text-slate-100">{courseName}</strong> exige uma senha de acesso.
+              <strong className="text-slate-100">{contentName}</strong> exige uma senha de acesso.
               Entre na sua conta para informa-la.
             </span>
           </p>
@@ -63,19 +77,19 @@ export function PrivatePasswordModal({ open, onClose, courseId, courseName, onUn
     <Modal
       open={open}
       onClose={onClose}
-      title="Curso privado"
-      description={`Informe a senha para acessar "${courseName}".`}
+      title={label}
+      description={`Informe a senha para acessar "${contentName}".`}
       size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="Senha de acesso" htmlFor="course-password" error={error} required>
+        <Field label="Senha de acesso" htmlFor="private-content-password" error={error} required>
           <div className="relative">
             <KeyRound
               size={16}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
             />
             <Input
-              id="course-password"
+              id="private-content-password"
               type="password"
               autoFocus
               required

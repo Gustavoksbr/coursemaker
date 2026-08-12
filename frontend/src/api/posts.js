@@ -47,6 +47,16 @@ export async function togglePostFeatured(id) {
   return data
 }
 
+export async function validatePostPrivateAccess(postId, password) {
+  // 401 here means "wrong post password", not "your token expired": stay signed in.
+  const { data } = await api.post(
+    '/posts/private-access/validate',
+    { postId, password },
+    { skipAuthRedirect: true },
+  )
+  return data
+}
+
 // ------------------------------------------------------------------- blocks
 
 export async function listPostBlocks(postId) {

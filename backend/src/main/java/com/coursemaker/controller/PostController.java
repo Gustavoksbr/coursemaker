@@ -11,9 +11,12 @@ import com.coursemaker.dto.curriculum.CurriculumDtos.UpdateBlockRequest;
 import com.coursemaker.dto.post.PostDtos.CreatePostRequest;
 import com.coursemaker.dto.post.PostDtos.PostDetail;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
+import com.coursemaker.dto.post.PostDtos.PrivateAccessResponse;
 import com.coursemaker.dto.post.PostDtos.UpdatePostRequest;
+import com.coursemaker.dto.post.PostDtos.ValidatePostAccessRequest;
 import com.coursemaker.service.PostBlockService;
 import com.coursemaker.service.PostService;
+import com.coursemaker.service.PrivatePostAccessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,6 +48,7 @@ public class PostController {
 
     private final PostService postService;
     private final PostBlockService blockService;
+    private final PrivatePostAccessService privateAccessService;
 
     @Operation(summary = "Lista posts com filtros, ordenacao e paginacao. "
             + "Repita category=... para filtrar por varias categorias (OR)")
@@ -111,6 +115,14 @@ public class PostController {
     public PostSummary toggleFeatured(@PathVariable UUID id,
                                       @AuthenticationPrincipal AuthenticatedUser principal) {
         return postService.toggleFeatured(id, principal.user());
+    }
+
+    @Operation(summary = "Valida a senha de um post privado e libera o conteudo")
+    @PostMapping("/api/v1/posts/private-access/validate")
+    public PrivateAccessResponse validatePrivateAccess(
+            @Valid @RequestBody ValidatePostAccessRequest request,
+            @AuthenticationPrincipal AuthenticatedUser principal) {
+        return privateAccessService.validatePassword(request.postId(), request.password(), principal.user());
     }
 
     // ------------------------------------------------------------ post blocks

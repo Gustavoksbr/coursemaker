@@ -159,6 +159,24 @@ public class Fixtures {
         return postId;
     }
 
+    /** Creates a published, password-protected post. */
+    public UUID privatePost(TestUser owner, String title, String password) {
+        JsonNode post = request("POST", "/api/v1/posts", owner.token(), Map.of(
+                "title", title,
+                "description", "Post privado",
+                "visibility", "private",
+                "password", password));
+        UUID postId = UUID.fromString(post.get("id").asText());
+        request("PATCH", "/api/v1/posts/" + postId, owner.token(), Map.of("status", "available"));
+        return postId;
+    }
+
+    public UUID postTextBlock(TestUser owner, UUID postId, String html) {
+        JsonNode block = request("POST", "/api/v1/posts/" + postId + "/blocks", owner.token(),
+                Map.of("type", "text", "content", html));
+        return UUID.fromString(block.get("id").asText());
+    }
+
     // ----------------------------------------------------------------- trilhas
 
     public UUID trilha(TestUser owner, String title) {

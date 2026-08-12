@@ -60,6 +60,10 @@ public class Post {
     @Builder.Default
     private CourseVisibility visibility = CourseVisibility.PUBLIC;
 
+    /** BCrypt hash of the password protecting a private post. */
+    @Column(name = "password_hash")
+    private String passwordHash;
+
     @Column(nullable = false)
     @Builder.Default
     private CourseStatus status = CourseStatus.UNAVAILABLE;
@@ -83,5 +87,9 @@ public class Post {
 
     public boolean isPublished() {
         return status == CourseStatus.AVAILABLE;
+    }
+
+    public boolean isPrivate() {
+        return visibility == CourseVisibility.PRIVATE;
     }
 }

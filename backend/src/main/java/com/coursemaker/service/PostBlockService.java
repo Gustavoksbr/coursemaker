@@ -7,7 +7,6 @@ import com.coursemaker.dto.curriculum.CurriculumDtos.BlockResponse;
 import com.coursemaker.dto.curriculum.CurriculumDtos.CreateBlockRequest;
 import com.coursemaker.dto.curriculum.CurriculumDtos.UpdateBlockRequest;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
-import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import com.coursemaker.repository.PostBlockRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +24,7 @@ public class PostBlockService {
 
     private final PostBlockRepository blockRepository;
     private final PostService postService;
+    private final PostAccessService accessService;
     private final HtmlSanitizer htmlSanitizer;
 
     @Transactional(readOnly = true)
@@ -91,9 +91,7 @@ public class PostBlockService {
     private PostBlock loadForEditing(UUID blockId, User viewer) {
         PostBlock block = blockRepository.findByIdWithPost(blockId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Bloco"));
-        if (!postService.isOwner(block.getPost(), viewer)) {
-            throw new ForbiddenException("Apenas o dono do post pode fazer isso");
-        }
+        accessService.requireOwner(block.getPost(), viewer);
         return block;
     }
 }
