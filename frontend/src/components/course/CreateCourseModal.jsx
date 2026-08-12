@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from 'lucide-react'
-import { Modal } from '@/components/ui/Modal'
+import { ConfirmModal, Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
@@ -38,6 +38,16 @@ export function CreateCourseModal({ open, onClose }) {
   const [errors, setErrors] = useState({})
   const [slugCheck, setSlugCheck] = useState(null)
   const [checking, setChecking] = useState(false)
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false)
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(BLANK)
+
+  /** Backdrop click, Escape, the X and "Cancelar" all funnel through here so none of them silently
+   *  discard a filled-in form. */
+  const requestClose = () => {
+    if (isDirty) setConfirmCloseOpen(true)
+    else onClose()
+  }
 
   const debouncedName = useDebounce(form.name, 300)
 
@@ -103,9 +113,11 @@ export function CreateCourseModal({ open, onClose }) {
     canAdvance && (form.visibility !== VISIBILITY.PRIVATE || form.password.length >= 4)
 
   return (
+    <>
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={requestClose}
+      dismissible={!confirmCloseOpen}
       title="Criar curso"
       description={`Passo ${step} de 2`}
       size="lg"
@@ -164,7 +176,7 @@ export function CreateCourseModal({ open, onClose }) {
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={onClose}>
+            <Button variant="ghost" onClick={requestClose}>
               Cancelar
             </Button>
             <Button onClick={() => setStep(2)} disabled={!canAdvance}>
@@ -261,5 +273,18 @@ export function CreateCourseModal({ open, onClose }) {
         </div>
       )}
     </Modal>
+
+    <ConfirmModal
+      open={confirmCloseOpen}
+      onClose={() => setConfirmCloseOpen(false)}
+      onConfirm={() => {
+        setConfirmCloseOpen(false)
+        onClose()
+      }}
+      title="Sair sem criar o curso?"
+      message="As informacoes preenchidas serao perdidas."
+      confirmLabel="Sair sem salvar"
+    />
+    </>
   )
 }
