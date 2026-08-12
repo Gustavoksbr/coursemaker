@@ -39,6 +39,47 @@ export default function TrilhaViewPage() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: trilhaQueryKey })
 
+  /**
+   * Optimistically updates the item completion status in the cache without reloading the entire trilha.
+   * Only invalidates on error to rollback the optimistic update.
+   */
+  const patchItemCompleted = (itemId, completed) => {
+    queryClient.setQueryData(trilhaQueryKey, (current) => {
+      if (!current) return current
+
+      const patchItems = (items) =>
+        items.map((item) => (item.id === itemId ? { ...item, manuallyCompleted: completed } : item))
+
+      const updatedSteps = current.structure.steps.map((step) => ({
+        ...step,
+        items: patchItems(step.items),
+      }))
+
+      const updatedUngrouped = patchItems(current.structure.ungroupedItems)
+
+      // Update progress counters
+      const delta = completed ? 1 : -1
+      const updatedProgress = current.progress
+        ? {
+          ...current.progress,
+          completedItems: current.progress.completedItems + delta,
+          percentage: Math.round(
+            ((current.progress.completedItems + delta) / current.progress.totalItems) * 100,
+          ),
+        }
+        : null
+
+      return {
+        ...current,
+        structure: {
+          steps: updatedSteps,
+          ungroupedItems: updatedUngrouped,
+        },
+        progress: updatedProgress,
+      }
+    })
+  }
+
   const { mutate: toggleFollow, isPending: following } = useMutation({
     mutationFn: () => (detail.enrolledByMe ? unenrollTrilha(trilha.id) : enrollTrilha(trilha.id)),
     onSuccess: () => {
@@ -51,8 +92,20 @@ export default function TrilhaViewPage() {
   const { mutate: toggleComplete } = useMutation({
     mutationFn: (item) =>
       item.manuallyCompleted ? uncompleteTrilhaItem(item.id) : completeTrilhaItem(item.id),
-    onSuccess: invalidate,
-    onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel atualizar o progresso.')),
+    onMutate: async (item) => {
+      // Optimistically update the UI immediately
+      const newCompletedState = !item.manuallyCompleted
+      patchItemCompleted(item.id, newCompletedState)
+      return { itemId: item.id, previousState: item.manuallyCompleted }
+    },
+    onError: (error, item, context) => {
+      // Rollback on error
+      if (context) {
+        patchItemCompleted(context.itemId, context.previousState)
+      }
+      toast.error(errorMessage(error, 'Nao foi possivel atualizar o progresso.'))
+    },
+    // No onSuccess - the optimistic update is enough!
   })
 
   if (trilhaQuery.isPending) return <PageLoader label="Carregando trilha..." />
