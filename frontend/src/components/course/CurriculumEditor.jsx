@@ -1,104 +1,44 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronDown, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { useDragReorder } from '@/hooks/useDragReorder'
-import { useToast } from '@/context/ToastContext'
-import {
-  courseKeys,
-  createLesson,
-  createModule,
-  deleteLesson,
-  deleteModule,
-  reorderLessons,
-  reorderModules,
-  updateLesson,
-  updateModule,
-} from '@/api/courses'
-import { errorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
 
 /**
  * The middle column of the course editor: modules and lessons, with inline renaming, drag-and-drop
  * reordering (lessons reorder within their own module) and lesson selection.
+ *
+ * Every add/rename/delete/reorder writes to `draft` (a `useCurriculumDraft`) only - nothing hits
+ * the network here. The page's own "Salvar" button flushes it.
  */
-export function CurriculumEditor({ courseId, modules, activeLessonId, onSelectLesson, courseQueryKey }) {
-  const queryClient = useQueryClient()
-  const toast = useToast()
+export function CurriculumEditor({ draft, activeLessonId, onSelectLesson }) {
   const [collapsed, setCollapsed] = useState(() => new Set())
   const [editing, setEditing] = useState(null)
   const [confirm, setConfirm] = useState(null)
 
-  const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: courseQueryKey })
-    queryClient.invalidateQueries({ queryKey: courseKeys.all })
+  const addModule = () => {
+    const id = draft.addModule()
+    setEditing({ kind: 'module', id, value: 'Novo modulo' })
   }
 
-  const onError = (fallback) => (error) => toast.error(errorMessage(error, fallback))
+  const addLesson = (moduleId) => {
+    const id = draft.addLesson(moduleId)
+    onSelectLesson(id)
+    setEditing({ kind: 'lesson', id, value: 'Nova licao' })
+  }
 
-  const { mutate: addModule, isPending: addingModule } = useMutation({
-    mutationFn: () => createModule(courseId, { title: 'Novo modulo' }),
-    onSuccess: (created) => {
-      refresh()
-      setEditing({ kind: 'module', id: created.id, value: created.title })
-    },
-    onError: onError('Nao foi possivel criar o modulo.'),
-  })
+  const removeModule = (module) => {
+    draft.deleteModule(module.id)
+    setConfirm(null)
+  }
 
-  const { mutate: addLesson } = useMutation({
-    mutationFn: (moduleId) => createLesson(moduleId, { title: 'Nova licao' }),
-    onSuccess: (created) => {
-      refresh()
-      onSelectLesson(created.id)
-      setEditing({ kind: 'lesson', id: created.id, value: created.title })
-    },
-    onError: onError('Nao foi possivel criar a licao.'),
-  })
+  const removeLesson = (moduleId, lesson) => {
+    draft.deleteLesson(moduleId, lesson.id)
+    if (lesson.id === activeLessonId) onSelectLesson(null)
+    setConfirm(null)
+  }
 
-  const { mutate: renameModule } = useMutation({
-    mutationFn: ({ id, title }) => updateModule(id, { title }),
-    onSuccess: () => {
-      setEditing(null)
-      refresh()
-    },
-    onError: onError('Nao foi possivel renomear o modulo.'),
-  })
-
-  const { mutate: renameLesson } = useMutation({
-    mutationFn: ({ id, title }) => updateLesson(id, { title }),
-    onSuccess: () => {
-      setEditing(null)
-      refresh()
-    },
-    onError: onError('Nao foi possivel renomear a licao.'),
-  })
-
-  const { mutate: removeModule } = useMutation({
-    mutationFn: (id) => deleteModule(id),
-    onSuccess: () => {
-      setConfirm(null)
-      refresh()
-    },
-    onError: onError('Nao foi possivel excluir o modulo.'),
-  })
-
-  const { mutate: removeLesson } = useMutation({
-    mutationFn: (id) => deleteLesson(id),
-    onSuccess: (_data, id) => {
-      setConfirm(null)
-      if (id === activeLessonId) onSelectLesson(null)
-      refresh()
-    },
-    onError: onError('Nao foi possivel excluir a licao.'),
-  })
-
-  const { mutate: moveModules } = useMutation({
-    mutationFn: (ids) => reorderModules(courseId, ids),
-    onSuccess: refresh,
-    onError: onError('Nao foi possivel reordenar os modulos.'),
-  })
-
-  const moduleDrag = useDragReorder(modules, moveModules)
+  const moduleDrag = useDragReorder(draft.modules, draft.reorderModules)
 
   const toggleCollapse = (moduleId) => {
     setCollapsed((current) => {
@@ -115,8 +55,8 @@ export function CurriculumEditor({ courseId, modules, activeLessonId, onSelectLe
         <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Curriculo</h2>
         <button
           type="button"
-          onClick={() => addModule()}
-          disabled={addingModule}
+          onClick={addModule}
+          disabled={draft.isFlushing}
           className="btn-ghost px-2 py-1 text-xs"
         >
           <Plus size={14} /> Modulo
@@ -124,13 +64,13 @@ export function CurriculumEditor({ courseId, modules, activeLessonId, onSelectLe
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
-        {modules.length === 0 ? (
+        {draft.modules.length === 0 ? (
           <p className="px-3 py-8 text-center text-sm text-slate-500">
             Comece adicionando um modulo.
           </p>
         ) : (
           <ul className="space-y-1">
-            {modules.map((module, index) => (
+            {draft.modules.map((module, index) => (
               <li
                 key={module.id}
                 {...moduleDrag.getItemProps(module.id)}
@@ -164,7 +104,10 @@ export function CurriculumEditor({ courseId, modules, activeLessonId, onSelectLe
                     <InlineRename
                       value={editing.value}
                       onChange={(value) => setEditing({ ...editing, value })}
-                      onSave={() => renameModule({ id: module.id, title: editing.value })}
+                      onSave={() => {
+                        draft.renameModule(module.id, editing.value)
+                        setEditing(null)
+                      }}
                       onCancel={() => setEditing(null)}
                     />
                   ) : (
@@ -203,11 +146,9 @@ export function CurriculumEditor({ courseId, modules, activeLessonId, onSelectLe
                     onSelectLesson={onSelectLesson}
                     editing={editing}
                     setEditing={setEditing}
-                    onRename={renameLesson}
-                    onDelete={(lesson) => setConfirm({ kind: 'lesson', item: lesson })}
+                    draft={draft}
+                    onDelete={(lesson) => setConfirm({ kind: 'lesson', moduleId: module.id, item: lesson })}
                     onAddLesson={() => addLesson(module.id)}
-                    onReorder={refresh}
-                    onError={onError}
                   />
                 )}
               </li>
@@ -219,7 +160,7 @@ export function CurriculumEditor({ courseId, modules, activeLessonId, onSelectLe
       <ConfirmModal
         open={confirm?.kind === 'module'}
         onClose={() => setConfirm(null)}
-        onConfirm={() => removeModule(confirm.item.id)}
+        onConfirm={() => removeModule(confirm.item)}
         title="Excluir modulo"
         message="Todas as licoes e blocos deste modulo serao excluidos. Esta acao nao pode ser desfeita."
         confirmLabel="Excluir modulo"
@@ -227,7 +168,7 @@ export function CurriculumEditor({ courseId, modules, activeLessonId, onSelectLe
       <ConfirmModal
         open={confirm?.kind === 'lesson'}
         onClose={() => setConfirm(null)}
-        onConfirm={() => removeLesson(confirm.item.id)}
+        onConfirm={() => removeLesson(confirm.moduleId, confirm.item)}
         title="Excluir licao"
         message="Os blocos desta licao serao excluidos. Esta acao nao pode ser desfeita."
         confirmLabel="Excluir licao"
@@ -236,27 +177,8 @@ export function CurriculumEditor({ courseId, modules, activeLessonId, onSelectLe
   )
 }
 
-function LessonList({
-  module,
-  activeLessonId,
-  onSelectLesson,
-  editing,
-  setEditing,
-  onRename,
-  onDelete,
-  onAddLesson,
-  onReorder,
-  onError,
-}) {
-  const toast = useToast()
-
-  const { mutate: moveLessons } = useMutation({
-    mutationFn: (ids) => reorderLessons(module.id, ids),
-    onSuccess: onReorder,
-    onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel reordenar as licoes.')),
-  })
-
-  const drag = useDragReorder(module.lessons, moveLessons)
+function LessonList({ module, activeLessonId, onSelectLesson, editing, setEditing, draft, onDelete, onAddLesson }) {
+  const drag = useDragReorder(module.lessons, (ids) => draft.reorderLessons(module.id, ids))
 
   return (
     <ul className="ml-6 space-y-0.5 border-l border-slate-700 pl-2">
@@ -292,7 +214,10 @@ function LessonList({
                 <InlineRename
                   value={editing.value}
                   onChange={(value) => setEditing({ ...editing, value })}
-                  onSave={() => onRename({ id: lesson.id, title: editing.value })}
+                  onSave={() => {
+                    draft.renameLesson(module.id, lesson.id, editing.value)
+                    setEditing(null)
+                  }}
                   onCancel={() => setEditing(null)}
                 />
               ) : (

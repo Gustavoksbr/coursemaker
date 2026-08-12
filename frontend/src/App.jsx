@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { FullHeightLayout, Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { PageLoader } from '@/components/ui/Feedback'
@@ -25,52 +25,73 @@ const CourseEditorPage = lazy(() => import('@/pages/CourseEditorPage'))
 const PostEditorPage = lazy(() => import('@/pages/PostEditorPage'))
 const TrilhaEditorPage = lazy(() => import('@/pages/TrilhaEditorPage'))
 
-export default function App() {
+/** Wraps a lazy-loaded page element so Suspense only has to cover the routes that actually split. */
+function lazyPage(Page) {
   return (
     <Suspense fallback={<PageLoader />}>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/cursos" element={<CourseListPage />} />
-          <Route path="/posts" element={<PostListPage />} />
-          <Route path="/posts/:nickname/:slug" element={<PostViewPage />} />
-          <Route path="/trilhas" element={<TrilhaListPage />} />
-          <Route path="/trilhas/:nickname/:slug" element={<TrilhaViewPage />} />
-          <Route path="/users/:nickname" element={<PublicProfilePage />} />
-
-          {/* Reachable right after registering, before a nickname exists. */}
-          <Route element={<ProtectedRoute requireNickname={false} />}>
-            <Route path="/setup-nickname" element={<SetupNicknamePage />} />
-          </Route>
-
-          <Route element={<ProtectedRoute />}>
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/posts/new" element={<PostEditorPage />} />
-            <Route path="/posts/:id/edit" element={<PostEditorPage />} />
-            <Route path="/trilhas/:nickname/:slug/edit" element={<TrilhaEditorPage />} />
-          </Route>
-
-          {/* Your library is just yours to look at, not content you publish, so it does not need
-              a nickname the way creating a course/post/trilha does. */}
-          <Route element={<ProtectedRoute requireNickname={false} />}>
-            <Route path="/biblioteca/pastas/:folderId" element={<LibraryFolderPage />} />
-          </Route>
-
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
-
-        <Route element={<FullHeightLayout />}>
-          <Route path="/courses/:nickname/:slug" element={<CourseViewPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="/courses/:nickname/:slug/edit" element={<CourseEditorPage />} />
-          </Route>
-          <Route element={<ProtectedRoute requireNickname={false} />}>
-            <Route path="/biblioteca" element={<LibraryPage />} />
-          </Route>
-        </Route>
-      </Routes>
+      <Page />
     </Suspense>
   )
+}
+
+// A data router (rather than <BrowserRouter>/<Routes>) is required for useBlocker, which the
+// unsaved-changes guard on the editor pages relies on.
+const router = createBrowserRouter([
+  {
+    element: <Layout />,
+    children: [
+      { path: '/', element: <HomePage /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+      { path: '/cursos', element: <CourseListPage /> },
+      { path: '/posts', element: <PostListPage /> },
+      { path: '/posts/:nickname/:slug', element: <PostViewPage /> },
+      { path: '/trilhas', element: <TrilhaListPage /> },
+      { path: '/trilhas/:nickname/:slug', element: <TrilhaViewPage /> },
+      { path: '/users/:nickname', element: <PublicProfilePage /> },
+
+      {
+        // Reachable right after registering, before a nickname exists.
+        element: <ProtectedRoute requireNickname={false} />,
+        children: [{ path: '/setup-nickname', element: <SetupNicknamePage /> }],
+      },
+
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { path: '/profile', element: <ProfilePage /> },
+          { path: '/posts/new', element: lazyPage(PostEditorPage) },
+          { path: '/posts/:id/edit', element: lazyPage(PostEditorPage) },
+          { path: '/trilhas/:nickname/:slug/edit', element: lazyPage(TrilhaEditorPage) },
+        ],
+      },
+
+      {
+        // Your library is just yours to look at, not content you publish, so it does not need
+        // a nickname the way creating a course/post/trilha does.
+        element: <ProtectedRoute requireNickname={false} />,
+        children: [{ path: '/biblioteca/pastas/:folderId', element: <LibraryFolderPage /> }],
+      },
+
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+  {
+    element: <FullHeightLayout />,
+    children: [
+      { path: '/courses/:nickname/:slug', element: <CourseViewPage /> },
+      {
+        element: <ProtectedRoute />,
+        children: [{ path: '/courses/:nickname/:slug/edit', element: lazyPage(CourseEditorPage) }],
+      },
+      {
+        element: <ProtectedRoute requireNickname={false} />,
+        children: [{ path: '/biblioteca', element: <LibraryPage /> }],
+      },
+    ],
+  },
+])
+
+export default function App() {
+  return <RouterProvider router={router} />
 }

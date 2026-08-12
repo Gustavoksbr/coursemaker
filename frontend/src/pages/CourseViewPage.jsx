@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Lock,
@@ -15,7 +16,6 @@ import { ChatWidget } from '@/components/ai/ChatWidget'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
-import { Checkbox } from '@/components/ui/Field'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { ProgressBar } from '@/components/ui/ProgressBar'
@@ -29,17 +29,38 @@ import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { blockKeys } from '@/api/shared'
-import {
-  completeLesson,
-  courseKeys,
-  enroll,
-  getCourseBySlug,
-  listLessonBlocks,
-  uncompleteLesson,
-  unenroll,
-} from '@/api/courses'
+import { completeLesson, courseKeys, enroll, getCourseBySlug, listLessonBlocks, unenroll } from '@/api/courses'
 import { errorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
+
+/** Patches one lesson's `completed` flag (and the course progress counters) in the cached course detail. */
+function patchLessonCompleted(queryClient, queryKey, lessonId, completed) {
+  queryClient.setQueryData(queryKey, (current) => {
+    if (!current) return current
+    let changed = false
+    const modules = current.modules.map((module) => ({
+      ...module,
+      lessons: module.lessons.map((lesson) => {
+        if (lesson.id !== lessonId || lesson.completed === completed) return lesson
+        changed = true
+        return { ...lesson, completed }
+      }),
+    }))
+    if (!changed) return current
+
+    const progress = current.progress && {
+      ...current.progress,
+      completedLessons: current.progress.completedLessons + (completed ? 1 : -1),
+      percentage:
+        current.progress.totalLessons > 0
+          ? Math.round(
+              ((current.progress.completedLessons + (completed ? 1 : -1)) / current.progress.totalLessons) * 100,
+            )
+          : 0,
+    }
+    return { ...current, modules, progress }
+  })
+}
 
 export default function CourseViewPage() {
   const { nickname, slug } = useParams()
@@ -87,12 +108,20 @@ export default function CourseViewPage() {
     onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel atualizar a matricula.')),
   })
 
-  const { mutate: toggleCompletion } = useMutation({
-    mutationFn: ({ lessonId, completed }) =>
-      completed ? uncompleteLesson(lessonId) : completeLesson(lessonId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: courseKeys.bySlug(nickname, slug) }),
-    onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel atualizar o progresso.')),
-  })
+  /**
+   * Fire-and-forget: the caller never awaits this, so clicking "Proxima aula" advances instantly
+   * instead of waiting on a round trip. The cache is patched optimistically so the sidebar/progress
+   * bar update immediately too; a failure rolls that back and toasts instead of silently reverting
+   * on the next unrelated refetch.
+   */
+  const markLessonComplete = (lessonId) => {
+    const queryKey = courseKeys.bySlug(nickname, slug)
+    patchLessonCompleted(queryClient, queryKey, lessonId, true)
+    completeLesson(lessonId).catch((error) => {
+      patchLessonCompleted(queryClient, queryKey, lessonId, false)
+      toast.error(errorMessage(error, 'Nao foi possivel marcar a licao como concluida.'))
+    })
+  }
 
   if (courseQuery.isPending) return <PageLoader label="Carregando curso..." />
 
@@ -155,7 +184,7 @@ export default function CourseViewPage() {
               onBackToLanding={() => selectLesson(null)}
               sidebarOpen={sidebarOpen}
               onToggleSidebar={() => setSidebarOpen((open) => !open)}
-              onToggleCompletion={toggleCompletion}
+              onCompleteLesson={markLessonComplete}
               canTrackProgress={course.progressEnabled && isAuthenticated}
             />
           ) : (
@@ -356,7 +385,7 @@ function LessonView({
   onBackToLanding,
   sidebarOpen,
   onToggleSidebar,
-  onToggleCompletion,
+  onCompleteLesson,
   canTrackProgress,
 }) {
   const { data: blocks, isPending, isError, error, refetch } = useQuery({
@@ -367,8 +396,17 @@ function LessonView({
   const previous = activeIndex > 0 ? lessons[activeIndex - 1] : null
   const next = activeIndex < lessons.length - 1 ? lessons[activeIndex + 1] : null
 
+  // Advancing always navigates immediately; marking the lesson complete (if this course tracks
+  // progress) happens in the background and never blocks that navigation.
+  const advance = () => {
+    if (canTrackProgress && !lesson.completed) onCompleteLesson(lesson.id)
+    if (next) onSelectLesson(next.id)
+    else onBackToLanding()
+  }
+
   return (
-    <article className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <>
+    <article className="mx-auto max-w-3xl px-4 py-8 pb-28 sm:px-6">
       <div className="mb-6 flex items-center gap-3">
         <button
           type="button"
@@ -387,13 +425,10 @@ function LessonView({
         <p className="text-xs uppercase tracking-wide text-slate-500">{lesson.moduleTitle}</p>
         <h1 className="mt-1 break-words text-2xl font-bold text-slate-100">{lesson.title}</h1>
 
-        {canTrackProgress && (
-          <Checkbox
-            className="mt-4"
-            label="Marcar como concluida"
-            checked={lesson.completed}
-            onChange={() => onToggleCompletion({ lessonId: lesson.id, completed: lesson.completed })}
-          />
+        {canTrackProgress && lesson.completed && (
+          <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-green-400">
+            <CheckCircle2 size={16} /> Licao concluida
+          </span>
         )}
       </header>
 
@@ -404,8 +439,12 @@ function LessonView({
       ) : (
         <BlockList blocks={blocks} />
       )}
+    </article>
 
-      <nav className="mt-10 flex items-center justify-between gap-3 border-t border-slate-800 pt-6">
+    {/* Fixed to the viewport (not just the end of the article) so advancing never requires
+        scrolling down to find it. */}
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <button
           type="button"
           onClick={() => previous && onSelectLesson(previous.id)}
@@ -415,16 +454,12 @@ function LessonView({
           <ChevronLeft size={16} />
           <span className="min-w-0 truncate">{previous?.title}</span>
         </button>
-        <button
-          type="button"
-          onClick={() => next && onSelectLesson(next.id)}
-          disabled={!next}
-          className={cn('btn-secondary min-w-0 text-right', !next && 'invisible')}
-        >
-          <span className="min-w-0 truncate">{next?.title}</span>
-          <ChevronRight size={16} />
-        </button>
-      </nav>
-    </article>
+        <Button onClick={advance} className="min-w-0">
+          <span className="min-w-0 truncate">{next ? 'Proxima aula' : 'Concluir curso'}</span>
+          {next ? <ChevronRight size={16} /> : <CheckCircle2 size={16} />}
+        </Button>
+      </div>
+    </nav>
+    </>
   )
 }

@@ -49,6 +49,6 @@ public class AuthController {
     @Operation(summary = "Dados do usuario autenticado")
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return authService.me(principal.user());
+        return authService.me(principal.id());
     }
 }

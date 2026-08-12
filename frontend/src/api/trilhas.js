@@ -79,6 +79,11 @@ export async function removeTrilhaItem(trilhaId, itemId) {
   await api.delete(`/trilhas/${trilhaId}/items/${itemId}`)
 }
 
+/** Full ordered id list for one group: the items of `stepId`, or the ungrouped ones when null. */
+export async function reorderTrilhaItems(trilhaId, stepId, ids) {
+  await api.put(`/trilhas/${trilhaId}/items/reorder`, { stepId, ids })
+}
+
 // -------------------------------------------------------------------- steps
 
 export async function createTrilhaStep(trilhaId, payload) {

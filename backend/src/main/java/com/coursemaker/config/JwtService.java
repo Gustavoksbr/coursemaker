@@ -1,6 +1,7 @@
 package com.coursemaker.config;
 
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.domain.enums.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -53,6 +54,8 @@ public class JwtService {
                 .expiration(Date.from(now.plus(expiry)))
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().getValue())
+                .claim("nickname", user.getNickname())
+                .claim("name", user.getName())
                 .signWith(signingKey)
                 .compact();
     }
@@ -70,6 +73,30 @@ public class JwtService {
     public Optional<UUID> extractUserId(String token) {
         try {
             return Optional.of(UUID.fromString(extractClaims(token).getSubject()));
+        } catch (JwtException | IllegalArgumentException e) {
+            log.debug("Rejected JWT: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Rebuilds the authenticated principal straight from the token's signed claims, without a
+     * database lookup. The signature already vouches for {@code id}/{@code email}/{@code role}, and
+     * that's all authorization checks (ownership by id, {@code isAdmin()}) ever need; endpoints that
+     * need fresher or fuller profile data (bio, avatar, etc.) fetch the row themselves.
+     *
+     * <p>Empty when the token is missing, malformed, expired, or signed with a different key.
+     */
+    public Optional<User> extractPrincipal(String token) {
+        try {
+            Claims claims = extractClaims(token);
+            return Optional.of(User.builder()
+                    .id(UUID.fromString(claims.getSubject()))
+                    .email(claims.get("email", String.class))
+                    .nickname(claims.get("nickname", String.class))
+                    .name(claims.get("name", String.class))
+                    .role(UserRole.from(claims.get("role", String.class)))
+                    .build());
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("Rejected JWT: {}", e.getMessage());
             return Optional.empty();

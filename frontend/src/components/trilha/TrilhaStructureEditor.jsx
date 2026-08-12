@@ -1,22 +1,9 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, GripVertical, MessageSquarePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { PickContentModal } from '@/components/shared/PickContentModal'
 import { useDragReorder } from '@/hooks/useDragReorder'
-import { useToast } from '@/context/ToastContext'
-import {
-  addTrilhaItem,
-  createTrilhaStep,
-  deleteTrilhaStep,
-  moveTrilhaItem,
-  removeTrilhaItem,
-  reorderTrilhaSteps,
-  updateTrilhaItem,
-  updateTrilhaStep,
-} from '@/api/trilhas'
-import { errorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
 
 /**
@@ -25,69 +12,29 @@ import { cn } from '@/lib/cn'
  * as a block (drag-and-drop, same mechanics as CurriculumEditor's modules); items reorder within
  * their own group and can be moved to another group via a select, mirroring how a lesson can only
  * be dragged within its module but still needs an escape hatch to change module.
+ *
+ * Every add/rename/delete/reorder/move writes to `draft` (a `useTrilhaStructureDraft`) only -
+ * nothing hits the network here. The page's own "Salvar" button flushes it.
  */
-export function TrilhaStructureEditor({ trilhaId, structure, trilhaQueryKey }) {
-  const queryClient = useQueryClient()
-  const toast = useToast()
+export function TrilhaStructureEditor({ draft }) {
   const [editingStep, setEditingStep] = useState(null)
   const [confirmDeleteStep, setConfirmDeleteStep] = useState(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerStepId, setPickerStepId] = useState(null)
 
-  const steps = structure.steps
-  const ungroupedItems = structure.ungroupedItems
-
-  const refresh = () => queryClient.invalidateQueries({ queryKey: trilhaQueryKey })
-  const onError = (fallback) => (error) => toast.error(errorMessage(error, fallback))
+  const steps = draft.steps
+  const ungroupedItems = draft.ungroupedItems
 
   const allItems = [...ungroupedItems, ...steps.flatMap((step) => step.items)]
   const excludeCourseIds = allItems.filter((item) => item.course).map((item) => item.course.id)
   const excludePostIds = allItems.filter((item) => item.post).map((item) => item.post.id)
 
-  const { mutate: addStep, isPending: addingStep } = useMutation({
-    mutationFn: () => createTrilhaStep(trilhaId, { title: 'Nova etapa' }),
-    onSuccess: (created) => {
-      refresh()
-      setEditingStep({ id: created.id, title: created.title, description: created.description ?? '' })
-    },
-    onError: onError('Nao foi possivel criar a etapa.'),
-  })
+  const addStep = () => {
+    const id = draft.addStep()
+    setEditingStep({ id, title: 'Nova etapa', description: '' })
+  }
 
-  const { mutate: saveStep } = useMutation({
-    mutationFn: ({ id, title, description }) => updateTrilhaStep(trilhaId, id, { title, description }),
-    onSuccess: () => {
-      setEditingStep(null)
-      refresh()
-    },
-    onError: onError('Nao foi possivel salvar a etapa.'),
-  })
-
-  const { mutate: removeStep } = useMutation({
-    mutationFn: (id) => deleteTrilhaStep(trilhaId, id),
-    onSuccess: () => {
-      setConfirmDeleteStep(null)
-      refresh()
-    },
-    onError: onError('Nao foi possivel excluir a etapa.'),
-  })
-
-  const { mutate: moveSteps } = useMutation({
-    mutationFn: (ids) => reorderTrilhaSteps(trilhaId, ids),
-    onSuccess: refresh,
-    onError: onError('Nao foi possivel reordenar as etapas.'),
-  })
-
-  const stepsDrag = useDragReorder(steps, moveSteps)
-
-  const { mutate: addItem } = useMutation({
-    mutationFn: ({ type, item, stepId }) =>
-      addTrilhaItem(trilhaId, { [type === 'course' ? 'courseId' : 'postId']: item.id, stepId }),
-    onSuccess: () => {
-      setPickerOpen(false)
-      refresh()
-    },
-    onError: onError('Nao foi possivel adicionar o item.'),
-  })
+  const stepsDrag = useDragReorder(steps, draft.reorderSteps)
 
   const openPicker = (stepId) => {
     setPickerStepId(stepId)
@@ -98,7 +45,7 @@ export function TrilhaStructureEditor({ trilhaId, structure, trilhaQueryKey }) {
     <section className="space-y-4 rounded-xl border border-slate-700 bg-slate-800/40 p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-wide text-slate-400">Sequencia da trilha</h2>
-        <button type="button" onClick={() => addStep()} disabled={addingStep} className="btn-ghost px-2 py-1 text-xs">
+        <button type="button" onClick={addStep} disabled={draft.isFlushing} className="btn-ghost px-2 py-1 text-xs">
           <Plus size={14} /> Etapa
         </button>
       </div>
@@ -113,11 +60,11 @@ export function TrilhaStructureEditor({ trilhaId, structure, trilhaQueryKey }) {
       {/* Always rendered, even with zero items: it is the only place with an "Adicionar item"
           button until a step exists, so hiding it here would leave no way to add the first item. */}
       <ItemGroup
+        groupKey={null}
         title={steps.length > 0 ? 'Sem etapa' : null}
         items={ungroupedItems}
         steps={steps}
-        trilhaId={trilhaId}
-        refresh={refresh}
+        draft={draft}
         onAddClick={() => openPicker(null)}
       />
 
@@ -138,7 +85,10 @@ export function TrilhaStructureEditor({ trilhaId, structure, trilhaQueryKey }) {
                 <StepEditForm
                   value={editingStep}
                   onChange={setEditingStep}
-                  onSave={() => saveStep(editingStep)}
+                  onSave={() => {
+                    draft.renameStep(step.id, { title: editingStep.title, description: editingStep.description })
+                    setEditingStep(null)
+                  }}
                   onCancel={() => setEditingStep(null)}
                 />
               ) : (
@@ -158,10 +108,10 @@ export function TrilhaStructureEditor({ trilhaId, structure, trilhaQueryKey }) {
             </div>
             <div className="p-3">
               <ItemGroup
+                groupKey={step.id}
                 items={step.items}
                 steps={steps}
-                trilhaId={trilhaId}
-                refresh={refresh}
+                draft={draft}
                 onAddClick={() => openPicker(step.id)}
               />
             </div>
@@ -172,7 +122,10 @@ export function TrilhaStructureEditor({ trilhaId, structure, trilhaQueryKey }) {
       <PickContentModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onPick={(type, item) => addItem({ type, item, stepId: pickerStepId })}
+        onPick={(type, item) => {
+          draft.addItem({ type, item, stepId: pickerStepId })
+          setPickerOpen(false)
+        }}
         excludeCourseIds={excludeCourseIds}
         excludePostIds={excludePostIds}
         title="Adicionar a trilha"
@@ -181,7 +134,10 @@ export function TrilhaStructureEditor({ trilhaId, structure, trilhaQueryKey }) {
       <ConfirmModal
         open={Boolean(confirmDeleteStep)}
         onClose={() => setConfirmDeleteStep(null)}
-        onConfirm={() => removeStep(confirmDeleteStep.id)}
+        onConfirm={() => {
+          draft.deleteStep(confirmDeleteStep.id)
+          setConfirmDeleteStep(null)
+        }}
         title="Excluir etapa"
         message="Os itens desta etapa saem da trilha junto. Os cursos/posts em si nao sao afetados."
         confirmLabel="Excluir etapa"
@@ -191,48 +147,11 @@ export function TrilhaStructureEditor({ trilhaId, structure, trilhaQueryKey }) {
 }
 
 /** One group of items (a step, or the ungrouped bucket): reorder, move-between-groups, notes. */
-function ItemGroup({ title, items, steps, trilhaId, refresh, onAddClick }) {
-  const toast = useToast()
+function ItemGroup({ groupKey, title, items, steps, draft, onAddClick }) {
   const [editingNote, setEditingNote] = useState(null)
   const [confirmRemove, setConfirmRemove] = useState(null)
 
-  const onError = (fallback) => (error) => toast.error(errorMessage(error, fallback))
-
-  const { mutate: moveItems } = useMutation({
-    mutationFn: async (ids) => {
-      const changes = ids
-        .map((id, index) => ({ id, index }))
-        .filter(({ id, index }) => items.find((item) => item.id === id)?.orderIndex !== index)
-      await Promise.all(changes.map(({ id, index }) => updateTrilhaItem(trilhaId, id, { orderIndex: index })))
-    },
-    onSuccess: refresh,
-    onError: onError('Nao foi possivel reordenar os itens.'),
-  })
-  const drag = useDragReorder(items, moveItems)
-
-  const { mutate: saveNote } = useMutation({
-    mutationFn: ({ id, note }) => updateTrilhaItem(trilhaId, id, { note }),
-    onSuccess: () => {
-      setEditingNote(null)
-      refresh()
-    },
-    onError: onError('Nao foi possivel salvar a nota.'),
-  })
-
-  const { mutate: moveItem } = useMutation({
-    mutationFn: ({ id, targetStepId }) => moveTrilhaItem(trilhaId, id, targetStepId),
-    onSuccess: refresh,
-    onError: onError('Nao foi possivel mover o item.'),
-  })
-
-  const { mutate: remove, isPending: removing } = useMutation({
-    mutationFn: (id) => removeTrilhaItem(trilhaId, id),
-    onSuccess: () => {
-      setConfirmRemove(null)
-      refresh()
-    },
-    onError: onError('Nao foi possivel remover o item.'),
-  })
+  const dragDrop = useDragReorder(items, (ids) => draft.reorderItems(groupKey, ids))
 
   return (
     <div className="space-y-2">
@@ -263,11 +182,11 @@ function ItemGroup({ title, items, steps, trilhaId, refresh, onAddClick }) {
             return (
               <li
                 key={item.id}
-                {...drag.getItemProps(item.id)}
+                {...dragDrop.getItemProps(item.id)}
                 className={cn(
                   'rounded-lg border border-transparent',
-                  drag.draggingId === item.id && 'opacity-40',
-                  drag.overId === item.id && drag.draggingId !== item.id && 'border-brand-500',
+                  dragDrop.draggingId === item.id && 'opacity-40',
+                  dragDrop.overId === item.id && dragDrop.draggingId !== item.id && 'border-brand-500',
                 )}
               >
                 <div className="flex flex-wrap items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-800">
@@ -291,7 +210,7 @@ function ItemGroup({ title, items, steps, trilhaId, refresh, onAddClick }) {
                   {steps.length > 0 && (
                     <select
                       value={item.stepId ?? ''}
-                      onChange={(event) => moveItem({ id: item.id, targetStepId: event.target.value || null })}
+                      onChange={(event) => draft.moveItem(item.id, event.target.value || null)}
                       className="input w-32 shrink-0 py-1 text-xs"
                       aria-label="Mover para etapa"
                     >
@@ -321,7 +240,14 @@ function ItemGroup({ title, items, steps, trilhaId, refresh, onAddClick }) {
                       placeholder="Seu comentario sobre este item, visivel para quem ve a trilha..."
                       className="input flex-1 text-xs"
                     />
-                    <IconButton icon={Check} label="Salvar nota" onClick={() => saveNote({ id: item.id, note: editingNote.value })} />
+                    <IconButton
+                      icon={Check}
+                      label="Salvar nota"
+                      onClick={() => {
+                        draft.saveItemNote(item.id, editingNote.value)
+                        setEditingNote(null)
+                      }}
+                    />
                     <IconButton icon={X} label="Cancelar" onClick={() => setEditingNote(null)} />
                   </div>
                 )}
@@ -339,8 +265,10 @@ function ItemGroup({ title, items, steps, trilhaId, refresh, onAddClick }) {
       <ConfirmModal
         open={Boolean(confirmRemove)}
         onClose={() => setConfirmRemove(null)}
-        onConfirm={() => remove(confirmRemove.id)}
-        loading={removing}
+        onConfirm={() => {
+          draft.removeItem(confirmRemove.id)
+          setConfirmRemove(null)
+        }}
         title="Remover da trilha"
         message="Este item deixara de fazer parte da trilha. O curso ou post em si nao e afetado."
         confirmLabel="Remover"

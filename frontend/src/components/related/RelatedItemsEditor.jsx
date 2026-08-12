@@ -1,58 +1,19 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link2, Plus, Trash2 } from 'lucide-react'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { PickContentModal } from '@/components/shared/PickContentModal'
-import { useToast } from '@/context/ToastContext'
-import {
-  addCourseRelated,
-  addPostRelated,
-  listCourseRelated,
-  listPostRelated,
-  relatedKeys,
-  removeCourseRelated,
-  removePostRelated,
-} from '@/api/related'
-import { errorMessage } from '@/lib/api'
 
 /**
  * Owner-only management of "related" courses/posts, reused by both the course settings panel and
  * the post editor. Not shown to anyone else -- only the content's own owner curates this list.
+ *
+ * Add/remove write to `draft` (a `useRelatedItemsDraft`, owned by the host page) only - nothing
+ * hits the network here. The page's own "Salvar" button flushes it.
  */
-export function RelatedItemsEditor({ kind, contentId }) {
-  const queryClient = useQueryClient()
-  const toast = useToast()
+export function RelatedItemsEditor({ kind, contentId, draft }) {
   const [pickerOpen, setPickerOpen] = useState(false)
 
-  const queryKey = kind === 'course' ? relatedKeys.course(contentId, 0) : relatedKeys.post(contentId, 0)
-  const query = useQuery({
-    queryKey,
-    queryFn: () => (kind === 'course' ? listCourseRelated(contentId, 0, 20) : listPostRelated(contentId, 0, 20)),
-  })
-
-  const refresh = () => queryClient.invalidateQueries({ queryKey })
-  const onError = (fallback) => (error) => toast.error(errorMessage(error, fallback))
-
-  const { mutate: add, isPending: adding } = useMutation({
-    mutationFn: ({ type, item }) => {
-      const payload = type === 'course' ? { relatedCourseId: item.id } : { relatedPostId: item.id }
-      return kind === 'course' ? addCourseRelated(contentId, payload) : addPostRelated(contentId, payload)
-    },
-    onSuccess: () => {
-      setPickerOpen(false)
-      refresh()
-    },
-    onError: onError('Nao foi possivel relacionar este item.'),
-  })
-
-  const { mutate: remove } = useMutation({
-    mutationFn: (relatedItemId) =>
-      kind === 'course' ? removeCourseRelated(contentId, relatedItemId) : removePostRelated(contentId, relatedItemId),
-    onSuccess: refresh,
-    onError: onError('Nao foi possivel remover o relacionado.'),
-  })
-
-  const items = query.data?.items ?? []
+  const items = draft.items
   const excludeCourseIds = [kind === 'course' ? contentId : null, ...items.filter((i) => i.course).map((i) => i.course.id)]
     .filter(Boolean)
   const excludePostIds = [kind === 'post' ? contentId : null, ...items.filter((i) => i.post).map((i) => i.post.id)]
@@ -64,7 +25,7 @@ export function RelatedItemsEditor({ kind, contentId }) {
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-400">
           <Link2 size={15} /> Relacionados
         </h2>
-        <button type="button" onClick={() => setPickerOpen(true)} disabled={adding} className="btn-ghost px-2 py-1 text-xs">
+        <button type="button" onClick={() => setPickerOpen(true)} disabled={draft.isFlushing} className="btn-ghost px-2 py-1 text-xs">
           <Plus size={14} /> Adicionar
         </button>
       </div>
@@ -90,7 +51,7 @@ export function RelatedItemsEditor({ kind, contentId }) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => remove(related.id)}
+                  onClick={() => draft.remove(related.id)}
                   className="shrink-0 rounded p-1.5 text-slate-500 hover:bg-slate-700 hover:text-red-400"
                   aria-label="Remover relacionado"
                 >
@@ -105,7 +66,10 @@ export function RelatedItemsEditor({ kind, contentId }) {
       <PickContentModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onPick={(type, item) => add({ type, item })}
+        onPick={(type, item) => {
+          draft.add(type, item)
+          setPickerOpen(false)
+        }}
         excludeCourseIds={excludeCourseIds}
         excludePostIds={excludePostIds}
         title="Relacionar conteudo"

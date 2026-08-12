@@ -9,6 +9,7 @@ import com.coursemaker.dto.auth.AuthDtos.LoginRequest;
 import com.coursemaker.dto.auth.AuthDtos.RegisterRequest;
 import com.coursemaker.dto.user.UserResponse;
 import com.coursemaker.exception.ApiExceptions.ConflictException;
+import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import com.coursemaker.exception.ApiExceptions.UnauthorizedException;
 import com.coursemaker.repository.UserRepository;
 import com.coursemaker.service.GoogleTokenVerifier.GoogleProfile;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -91,8 +93,15 @@ public class AuthService {
         return toAuthResponse(userRepository.save(user));
     }
 
+    /**
+     * The JWT principal only carries id/email/role/nickname/name (see {@link JwtService#extractPrincipal}),
+     * so this is the one auth-related place that still hits the database - fetching the full,
+     * up-to-date profile (bio, avatar, stacks, ...) the SPA needs when it hydrates on load.
+     */
     @Transactional(readOnly = true)
-    public UserResponse me(User user) {
+    public UserResponse me(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Usuario"));
         return UserResponse.from(user);
     }
 

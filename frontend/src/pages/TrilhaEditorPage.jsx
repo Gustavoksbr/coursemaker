@@ -1,10 +1,15 @@
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Save } from 'lucide-react'
 import { TrilhaSettingsPanel } from '@/components/trilha/TrilhaSettingsPanel'
 import { TrilhaStructureEditor } from '@/components/trilha/TrilhaStructureEditor'
+import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
+import { UnsavedChangesPrompt } from '@/components/ui/UnsavedChangesPrompt'
+import { useTrilhaStructureDraft } from '@/hooks/useTrilhaStructureDraft'
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
+import { useToast } from '@/context/ToastContext'
 import { getTrilhaBySlug, trilhaKeys } from '@/api/trilhas'
 import { errorMessage } from '@/lib/api'
 
@@ -34,7 +39,30 @@ export default function TrilhaEditorPage() {
     return <Navigate to={`/trilhas/${nickname}/${slug}`} replace />
   }
 
+  return (
+    <TrilhaEditorContent detail={detail} trilhaQueryKey={trilhaQueryKey} onDeleted={() => navigate('/trilhas')} />
+  )
+}
+
+/**
+ * Split out so `useTrilhaStructureDraft` only mounts once `detail` is loaded - see the identical
+ * split in `CourseEditorPage.jsx` for why (a reducer's lazy init only ever runs once).
+ */
+function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
+  const toast = useToast()
   const trilha = detail.summary
+  const structureDraft = useTrilhaStructureDraft(trilha.id, detail.structure)
+  const blocker = useUnsavedChangesGuard(structureDraft.isDirty)
+
+  const handleSave = async () => {
+    try {
+      await structureDraft.flush()
+      toast.success('Estrutura da trilha salva.')
+    } catch (error) {
+      const label = error.draftStepLabel
+      toast.error(errorMessage(error, label ? `Nao foi possivel salvar ${label}.` : 'Nao foi possivel salvar a estrutura.'))
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 space-y-6 px-4 py-6 sm:px-6">
@@ -48,18 +76,21 @@ export default function TrilhaEditorPage() {
 
         <ContentBadges status={trilha.status} visibility={trilha.visibility} featured={trilha.featured} />
 
+        {structureDraft.isDirty && (
+          <Button onClick={handleSave} loading={structureDraft.isFlushing}>
+            <Save size={16} /> Salvar estrutura
+          </Button>
+        )}
+
         <Link to={`/trilhas/${trilha.owner.nickname}/${trilha.slug}`} className="btn-secondary text-xs">
           <ExternalLink size={14} /> Ver publicada
         </Link>
       </header>
 
-      <TrilhaSettingsPanel
-        trilha={trilha}
-        trilhaQueryKey={trilhaQueryKey}
-        onDeleted={() => navigate('/trilhas')}
-      />
+      <TrilhaSettingsPanel trilha={trilha} trilhaQueryKey={trilhaQueryKey} onDeleted={onDeleted} />
 
-      <TrilhaStructureEditor trilhaId={trilha.id} structure={detail.structure} trilhaQueryKey={trilhaQueryKey} />
+      <TrilhaStructureEditor draft={structureDraft} />
+      <UnsavedChangesPrompt blocker={blocker} />
     </div>
   )
 }

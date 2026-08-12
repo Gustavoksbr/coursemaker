@@ -20,7 +20,9 @@ class UserProfileIT extends IntegrationTest {
     void aNewUserClaimsTheirNicknameOnceAndThenItIsFrozen() throws Exception {
         TestUser user = fixtures.userWithoutNickname();
 
-        JsonNode updated = patchOk("/api/v1/users/" + user.id(), Map.of("nickname", "gustavo"), user.caller());
+        JsonNode auth = patchOk("/api/v1/users/" + user.id(), Map.of("nickname", "gustavo"), user.caller());
+        assertThat(auth.get("token").asText()).isNotBlank();
+        JsonNode updated = auth.get("user");
         assertThat(updated.get("nickname").asText()).isEqualTo("gustavo");
         assertThat(updated.get("needsNickname").asBoolean()).isFalse();
 
@@ -61,7 +63,7 @@ class UserProfileIT extends IntegrationTest {
         JsonNode updated = patchOk("/api/v1/users/" + gustavo.id(), Map.of(
                 "name", "Gustavo K",
                 "bio", "Desenvolvedor backend",
-                "stacks", List.of("java", "spring", "java")), gustavo.caller());
+                "stacks", List.of("java", "spring", "java")), gustavo.caller()).get("user");
 
         assertThat(updated.get("name").asText()).isEqualTo("Gustavo K");
         assertThat(updated.get("bio").asText()).isEqualTo("Desenvolvedor backend");

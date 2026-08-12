@@ -52,8 +52,10 @@ public class Fixtures {
         String token = auth.get("token").asText();
         UUID id = UUID.fromString(auth.get("user").get("id").asText());
 
-        request("PATCH", "/api/v1/users/" + id, token, Map.of("nickname", nickname));
-        return new TestUser(id, email, nickname, token);
+        // Nickname is one of the JWT claims, so claiming it reissues the token; the stale one keeps
+        // asserting "no nickname yet" until it expires.
+        JsonNode reissued = request("PATCH", "/api/v1/users/" + id, token, Map.of("nickname", nickname));
+        return new TestUser(id, email, nickname, reissued.get("token").asText());
     }
 
     /** Registers a user without a nickname, for the "setup nickname" flow. */
@@ -71,7 +73,11 @@ public class Fixtures {
     public TestUser admin(String nickname) {
         TestUser user = user(nickname);
         jdbc.update("UPDATE users SET role = 'admin' WHERE id = ?", user.id());
-        return user;
+        // role is a JWT claim too, so the token from user() still asserts the old role; log back in
+        // to get one that reflects the promotion, same as a real admin would after a fresh login.
+        JsonNode auth = request("POST", "/api/v1/auth/login", null,
+                Map.of("email", user.email(), "password", DEFAULT_PASSWORD));
+        return new TestUser(user.id(), user.email(), user.nickname(), auth.get("token").asText());
     }
 
     // ---------------------------------------------------------------- courses
@@ -151,6 +157,29 @@ public class Fixtures {
         UUID postId = UUID.fromString(post.get("id").asText());
         request("PATCH", "/api/v1/posts/" + postId, owner.token(), Map.of("status", "available"));
         return postId;
+    }
+
+    // ----------------------------------------------------------------- trilhas
+
+    public UUID trilha(TestUser owner, String title) {
+        JsonNode trilha = request("POST", "/api/v1/trilhas", owner.token(), Map.of("title", title));
+        return UUID.fromString(trilha.get("id").asText());
+    }
+
+    public UUID trilhaStep(TestUser owner, UUID trilhaId, String title) {
+        JsonNode step = request("POST", "/api/v1/trilhas/" + trilhaId + "/steps", owner.token(),
+                Map.of("title", title));
+        return UUID.fromString(step.get("id").asText());
+    }
+
+    /** Adds a course to the trilha, optionally inside {@code stepId} (null for ungrouped). */
+    public UUID trilhaItem(TestUser owner, UUID trilhaId, UUID courseId, UUID stepId) {
+        Map<String, Object> body = new java.util.HashMap<>(Map.of("courseId", courseId));
+        if (stepId != null) {
+            body.put("stepId", stepId);
+        }
+        JsonNode item = request("POST", "/api/v1/trilhas/" + trilhaId + "/items", owner.token(), body);
+        return UUID.fromString(item.get("id").asText());
     }
 
     // ---------------------------------------------------------------- plumbing

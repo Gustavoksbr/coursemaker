@@ -2,7 +2,6 @@ package com.coursemaker.config;
 
 import com.coursemaker.domain.entity.User;
 import com.coursemaker.exception.ApiErrorResponse;
-import com.coursemaker.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,7 +19,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Turns {@code Authorization: Bearer <jwt>} into an authenticated SecurityContext.
@@ -29,6 +27,12 @@ import java.util.UUID;
  * endpoints are public. A header that <em>is</em> present but does not verify is rejected with 401
  * right here, so the SPA learns immediately that its stored token is stale instead of silently
  * getting anonymous responses.
+ *
+ * <p>The principal is rebuilt from the token's signed claims alone - no database round trip on
+ * every request. That trades "role/nickname changes apply immediately" for "apply next login /
+ * token refresh" ({@code JWT_EXPIRY_HOURS}), which is fine since authorization only ever checks id
+ * and role. Endpoints that need fresher or fuller profile data (bio, avatar, ...) fetch the row
+ * themselves instead of trusting the principal for it.
  */
 @Component
 @RequiredArgsConstructor
@@ -37,7 +41,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
-    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -50,16 +53,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = header.substring(BEARER_PREFIX.length()).trim();
-        Optional<UUID> userId = jwtService.extractUserId(token);
-        if (userId.isEmpty()) {
-            writeUnauthorized(request, response, "Token invalido ou expirado");
-            return;
-        }
-
-        Optional<User> user = userRepository.findById(userId.get());
+        Optional<User> user = jwtService.extractPrincipal(token);
         if (user.isEmpty()) {
-            // Token is well-formed but the account is gone.
-            writeUnauthorized(request, response, "Usuario do token nao existe mais");
+            writeUnauthorized(request, response, "Token invalido ou expirado");
             return;
         }
 

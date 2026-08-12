@@ -8,6 +8,7 @@ import com.coursemaker.dto.trilha.TrilhaDtos.AddTrilhaItemRequest;
 import com.coursemaker.dto.trilha.TrilhaDtos.CreateTrilhaRequest;
 import com.coursemaker.dto.trilha.TrilhaDtos.CreateTrilhaStepRequest;
 import com.coursemaker.dto.trilha.TrilhaDtos.MoveTrilhaItemRequest;
+import com.coursemaker.dto.trilha.TrilhaDtos.ReorderTrilhaItemsRequest;
 import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaDetail;
 import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaItemResponse;
 import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaProgressResponse;
@@ -162,6 +163,16 @@ public class TrilhaController {
     public ResponseEntity<Void> removeItem(@PathVariable UUID id, @PathVariable UUID itemId,
                                            @AuthenticationPrincipal AuthenticatedUser principal) {
         trilhaService.removeItem(id, itemId, principal.user());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Reordena os itens de uma etapa, ou os itens sem etapa quando stepId e "
+            + "nulo (apenas o dono da trilha)")
+    @PutMapping("/api/v1/trilhas/{id}/items/reorder")
+    public ResponseEntity<Void> reorderItems(@PathVariable UUID id,
+                                             @Valid @RequestBody ReorderTrilhaItemsRequest request,
+                                             @AuthenticationPrincipal AuthenticatedUser principal) {
+        trilhaService.reorderItems(id, request.stepId(), request.ids(), principal.user());
         return ResponseEntity.noContent().build();
     }
 

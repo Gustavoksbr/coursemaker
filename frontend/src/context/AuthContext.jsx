@@ -81,8 +81,15 @@ export function AuthProvider({ children }) {
     [authenticate],
   )
 
-  /** Adopts a fresh user payload after a profile update, without a new token. */
-  const refreshUser = useCallback((updated) => setUser(updated), [])
+  /**
+   * Adopts the response from PATCH /users/{id}: name and nickname are embedded in the JWT, so the
+   * backend reissues a token whenever the profile changes and this must replace the stored one -
+   * otherwise the old token keeps asserting the pre-update nickname until it expires.
+   */
+  const refreshUser = useCallback((authResponse) => {
+    setToken(authResponse.token)
+    setUser(authResponse.user)
+  }, [])
 
   const value = useMemo(
     () => ({

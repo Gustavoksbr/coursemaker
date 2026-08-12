@@ -139,13 +139,17 @@ class AuthenticationIT extends IntegrationTest {
     }
 
     @Test
-    void aTokenStopsWorkingOnceTheAccountIsGone() throws Exception {
+    void aTokenIsRebuiltFromItsOwnClaimsWithoutADatabaseLookup() throws Exception {
+        // The JWT signature alone authenticates the request now (see JwtService#extractPrincipal),
+        // so a token survives its account being deleted until the token itself expires. /auth/me is
+        // the exception: it always re-fetches the row for a fresh profile, so it's the one place
+        // that still notices deletion - just as 404 (account gone), not 401 (token invalid).
         Fixtures.TestUser user = fixtures.user("ana");
         getOk("/api/v1/auth/me", user.caller());
 
         jdbc.update("DELETE FROM users WHERE id = ?", user.id());
 
-        get("/api/v1/auth/me", user.caller()).andExpect(status().isUnauthorized());
+        get("/api/v1/auth/me", user.caller()).andExpect(status().isNotFound());
     }
 
     private void register() throws Exception {

@@ -11,6 +11,9 @@ import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { BlockListEditor } from '@/components/blocks/BlockListEditor'
 import { RelatedItemsEditor } from '@/components/related/RelatedItemsEditor'
+import { UnsavedChangesPrompt } from '@/components/ui/UnsavedChangesPrompt'
+import { useRelatedItemsDraft } from '@/hooks/useRelatedItemsDraft'
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { useToast } from '@/context/ToastContext'
 import { blockKeys } from '@/api/shared'
 import {
@@ -57,6 +60,8 @@ export default function PostEditorPage() {
   })
 
   const isNew = !id
+  const relatedDraft = useRelatedItemsDraft('post', id)
+  const blocker = useUnsavedChangesGuard(relatedDraft.isDirty)
 
   const { data: detail, isPending, isError, error, refetch } = useQuery({
     queryKey: postKeys.byId(id),
@@ -142,6 +147,18 @@ export default function PostEditorPage() {
 
   const post = detail?.summary
   const published = post?.status === STATUS.AVAILABLE
+
+  const handleSaveRelated = async () => {
+    try {
+      await relatedDraft.flush()
+      toast.success('Relacionados salvos.')
+    } catch (relatedError) {
+      const label = relatedError.draftStepLabel
+      toast.error(
+        errorMessage(relatedError, label ? `Nao foi possivel salvar ${label}.` : 'Nao foi possivel salvar os relacionados.'),
+      )
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-8 sm:px-6">
@@ -268,7 +285,16 @@ export default function PostEditorPage() {
             />
           </section>
 
-          <RelatedItemsEditor kind="post" contentId={id} />
+          <section className="space-y-3">
+            {relatedDraft.isDirty && (
+              <div className="flex justify-end">
+                <Button size="sm" onClick={handleSaveRelated} loading={relatedDraft.isFlushing}>
+                  <Save size={14} /> Salvar relacionados
+                </Button>
+              </div>
+            )}
+            <RelatedItemsEditor kind="post" contentId={id} draft={relatedDraft} />
+          </section>
         </>
       )}
 
@@ -281,6 +307,7 @@ export default function PostEditorPage() {
         message="Os blocos deste post serao excluidos junto. Esta acao nao pode ser desfeita."
         confirmLabel="Excluir definitivamente"
       />
+      <UnsavedChangesPrompt blocker={blocker} />
     </div>
   )
 }

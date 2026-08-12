@@ -1,9 +1,9 @@
 package com.coursemaker.controller;
 
 import com.coursemaker.config.AuthenticatedUser;
+import com.coursemaker.dto.auth.AuthDtos.AuthResponse;
 import com.coursemaker.dto.user.PublicProfileResponse;
 import com.coursemaker.dto.user.UpdateUserRequest;
-import com.coursemaker.dto.user.UserResponse;
 import com.coursemaker.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,9 +46,10 @@ public class UserController {
         return userService.getPublicProfile(nickname, AuthenticatedUser.userOrNull(principal));
     }
 
-    @Operation(summary = "Atualiza o proprio perfil. O nickname so pode ser definido uma vez")
+    @Operation(summary = "Atualiza o proprio perfil. O nickname so pode ser definido uma vez. "
+            + "Devolve um novo token, ja que nickname/nome fazem parte das claims")
     @PatchMapping("/{id}")
-    public UserResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request,
+    public AuthResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request,
                                @AuthenticationPrincipal AuthenticatedUser principal) {
         return userService.updateProfile(id, request, principal.user());
     }

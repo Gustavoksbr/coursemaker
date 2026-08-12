@@ -7,6 +7,7 @@ import com.coursemaker.dto.course.CourseDtos.ProgressResponse;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
 import com.coursemaker.dto.user.UserSummary;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
@@ -110,6 +111,14 @@ public final class TrilhaDtos {
 
     /** {@code stepId} is always applied, including {@code null} to ungroup the item. */
     public record MoveTrilhaItemRequest(UUID stepId) {
+    }
+
+    /**
+     * Full ordered id list for one group of items: the items directly in step {@code stepId}, or
+     * the ungrouped items when {@code stepId} is {@code null}. Must contain exactly that group's
+     * items, no more, no fewer -- same contract as the module/lesson/block reorder endpoints.
+     */
+    public record ReorderTrilhaItemsRequest(UUID stepId, @NotEmpty List<UUID> ids) {
     }
 
     public record CreateTrilhaStepRequest(

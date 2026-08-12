@@ -286,6 +286,36 @@ public class TrilhaService {
         return trilhaMapper.toItemResponses(List.of(saved), owner).get(0);
     }
 
+    /**
+     * Full-list reorder for one group of items (a step, or the ungrouped bucket when
+     * {@code stepId} is null) -- same strict contract as {@code ModuleService.reorder}: the
+     * ids sent must be exactly that group's items, no more, no fewer.
+     */
+    @Transactional
+    public void reorderItems(UUID trilhaId, UUID stepId, List<UUID> orderedIds, User owner) {
+        Trilha trilha = loadForEditing(trilhaId, owner);
+        if (stepId != null) {
+            requireStepInTrilha(trilha, stepId);
+        }
+
+        List<TrilhaItem> groupItems = trilhaItemRepository.findAllByTrilhaOrdered(trilhaId).stream()
+                .filter(item -> stepId == null
+                        ? item.getStep() == null
+                        : item.getStep() != null && item.getStep().getId().equals(stepId))
+                .toList();
+        Map<UUID, TrilhaItem> byId = groupItems.stream()
+                .collect(Collectors.toMap(TrilhaItem::getId, item -> item));
+
+        if (orderedIds.size() != groupItems.size() || !byId.keySet().containsAll(orderedIds)) {
+            throw new BadRequestException("A lista de reordenacao deve conter exatamente os itens desta etapa");
+        }
+
+        for (int index = 0; index < orderedIds.size(); index++) {
+            byId.get(orderedIds.get(index)).setOrderIndex(index);
+        }
+        trilhaItemRepository.saveAll(byId.values());
+    }
+
     @Transactional
     public void removeItem(UUID trilhaId, UUID itemId, User owner) {
         Trilha trilha = loadForEditing(trilhaId, owner);

@@ -1,6 +1,8 @@
 package com.coursemaker.service;
 
+import com.coursemaker.config.JwtService;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.dto.auth.AuthDtos.AuthResponse;
 import com.coursemaker.dto.user.PublicProfileResponse;
 import com.coursemaker.dto.user.UpdateUserRequest;
 import com.coursemaker.dto.user.UserResponse;
@@ -25,6 +27,7 @@ public class UserService {
     private final CourseService courseService;
     private final PostService postService;
     private final TrilhaService trilhaService;
+    private final JwtService jwtService;
 
     @Transactional(readOnly = true)
     public PublicProfileResponse getPublicProfile(String nickname, User viewer) {
@@ -44,8 +47,14 @@ public class UserService {
                 trilhaService.listByOwner(user.getId(), viewer));
     }
 
+    /**
+     * Returns a freshly-signed token along with the updated profile: {@code name} and
+     * {@code nickname} are both embedded in the JWT (see {@link JwtService#extractPrincipal}), so
+     * the old token would keep asserting the pre-update values until it expired otherwise -
+     * breaking, in particular, "set your nickname" immediately followed by creating content.
+     */
     @Transactional
-    public UserResponse updateProfile(UUID targetId, UpdateUserRequest request, User currentUser) {
+    public AuthResponse updateProfile(UUID targetId, UpdateUserRequest request, User currentUser) {
         if (!targetId.equals(currentUser.getId())) {
             throw new ForbiddenException("Voce so pode editar o proprio perfil");
         }
@@ -71,7 +80,8 @@ public class UserService {
         }
         applyNickname(user, request.nickname());
 
-        return UserResponse.from(userRepository.save(user));
+        User saved = userRepository.save(user);
+        return new AuthResponse(jwtService.generateToken(saved), jwtService.getExpiresInSeconds(), UserResponse.from(saved));
     }
 
     /** The nickname is part of every public URL, so it can be claimed once and never changed. */
