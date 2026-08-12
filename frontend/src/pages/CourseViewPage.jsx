@@ -16,7 +16,8 @@ import { ChatWidget } from '@/components/ai/ChatWidget'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
-import { ErrorState, PageLoader } from '@/components/ui/Feedback'
+import { ErrorState } from '@/components/ui/Feedback'
+import { CourseLandingSkeleton, LessonContentSkeleton } from '@/components/ui/Skeleton'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
@@ -28,8 +29,7 @@ import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
-import { blockKeys } from '@/api/shared'
-import { completeLesson, courseKeys, enroll, getCourseBySlug, listLessonBlocks, unenroll } from '@/api/courses'
+import { completeLesson, courseKeys, enroll, getCourseBySlug, unenroll } from '@/api/courses'
 import { errorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
 
@@ -54,8 +54,8 @@ function patchLessonCompleted(queryClient, queryKey, lessonId, completed) {
       percentage:
         current.progress.totalLessons > 0
           ? Math.round(
-              ((current.progress.completedLessons + (completed ? 1 : -1)) / current.progress.totalLessons) * 100,
-            )
+            ((current.progress.completedLessons + (completed ? 1 : -1)) / current.progress.totalLessons) * 100,
+          )
           : 0,
     }
     return { ...current, modules, progress }
@@ -123,7 +123,7 @@ export default function CourseViewPage() {
     })
   }
 
-  if (courseQuery.isPending) return <PageLoader label="Carregando curso..." />
+  if (courseQuery.isPending) return <CourseLandingSkeleton />
 
   if (courseQuery.isError) {
     return (
@@ -388,10 +388,8 @@ function LessonView({
   onCompleteLesson,
   canTrackProgress,
 }) {
-  const { data: blocks, isPending, isError, error, refetch } = useQuery({
-    queryKey: blockKeys.lesson(lesson.id),
-    queryFn: () => listLessonBlocks(lesson.id),
-  })
+  // Blocks are now loaded with the course - no additional API call needed!
+  const blocks = lesson.blocks || []
 
   const previous = activeIndex > 0 ? lessons[activeIndex - 1] : null
   const next = activeIndex < lessons.length - 1 ? lessons[activeIndex + 1] : null
@@ -406,60 +404,60 @@ function LessonView({
 
   return (
     <>
-    <article className="mx-auto max-w-3xl px-4 py-8 pb-28 sm:px-6">
-      <div className="mb-6 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className="btn-ghost hidden px-2 lg:inline-flex"
-          aria-label={sidebarOpen ? 'Recolher menu' : 'Expandir menu'}
-        >
-          {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-        </button>
-        <button type="button" onClick={onBackToLanding} className="btn-ghost text-sm">
-          <ChevronLeft size={16} /> {course.name}
-        </button>
-      </div>
+      <article className="mx-auto max-w-3xl px-4 py-8 pb-28 sm:px-6">
+        <div className="mb-6 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="btn-ghost hidden px-2 lg:inline-flex"
+            aria-label={sidebarOpen ? 'Recolher menu' : 'Expandir menu'}
+          >
+            {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+          </button>
+          <button type="button" onClick={onBackToLanding} className="btn-ghost text-sm">
+            <ChevronLeft size={16} /> {course.name}
+          </button>
+        </div>
 
-      <header className="mb-6 border-b border-slate-800 pb-5">
-        <p className="text-xs uppercase tracking-wide text-slate-500">{lesson.moduleTitle}</p>
-        <h1 className="mt-1 break-words text-2xl font-bold text-slate-100">{lesson.title}</h1>
+        <header className="mb-6 border-b border-slate-800 pb-5">
+          <p className="text-xs uppercase tracking-wide text-slate-500">{lesson.moduleTitle}</p>
+          <h1 className="mt-1 break-words text-2xl font-bold text-slate-100">{lesson.title}</h1>
 
-        {canTrackProgress && lesson.completed && (
-          <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-green-400">
-            <CheckCircle2 size={16} /> Licao concluida
-          </span>
+          {canTrackProgress && lesson.completed && (
+            <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-green-400">
+              <CheckCircle2 size={16} /> Licao concluida
+            </span>
+          )}
+        </header>
+
+        {blocks.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-slate-700 px-6 py-10 text-center text-sm text-slate-500">
+            Esta licao ainda nao tem conteudo.
+          </p>
+        ) : (
+          <BlockList blocks={blocks} />
         )}
-      </header>
+      </article>
 
-      {isPending ? (
-        <PageLoader label="Carregando conteudo..." />
-      ) : isError ? (
-        <ErrorState message={errorMessage(error)} onRetry={refetch} />
-      ) : (
-        <BlockList blocks={blocks} />
-      )}
-    </article>
-
-    {/* Fixed to the viewport (not just the end of the article) so advancing never requires
+      {/* Fixed to the viewport (not just the end of the article) so advancing never requires
         scrolling down to find it. */}
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
-      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-        <button
-          type="button"
-          onClick={() => previous && onSelectLesson(previous.id)}
-          disabled={!previous}
-          className={cn('btn-ghost min-w-0 text-left', !previous && 'invisible')}
-        >
-          <ChevronLeft size={16} />
-          <span className="min-w-0 truncate">{previous?.title}</span>
-        </button>
-        <Button onClick={advance} className="min-w-0">
-          <span className="min-w-0 truncate">{next ? 'Proxima aula' : 'Concluir curso'}</span>
-          {next ? <ChevronRight size={16} /> : <CheckCircle2 size={16} />}
-        </Button>
-      </div>
-    </nav>
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <button
+            type="button"
+            onClick={() => previous && onSelectLesson(previous.id)}
+            disabled={!previous}
+            className={cn('btn-ghost min-w-0 text-left', !previous && 'invisible')}
+          >
+            <ChevronLeft size={16} />
+            <span className="min-w-0 truncate">{previous?.title}</span>
+          </button>
+          <Button onClick={advance} className="min-w-0">
+            <span className="min-w-0 truncate">{next ? 'Proxima aula' : 'Concluir curso'}</span>
+            {next ? <ChevronRight size={16} /> : <CheckCircle2 size={16} />}
+          </Button>
+        </div>
+      </nav>
     </>
   )
 }

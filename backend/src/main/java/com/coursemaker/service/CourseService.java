@@ -47,13 +47,15 @@ public class CourseService {
 
     private static final int MAX_PAGE_SIZE = 50;
 
-    /** Separator used to pack the category filter into one bind parameter; see CourseRepository. */
+    /**
+     * Separator used to pack the category filter into one bind parameter; see
+     * CourseRepository.
+     */
     static final String CATEGORY_DELIMITER = String.valueOf((char) 1);
 
     private static final String DEFAULT_MODULE_TITLE = "Módulo 1";
     private static final String DEFAULT_LESSON_TITLE = "Aula 1";
-    private static final String DEFAULT_BLOCK_CONTENT =
-            "<p>Escreva aqui o conteúdo da sua aula.</p>";
+    private static final String DEFAULT_BLOCK_CONTENT = "<p>Escreva aqui o conteúdo da sua aula.</p>";
 
     private final CourseRepository courseRepository;
     private final ModuleRepository moduleRepository;
@@ -72,8 +74,8 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public PageResponse<CourseSummary> search(String q, String author, CourseVisibility visibility,
-                                              List<String> categories, Boolean featuredOnly, String sort,
-                                              int page, int size, User viewer) {
+            List<String> categories, Boolean featuredOnly, String sort,
+            int page, int size, User viewer) {
         Page<Course> result = courseRepository.search(
                 blankToNull(q),
                 blankToNull(author),
@@ -87,7 +89,8 @@ public class CourseService {
         return PageResponse.of(result, courseMapper.toSummaries(result.getContent(), viewer));
     }
 
-    // Not read-only: opening a private course silently restores access for a student who has
+    // Not read-only: opening a private course silently restores access for a
+    // student who has
     // already proven they know the password (see PrivateCourseAccessService).
     @Transactional
     public CourseDetail getById(UUID id, User viewer) {
@@ -107,7 +110,10 @@ public class CourseService {
         return toDetail(course, viewer);
     }
 
-    /** Records this as the student's most recently opened course, for "continuar assistindo". */
+    /**
+     * Records this as the student's most recently opened course, for "continuar
+     * assistindo".
+     */
     private void touchLastAccessed(Course course, User viewer) {
         if (viewer == null) {
             return;
@@ -168,7 +174,10 @@ public class CourseService {
         return courseMapper.toSummary(saved, owner);
     }
 
-    /** New courses start with one module/lesson/text block so the owner has something to edit. */
+    /**
+     * New courses start with one module/lesson/text block so the owner has
+     * something to edit.
+     */
     private void seedDefaultCurriculum(Course course) {
         Module module = moduleRepository.save(Module.builder()
                 .course(course)
@@ -252,7 +261,8 @@ public class CourseService {
     }
 
     /**
-     * Loads a course for editing. Kept separate from {@link #loadVisible} so callers cannot forget
+     * Loads a course for editing. Kept separate from {@link #loadVisible} so
+     * callers cannot forget
      * the ownership check.
      */
     @Transactional(readOnly = true)
@@ -294,8 +304,16 @@ public class CourseService {
             return List.of();
         }
 
-        Map<UUID, List<Lesson>> lessonsByModule = lessonRepository.findAllByCourseId(course.getId()).stream()
+        List<Lesson> allLessons = lessonRepository.findAllByCourseId(course.getId());
+        Map<UUID, List<Lesson>> lessonsByModule = allLessons.stream()
                 .collect(Collectors.groupingBy(lesson -> lesson.getModule().getId()));
+
+        // Load all blocks for all lessons in one query
+        List<UUID> lessonIds = allLessons.stream().map(Lesson::getId).toList();
+        Map<UUID, List<LessonBlock>> blocksByLesson = lessonIds.isEmpty()
+                ? Map.of()
+                : lessonBlockRepository.findAllByLessonIdIn(lessonIds).stream()
+                        .collect(Collectors.groupingBy(block -> block.getLesson().getId()));
 
         Set<UUID> completed = (course.isProgressEnabled() && viewer != null)
                 ? new HashSet<>(lessonCompletionRepository.findCompletedLessonIds(viewer.getId(), course.getId()))
@@ -304,7 +322,13 @@ public class CourseService {
         List<ModuleResponse> result = new ArrayList<>(modules.size());
         for (Module module : modules) {
             List<LessonResponse> lessons = lessonsByModule.getOrDefault(module.getId(), List.of()).stream()
-                    .map(lesson -> LessonResponse.of(lesson, completed.contains(lesson.getId())))
+                    .map(lesson -> {
+                        List<com.coursemaker.dto.curriculum.CurriculumDtos.BlockResponse> blocks = blocksByLesson
+                                .getOrDefault(lesson.getId(), List.of()).stream()
+                                .map(com.coursemaker.dto.curriculum.CurriculumDtos.BlockResponse::of)
+                                .toList();
+                        return LessonResponse.of(lesson, completed.contains(lesson.getId()), blocks);
+                    })
                     .toList();
             result.add(ModuleResponse.of(module, lessons));
         }
@@ -331,7 +355,8 @@ public class CourseService {
             return;
         }
 
-        // Visibility untouched: still allow rotating the password of an already-private course.
+        // Visibility untouched: still allow rotating the password of an already-private
+        // course.
         if (request.password() != null && !request.password().isBlank() && course.isPrivate()) {
             course.setPasswordHash(passwordHasher.hash(request.password()));
         }
@@ -360,7 +385,8 @@ public class CourseService {
     }
 
     /**
-     * Packs the selected categories into the single delimited string the native query expects.
+     * Packs the selected categories into the single delimited string the native
+     * query expects.
      * Returns null when nothing was selected, which disables the filter.
      */
     static String joinCategories(List<String> categories) {

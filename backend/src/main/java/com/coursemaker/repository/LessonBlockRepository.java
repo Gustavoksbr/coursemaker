@@ -14,6 +14,9 @@ public interface LessonBlockRepository extends JpaRepository<LessonBlock, UUID> 
     @Query("SELECT b FROM LessonBlock b WHERE b.lesson.id = :lessonId ORDER BY b.orderIndex ASC")
     List<LessonBlock> findByLessonOrdered(@Param("lessonId") UUID lessonId);
 
+    @Query("SELECT b FROM LessonBlock b WHERE b.lesson.id IN :lessonIds ORDER BY b.lesson.id, b.orderIndex ASC")
+    List<LessonBlock> findAllByLessonIdIn(@Param("lessonIds") List<UUID> lessonIds);
+
     @Query("SELECT b FROM LessonBlock b JOIN FETCH b.lesson l JOIN FETCH l.module m "
             + "JOIN FETCH m.course c JOIN FETCH c.owner WHERE b.id = :id")
     Optional<LessonBlock> findByIdWithCourse(@Param("id") UUID id);
