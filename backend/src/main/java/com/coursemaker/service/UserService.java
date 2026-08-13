@@ -2,7 +2,9 @@ package com.coursemaker.service;
 
 import com.coursemaker.config.JwtService;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.dto.PageResponse;
 import com.coursemaker.dto.auth.AuthDtos.AuthResponse;
+import com.coursemaker.dto.user.PersonSummary;
 import com.coursemaker.dto.user.PublicProfileResponse;
 import com.coursemaker.dto.user.UpdateUserRequest;
 import com.coursemaker.dto.user.UserResponse;
@@ -11,6 +13,8 @@ import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import com.coursemaker.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +26,7 @@ import java.util.UUID;
 public class UserService {
 
     private static final int MAX_STACKS = 20;
+    private static final int MAX_PAGE_SIZE = 50;
 
     private final UserRepository userRepository;
     private final CourseService courseService;
@@ -105,5 +110,16 @@ public class UserService {
     @Transactional(readOnly = true)
     public boolean isNicknameAvailable(String nickname) {
         return !userRepository.existsByNicknameIgnoreCase(nickname.trim().toLowerCase());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PersonSummary> search(String q, String sort, int page, int size) {
+        Page<User> result = userRepository.search(blankToNull(q), sort == null ? "recent" : sort,
+                PageRequest.of(Math.max(0, page), Math.clamp(size, 1, MAX_PAGE_SIZE)));
+        return PageResponse.of(result, PersonSummary::from);
+    }
+
+    private static String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
     }
 }

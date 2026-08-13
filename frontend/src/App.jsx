@@ -7,6 +7,7 @@ import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import SetupNicknamePage from '@/pages/SetupNicknamePage'
+import SearchPage from '@/pages/SearchPage'
 import CourseListPage from '@/pages/CourseListPage'
 import CourseViewPage from '@/pages/CourseViewPage'
 import PostListPage from '@/pages/PostListPage'
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/pesquisar', element: <SearchPage /> },
       { path: '/cursos', element: <CourseListPage /> },
       { path: '/posts', element: <PostListPage /> },
       { path: '/posts/:nickname/:slug', element: <PostViewPage /> },

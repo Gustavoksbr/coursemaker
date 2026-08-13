@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   Bell,
-  BookOpen,
   Bookmark,
   CheckCheck,
   GraduationCap,
@@ -11,6 +10,7 @@ import {
   Menu,
   MessageSquare,
   PenSquare,
+  Search,
   User as UserIcon,
   UserPlus,
   Waypoints,
@@ -36,11 +36,7 @@ const NOTIFICATION_TEXT = {
   comment: 'comentou em',
 }
 
-const NAV_LINKS = [
-  { to: '/cursos', label: 'Cursos', icon: GraduationCap },
-  { to: '/posts', label: 'Posts', icon: BookOpen },
-  { to: '/trilhas', label: 'Trilhas', icon: Waypoints },
-]
+const NAV_LINKS = [{ to: '/pesquisar', label: 'Procurar', icon: Search }]
 
 const LIBRARY_LINK = { to: '/biblioteca', label: 'Biblioteca', icon: Bookmark }
 

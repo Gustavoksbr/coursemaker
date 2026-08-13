@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, BookOpen, GraduationCap, Plus } from 'lucide-react'
 import { SearchBar } from '@/components/search/SearchBar'
@@ -9,7 +9,6 @@ import { CreateCourseModal } from '@/components/course/CreateCourseModal'
 import { NicknameGateModal } from '@/components/auth/NicknameGateModal'
 import { CardSkeletonGrid, EmptyState, ErrorState } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
-import { useDebounce } from '@/hooks/useDebounce'
 import { useNicknameGate } from '@/hooks/useNicknameGate'
 import { search, searchKeys } from '@/api/users'
 import { errorMessage } from '@/lib/api'
@@ -18,22 +17,28 @@ const RESULTS_PER_SECTION = 6
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [term, setTerm] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const { requireNickname, nicknameModalProps } = useNicknameGate()
-  const debouncedTerm = useDebounce(term, 300)
 
+  // The homepage itself never shows search results anymore - searching redirects to /pesquisar,
+  // which owns the full Principais/Cursos/Posts/Trilhas/Pessoas experience. This query always
+  // fetches the empty-term "destaques" view for the landing page furniture below.
   const { data, isPending, isError, error, refetch } = useQuery({
-    queryKey: searchKeys.unified(debouncedTerm, RESULTS_PER_SECTION),
-    queryFn: () => search(debouncedTerm, RESULTS_PER_SECTION),
-    // Keeping the previous results while a new term is in flight stops the page flashing empty
-    // on every keystroke.
-    placeholderData: (previous) => previous,
+    queryKey: searchKeys.unified('', RESULTS_PER_SECTION),
+    queryFn: () => search('', RESULTS_PER_SECTION),
   })
 
-  const searching = debouncedTerm.trim().length > 0
   const courses = data?.courses
   const posts = data?.posts
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    const trimmed = term.trim()
+    if (!trimmed) return
+    navigate(`/pesquisar?q=${encodeURIComponent(trimmed)}`)
+  }
 
   return (
     <>
@@ -46,14 +51,14 @@ export default function HomePage() {
             Cursos estruturados e posts tecnicos escritos por desenvolvedores.
           </p>
 
-          <div className="mt-8">
+          <form onSubmit={handleSubmit} className="mt-8">
             <SearchBar
               value={term}
               onChange={setTerm}
               size="lg"
-              placeholder="Digite para buscar cursos, posts..."
+              placeholder="Buscar cursos, posts, trilhas, pessoas..."
             />
-          </div>
+          </form>
 
           {isAuthenticated && (
             <button
@@ -74,20 +79,16 @@ export default function HomePage() {
           <>
             <Section
               icon={GraduationCap}
-              title={searching ? 'Cursos' : 'Cursos em destaque'}
+              title="Cursos em destaque"
               total={courses?.total}
-              seeAllHref={`/cursos${searching ? `?q=${encodeURIComponent(debouncedTerm)}` : ''}`}
+              seeAllHref="/cursos"
               seeAllLabel="Ver todos os cursos"
               loading={isPending}
               empty={
                 <EmptyState
                   icon={GraduationCap}
-                  title={searching ? 'Nenhum curso encontrado' : 'Ainda nao ha cursos publicados'}
-                  message={
-                    searching
-                      ? `Nada corresponde a "${debouncedTerm}". Tente outro termo.`
-                      : 'Assim que alguem publicar um curso, ele aparece aqui.'
-                  }
+                  title="Ainda nao ha cursos publicados"
+                  message="Assim que alguem publicar um curso, ele aparece aqui."
                 />
               }
               items={courses?.items}
@@ -96,20 +97,16 @@ export default function HomePage() {
 
             <Section
               icon={BookOpen}
-              title={searching ? 'Posts' : 'Posts recentes'}
+              title="Posts recentes"
               total={posts?.total}
-              seeAllHref={`/posts${searching ? `?q=${encodeURIComponent(debouncedTerm)}` : ''}`}
+              seeAllHref="/posts"
               seeAllLabel="Ver todos os posts"
               loading={isPending}
               empty={
                 <EmptyState
                   icon={BookOpen}
-                  title={searching ? 'Nenhum post encontrado' : 'Ainda nao ha posts publicados'}
-                  message={
-                    searching
-                      ? `Nada corresponde a "${debouncedTerm}". Tente outro termo.`
-                      : 'Que tal escrever o primeiro?'
-                  }
+                  title="Ainda nao ha posts publicados"
+                  message="Que tal escrever o primeiro?"
                 />
               }
               items={posts?.items}

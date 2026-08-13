@@ -23,14 +23,28 @@ export function useCatalogFilters() {
 
   const setFilters = useCallback(
     (next) => {
-      const params = new URLSearchParams()
-      if (next.q) params.set('q', next.q)
-      if (next.author) params.set('author', next.author)
-      if (next.visibility) params.set('visibility', next.visibility)
-      next.categories.forEach((category) => params.append('category', category))
-      if (next.sort && next.sort !== EMPTY_FILTERS.sort) params.set('sort', next.sort)
-      if (next.page > 0) params.set('page', String(next.page))
-      setSearchParams(params, { replace: true })
+      // Start from whatever is already in the URL (functional form, so this always sees the
+      // latest params even if called twice in one tick) and only touch the keys this hook owns -
+      // an unrelated param a page might have added (e.g. `tab` on the search page) must survive.
+      setSearchParams(
+        (current) => {
+          const params = new URLSearchParams(current)
+          params.delete('q')
+          params.delete('author')
+          params.delete('visibility')
+          params.delete('category')
+          params.delete('sort')
+          params.delete('page')
+          if (next.q) params.set('q', next.q)
+          if (next.author) params.set('author', next.author)
+          if (next.visibility) params.set('visibility', next.visibility)
+          next.categories.forEach((category) => params.append('category', category))
+          if (next.sort && next.sort !== EMPTY_FILTERS.sort) params.set('sort', next.sort)
+          if (next.page > 0) params.set('page', String(next.page))
+          return params
+        },
+        { replace: true },
+      )
     },
     [setSearchParams],
   )

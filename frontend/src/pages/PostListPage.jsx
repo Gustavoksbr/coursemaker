@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { BookOpen, PenSquare } from 'lucide-react'
 import { SearchBar } from '@/components/search/SearchBar'
 import { CatalogFilters } from '@/components/search/CatalogFilters'
@@ -10,48 +8,23 @@ import { Pagination } from '@/components/ui/Pagination'
 import { CardSkeletonGrid, EmptyState, ErrorState } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
 import { useCatalogFilters } from '@/hooks/useCatalogFilters'
-import { useDebounce } from '@/hooks/useDebounce'
+import { useCatalogQuery } from '@/hooks/useCatalogQuery'
 import { useNicknameGate } from '@/hooks/useNicknameGate'
 import { listPosts, postKeys } from '@/api/posts'
 import { errorMessage } from '@/lib/api'
-import { PAGE_SIZE } from '@/lib/constants'
 
 export default function PostListPage() {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [filters, setFilters] = useCatalogFilters()
-  const [term, setTerm] = useState(filters.q)
   const { requireNickname, nicknameModalProps } = useNicknameGate()
-  const debouncedTerm = useDebounce(term, 300)
 
-  useEffect(() => {
-    if (debouncedTerm !== filters.q) {
-      setFilters({ ...filters, q: debouncedTerm, page: 0 })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedTerm])
-
-  const query = { ...filters, size: PAGE_SIZE }
-  const { data, isPending, isError, error, refetch } = useQuery({
-    queryKey: postKeys.list(query),
-    queryFn: () => listPosts(query),
-    placeholderData: (previous) => previous,
+  const { term, setTerm, data, isPending, isError, error, refetch, availableCategories } = useCatalogQuery({
+    filters,
+    setFilters,
+    listFn: listPosts,
+    queryKeyFn: postKeys.list,
   })
-
-  // A second, wider query, deliberately without the category filter: the picker needs to keep
-  // offering categories that would *broaden* the result set (an OR alternative), not just the ones
-  // that survived the category filter already narrowing things down - otherwise, picking one
-  // category makes every other one disappear from the list, which reads exactly like an AND filter.
-  const categoryPoolQuery = { q: filters.q, author: filters.author, visibility: filters.visibility,
-    sort: 'recent', page: 0, size: 100 }
-  const { data: categoryPool } = useQuery({
-    queryKey: postKeys.list(categoryPoolQuery),
-    queryFn: () => listPosts(categoryPoolQuery),
-    staleTime: 60_000,
-  })
-  const availableCategories = [
-    ...new Set(categoryPool?.items.flatMap((post) => post.categories ?? []) ?? []),
-  ]
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">

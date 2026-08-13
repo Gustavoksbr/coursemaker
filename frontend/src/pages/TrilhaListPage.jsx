@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Plus, Waypoints } from 'lucide-react'
 import { SearchBar } from '@/components/search/SearchBar'
 import { CatalogFilters } from '@/components/search/CatalogFilters'
@@ -10,44 +9,23 @@ import { Pagination } from '@/components/ui/Pagination'
 import { CardSkeletonGrid, EmptyState, ErrorState } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
 import { useCatalogFilters } from '@/hooks/useCatalogFilters'
-import { useDebounce } from '@/hooks/useDebounce'
+import { useCatalogQuery } from '@/hooks/useCatalogQuery'
 import { useNicknameGate } from '@/hooks/useNicknameGate'
 import { listTrilhas, trilhaKeys } from '@/api/trilhas'
 import { errorMessage } from '@/lib/api'
-import { PAGE_SIZE } from '@/lib/constants'
 
 export default function TrilhaListPage() {
   const { isAuthenticated } = useAuth()
   const [filters, setFilters] = useCatalogFilters()
-  const [term, setTerm] = useState(filters.q)
   const [createOpen, setCreateOpen] = useState(false)
   const { requireNickname, nicknameModalProps } = useNicknameGate()
-  const debouncedTerm = useDebounce(term, 300)
 
-  useEffect(() => {
-    if (debouncedTerm !== filters.q) {
-      setFilters({ ...filters, q: debouncedTerm, page: 0 })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedTerm])
-
-  const query = { ...filters, size: PAGE_SIZE }
-  const { data, isPending, isError, error, refetch } = useQuery({
-    queryKey: trilhaKeys.list(query),
-    queryFn: () => listTrilhas(query),
-    placeholderData: (previous) => previous,
+  const { term, setTerm, data, isPending, isError, error, refetch, availableCategories } = useCatalogQuery({
+    filters,
+    setFilters,
+    listFn: listTrilhas,
+    queryKeyFn: trilhaKeys.list,
   })
-
-  const categoryPoolQuery = { q: filters.q, author: filters.author, visibility: filters.visibility,
-    sort: 'recent', page: 0, size: 100 }
-  const { data: categoryPool } = useQuery({
-    queryKey: trilhaKeys.list(categoryPoolQuery),
-    queryFn: () => listTrilhas(categoryPoolQuery),
-    staleTime: 60_000,
-  })
-  const availableCategories = [
-    ...new Set(categoryPool?.items.flatMap((trilha) => trilha.categories ?? []) ?? []),
-  ]
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">

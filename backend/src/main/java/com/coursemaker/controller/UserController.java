@@ -1,7 +1,9 @@
 package com.coursemaker.controller;
 
 import com.coursemaker.config.AuthenticatedUser;
+import com.coursemaker.dto.PageResponse;
 import com.coursemaker.dto.auth.AuthDtos.AuthResponse;
+import com.coursemaker.dto.user.PersonSummary;
 import com.coursemaker.dto.user.PublicProfileResponse;
 import com.coursemaker.dto.user.UpdateUserRequest;
 import com.coursemaker.service.UserService;
@@ -37,6 +39,15 @@ public class UserController {
     @GetMapping("/nickname-available")
     public Map<String, Boolean> nicknameAvailable(@RequestParam @NotBlank @Size(max = 30) String nickname) {
         return Map.of("available", userService.isNicknameAvailable(nickname));
+    }
+
+    @Operation(summary = "Busca usuarios por nome ou nickname, paginado")
+    @GetMapping("/search")
+    public PageResponse<PersonSummary> search(@RequestParam(required = false) @Size(max = 200) String q,
+                                              @RequestParam(required = false, defaultValue = "recent") @Size(max = 20) String sort,
+                                              @RequestParam(defaultValue = "0") int page,
+                                              @RequestParam(defaultValue = "12") int size) {
+        return userService.search(q, sort, page, size);
     }
 
     @Operation(summary = "Perfil publico com os cursos e posts do autor")

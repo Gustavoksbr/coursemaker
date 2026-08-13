@@ -1,8 +1,15 @@
 import { api } from '@/lib/api'
+import { listParams } from './shared'
 
 export const userKeys = {
   profile: (nickname) => ['users', nickname],
   nicknameAvailable: (nickname) => ['users', 'nickname-available', nickname],
+  search: (filters) => ['users', 'search', filters],
+}
+
+export async function searchUsers(filters) {
+  const { data } = await api.get('/users/search', { params: listParams(filters) })
+  return data
 }
 
 export async function getPublicProfile(nickname) {
