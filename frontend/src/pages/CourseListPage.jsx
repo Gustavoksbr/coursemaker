@@ -64,7 +64,7 @@ export default function CourseListPage() {
       {isError ? (
         <ErrorState message={errorMessage(error)} onRetry={refetch} />
       ) : isPending ? (
-        <CardSkeletonGrid count={6} />
+        <CardSkeletonGrid count={10} />
       ) : data.items.length === 0 ? (
         <EmptyState
           icon={GraduationCap}
@@ -73,7 +73,7 @@ export default function CourseListPage() {
         />
       ) : (
         <>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-5">
             {data.items.map((course) => (
               <CourseCard key={course.id} course={course} />
             ))}

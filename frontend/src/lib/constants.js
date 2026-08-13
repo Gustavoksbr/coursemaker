@@ -29,7 +29,7 @@ export const SORT_OPTIONS = [
   { value: 'name', label: 'Ordem alfabetica' },
 ]
 
-export const PAGE_SIZE = 12
+export const PAGE_SIZE = 20
 
 /**
  * Character limits mirroring the backend's own `@Size` constraints (see the DTOs under

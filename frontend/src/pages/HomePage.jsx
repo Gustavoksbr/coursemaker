@@ -144,7 +144,9 @@ function Section({ icon: Icon, title, total, seeAllHref, seeAllLabel, loading, i
       {loading ? (
         <CardSkeletonGrid count={3} />
       ) : items?.length ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{items.map(renderItem)}</div>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-5">
+          {items.map(renderItem)}
+        </div>
       ) : (
         empty
       )}

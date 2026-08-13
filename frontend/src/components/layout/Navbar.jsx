@@ -10,6 +10,7 @@ import {
   Menu,
   MessageSquare,
   PenSquare,
+  Plus,
   Search,
   User as UserIcon,
   UserPlus,
@@ -21,6 +22,11 @@ import { useMessaging } from '@/context/MessagingContext'
 import { useNotifications } from '@/context/NotificationContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Feedback'
+import { NicknameGateModal } from '@/components/auth/NicknameGateModal'
+import { CreateContentModal } from '@/components/shared/CreateContentModal'
+import { CreateCourseModal } from '@/components/course/CreateCourseModal'
+import { CreateTrilhaModal } from '@/components/trilha/CreateTrilhaModal'
+import { useNicknameGate } from '@/hooks/useNicknameGate'
 import { cn } from '@/lib/cn'
 import { formatRelative } from '@/lib/format'
 
@@ -45,9 +51,13 @@ export function Navbar() {
   const { notifications, loading: notificationsLoading, unreadCount, markRead, markAllRead } = useNotifications()
   const { unreadCount: messagesUnreadCount } = useMessaging()
   const navigate = useNavigate()
+  const { requireNickname, nicknameModalProps } = useNicknameGate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [createChoiceOpen, setCreateChoiceOpen] = useState(false)
+  const [createCourseOpen, setCreateCourseOpen] = useState(false)
+  const [createTrilhaOpen, setCreateTrilhaOpen] = useState(false)
   const menuRef = useRef(null)
   const notificationsRef = useRef(null)
 
@@ -81,6 +91,15 @@ export function Navbar() {
     navigate('/')
   }
 
+  const handleChoose = (type) => {
+    setCreateChoiceOpen(false)
+    requireNickname(() => {
+      if (type === 'course') setCreateCourseOpen(true)
+      else if (type === 'trilha') setCreateTrilhaOpen(true)
+      else navigate('/posts/new')
+    })
+  }
+
   const linkClass = ({ isActive }) =>
     cn(
       'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
@@ -108,6 +127,14 @@ export function Navbar() {
         <div className="ml-auto flex items-center gap-2">
           {isAuthenticated ? (
             <>
+              <button
+                type="button"
+                className="btn-primary px-3 py-1.5 text-sm"
+                onClick={() => setCreateChoiceOpen(true)}
+              >
+                <Plus size={16} /> <span className="hidden sm:inline">Criar</span>
+              </button>
+
               <Link
                 to="/mensagens"
                 className="btn-ghost relative px-2"
@@ -302,6 +329,15 @@ export function Navbar() {
           ))}
         </div>
       )}
+
+      <CreateContentModal
+        open={createChoiceOpen}
+        onClose={() => setCreateChoiceOpen(false)}
+        onChoose={handleChoose}
+      />
+      <CreateCourseModal open={createCourseOpen} onClose={() => setCreateCourseOpen(false)} />
+      <CreateTrilhaModal open={createTrilhaOpen} onClose={() => setCreateTrilhaOpen(false)} />
+      <NicknameGateModal {...nicknameModalProps} />
     </header>
   )
 }

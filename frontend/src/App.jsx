@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { FullHeightLayout, Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { PageLoader } from '@/components/ui/Feedback'
+import { usePrefetchCatalogs } from '@/hooks/usePrefetchCatalogs'
 import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
@@ -106,5 +107,9 @@ const router = createBrowserRouter([
 ])
 
 export default function App() {
+  // Warms the catalogue caches once per app load, so the first visit to any of the four listing
+  // screens doesn't have to wait on a network round-trip.
+  usePrefetchCatalogs()
+
   return <RouterProvider router={router} />
 }

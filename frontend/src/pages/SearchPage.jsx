@@ -98,12 +98,15 @@ function CatalogTab({ icon: Icon, emptyTitle, filters, setFilters, listFn, query
       {isError ? (
         <ErrorState message={errorMessage(error)} onRetry={refetch} />
       ) : isPending ? (
-        <CardSkeletonGrid count={6} />
+        <CardSkeletonGrid count={10} />
       ) : data.items.length === 0 ? (
         <EmptyState icon={Icon} title={emptyTitle} message="Ajuste os filtros ou tente outro termo de busca." />
       ) : (
         <>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{data.items.map(renderCard)}</div>
+          <p className="text-sm text-slate-400">{data.totalItems} resultado(s) encontrado(s)</p>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-5">
+            {data.items.map(renderCard)}
+          </div>
           <Pagination
             page={data.page}
             totalPages={data.totalPages}
@@ -184,6 +187,7 @@ function PessoasTab({ q }) {
   }
   return (
     <>
+      <p className="text-sm text-slate-400">{data.totalItems} resultado(s) encontrado(s)</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {data.items.map((person) => (
           <PersonCard key={person.id} person={person} />

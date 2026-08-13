@@ -60,7 +60,7 @@ export default function TrilhaListPage() {
       {isError ? (
         <ErrorState message={errorMessage(error)} onRetry={refetch} />
       ) : isPending ? (
-        <CardSkeletonGrid count={6} />
+        <CardSkeletonGrid count={10} />
       ) : data.items.length === 0 ? (
         <EmptyState
           icon={Waypoints}
@@ -69,7 +69,7 @@ export default function TrilhaListPage() {
         />
       ) : (
         <>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-5">
             {data.items.map((trilha) => (
               <TrilhaCard key={trilha.id} trilha={trilha} />
             ))}
