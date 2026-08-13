@@ -9,27 +9,30 @@ import { ConfirmModal } from '@/components/ui/Modal'
 import { EmptyState, Spinner } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
-import { banUser, courseKeys, createComment, deleteComment, listComments } from '@/api/courses'
+import { banUser } from '@/api/courses'
+import { commentKeys, createComment, deleteComment, listComments } from '@/api/comments'
 import { errorMessage } from '@/lib/api'
 import { LIMITS } from '@/lib/constants'
 import { formatRelative } from '@/lib/format'
 
-export function CommentThread({ courseId, isOwner }) {
+/** kind: 'course' | 'post' | 'trilha'. Banning a commenter only exists for courses. */
+export function CommentThread({ kind, contentId, isOwner }) {
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
   const toast = useToast()
   const [replyingTo, setReplyingTo] = useState(null)
   const [confirm, setConfirm] = useState(null)
+  const canBan = isOwner && kind === 'course'
 
   const { data: comments, isPending } = useQuery({
-    queryKey: courseKeys.comments(courseId),
-    queryFn: () => listComments(courseId),
+    queryKey: commentKeys.list(kind, contentId),
+    queryFn: () => listComments(kind, contentId),
   })
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: courseKeys.comments(courseId) })
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: commentKeys.list(kind, contentId) })
 
   const { mutate: post, isPending: posting } = useMutation({
-    mutationFn: ({ content, parentId }) => createComment(courseId, { content, parentId }),
+    mutationFn: ({ content, parentId }) => createComment(kind, contentId, { content, parentId }),
     onSuccess: () => {
       setReplyingTo(null)
       invalidate()
@@ -48,7 +51,7 @@ export function CommentThread({ courseId, isOwner }) {
   })
 
   const { mutate: ban } = useMutation({
-    mutationFn: (userId) => banUser(courseId, userId),
+    mutationFn: (userId) => banUser(contentId, userId),
     onSuccess: () => {
       setConfirm(null)
       invalidate()
@@ -90,7 +93,7 @@ export function CommentThread({ courseId, isOwner }) {
         <EmptyState
           icon={MessageSquare}
           title="Nenhum comentario ainda"
-          message="Seja a primeira pessoa a comentar neste curso."
+          message="Seja a primeira pessoa a comentar."
         />
       ) : (
         <ul className="space-y-5">
@@ -98,7 +101,7 @@ export function CommentThread({ courseId, isOwner }) {
             <li key={comment.id}>
               <Comment
                 comment={comment}
-                isOwner={isOwner}
+                canBan={canBan}
                 canReply={isAuthenticated}
                 onReply={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
                 onDelete={() => setConfirm({ type: 'delete', comment })}
@@ -123,7 +126,7 @@ export function CommentThread({ courseId, isOwner }) {
                     <li key={reply.id}>
                       <Comment
                         comment={reply}
-                        isOwner={isOwner}
+                        canBan={canBan}
                         onDelete={() => setConfirm({ type: 'delete', comment: reply })}
                         onBan={() => setConfirm({ type: 'ban', comment: reply })}
                       />
@@ -144,19 +147,21 @@ export function CommentThread({ courseId, isOwner }) {
         message="Esta acao nao pode ser desfeita."
         confirmLabel="Excluir"
       />
-      <ConfirmModal
-        open={confirm?.type === 'ban'}
-        onClose={() => setConfirm(null)}
-        onConfirm={() => ban(confirm.comment.author.id)}
-        title={`Impedir ${confirm?.comment.author.name} de comentar`}
-        message="A pessoa continua com acesso ao curso, mas nao podera publicar novos comentarios. Comentarios ja publicados permanecem."
-        confirmLabel="Banir"
-      />
+      {canBan && (
+        <ConfirmModal
+          open={confirm?.type === 'ban'}
+          onClose={() => setConfirm(null)}
+          onConfirm={() => ban(confirm.comment.author.id)}
+          title={`Impedir ${confirm?.comment.author.name} de comentar`}
+          message="A pessoa continua com acesso ao curso, mas nao podera publicar novos comentarios. Comentarios ja publicados permanecem."
+          confirmLabel="Banir"
+        />
+      )}
     </section>
   )
 }
 
-function Comment({ comment, isOwner, canReply, onReply, onDelete, onBan }) {
+function Comment({ comment, canBan, canReply, onReply, onDelete, onBan }) {
   return (
     <article className="flex gap-3">
       <Link to={`/users/${comment.author.nickname}`} className="shrink-0">
@@ -199,7 +204,7 @@ function Comment({ comment, isOwner, canReply, onReply, onDelete, onBan }) {
               <Trash2 size={13} /> Excluir
             </button>
           )}
-          {isOwner && (
+          {canBan && (
             <button
               type="button"
               onClick={onBan}

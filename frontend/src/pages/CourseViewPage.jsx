@@ -363,7 +363,7 @@ export function Landing({
 
       <RelatedItemsSection kind="course" contentId={course.id} />
 
-      {detail.canViewContent && <CommentThread courseId={course.id} isOwner={isOwner} />}
+      {detail.canViewContent && <CommentThread kind="course" contentId={course.id} isOwner={isOwner} />}
     </div>
   )
 }

@@ -15,54 +15,51 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "comments")
+@Table(name = "messages")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Comment {
+public class Message {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    /** Exactly one of course/post/trilha is set (enforced by a DB CHECK constraint). */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id")
-    private Course course;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id")
-    private Post post;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trilha_id")
-    private Trilha trilha;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "sender_id", nullable = false)
+    private User sender;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "author_id", nullable = false)
-    private User author;
+    @JoinColumn(name = "recipient_id", nullable = false)
+    private User recipient;
 
-    /** Null for a top-level comment; set for a reply, which makes threads possible. */
+    /** Any earlier message in this conversation being quote-replied to - no depth limit, no re-parenting. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    private Comment parent;
+    private Message parent;
 
     @Column(nullable = false, columnDefinition = "text")
     private String content;
 
+    /** Null until a real edit happens; distinguishes "never edited" from "edited" for the UI tag. */
+    @Column(name = "edited_at")
+    private Instant editedAt;
+
+    /** Soft-delete marker. The row and content stay so a reply quoting this message can still resolve it. */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @Column(name = "read_at")
+    private Instant readAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
 }

@@ -1,6 +1,7 @@
 package com.coursemaker.controller;
 
 import com.coursemaker.config.AuthenticatedUser;
+import com.coursemaker.domain.enums.EntityKind;
 import com.coursemaker.dto.comment.CommentDtos.CommentResponse;
 import com.coursemaker.dto.comment.CommentDtos.CreateCommentRequest;
 import com.coursemaker.service.CommentService;
@@ -28,29 +29,71 @@ public class CommentController {
 
     private final CommentService commentService;
 
+    // ----------------------------------------------------------------- course
+
     @Operation(summary = "Lista os comentarios do curso, ja aninhados em threads")
     @GetMapping("/api/v1/courses/{courseId}/comments")
-    public List<CommentResponse> list(@PathVariable UUID courseId,
-                                      @AuthenticationPrincipal AuthenticatedUser principal) {
-        return commentService.list(courseId, AuthenticatedUser.userOrNull(principal));
+    public List<CommentResponse> listForCourse(@PathVariable UUID courseId,
+                                               @AuthenticationPrincipal AuthenticatedUser principal) {
+        return commentService.list(EntityKind.COURSE, courseId, AuthenticatedUser.userOrNull(principal));
     }
 
-    @Operation(summary = "Publica um comentario ou uma resposta")
+    @Operation(summary = "Publica um comentario ou uma resposta no curso")
     @PostMapping("/api/v1/courses/{courseId}/comments")
-    public ResponseEntity<CommentResponse> create(@PathVariable UUID courseId,
-                                                  @Valid @RequestBody CreateCommentRequest request,
-                                                  @AuthenticationPrincipal AuthenticatedUser principal) {
+    public ResponseEntity<CommentResponse> createForCourse(@PathVariable UUID courseId,
+                                                           @Valid @RequestBody CreateCommentRequest request,
+                                                           @AuthenticationPrincipal AuthenticatedUser principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(commentService.create(courseId, request, principal.user()));
+                .body(commentService.create(EntityKind.COURSE, courseId, request, principal.user()));
     }
 
-    @Operation(summary = "Exclui um comentario (autor, dono do curso ou admin)")
+    // ------------------------------------------------------------------- post
+
+    @Operation(summary = "Lista os comentarios do post, ja aninhados em threads")
+    @GetMapping("/api/v1/posts/{postId}/comments")
+    public List<CommentResponse> listForPost(@PathVariable UUID postId,
+                                             @AuthenticationPrincipal AuthenticatedUser principal) {
+        return commentService.list(EntityKind.POST, postId, AuthenticatedUser.userOrNull(principal));
+    }
+
+    @Operation(summary = "Publica um comentario ou uma resposta no post")
+    @PostMapping("/api/v1/posts/{postId}/comments")
+    public ResponseEntity<CommentResponse> createForPost(@PathVariable UUID postId,
+                                                         @Valid @RequestBody CreateCommentRequest request,
+                                                         @AuthenticationPrincipal AuthenticatedUser principal) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(commentService.create(EntityKind.POST, postId, request, principal.user()));
+    }
+
+    // ----------------------------------------------------------------- trilha
+
+    @Operation(summary = "Lista os comentarios da trilha, ja aninhados em threads")
+    @GetMapping("/api/v1/trilhas/{trilhaId}/comments")
+    public List<CommentResponse> listForTrilha(@PathVariable UUID trilhaId,
+                                               @AuthenticationPrincipal AuthenticatedUser principal) {
+        return commentService.list(EntityKind.TRILHA, trilhaId, AuthenticatedUser.userOrNull(principal));
+    }
+
+    @Operation(summary = "Publica um comentario ou uma resposta na trilha")
+    @PostMapping("/api/v1/trilhas/{trilhaId}/comments")
+    public ResponseEntity<CommentResponse> createForTrilha(@PathVariable UUID trilhaId,
+                                                           @Valid @RequestBody CreateCommentRequest request,
+                                                           @AuthenticationPrincipal AuthenticatedUser principal) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(commentService.create(EntityKind.TRILHA, trilhaId, request, principal.user()));
+    }
+
+    // --------------------------------------------------------------- shared
+
+    @Operation(summary = "Exclui um comentario (autor, dono do conteudo ou admin)")
     @DeleteMapping("/api/v1/comments/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id,
                                        @AuthenticationPrincipal AuthenticatedUser principal) {
         commentService.delete(id, principal.user());
         return ResponseEntity.noContent().build();
     }
+
+    // --------------------------------------------------------- course bans
 
     @Operation(summary = "Impede um usuario de comentar no curso (apenas o dono)")
     @PostMapping("/api/v1/courses/{courseId}/bans/{userId}")

@@ -3,6 +3,8 @@ package com.coursemaker.domain.converter;
 import com.coursemaker.domain.enums.BlockType;
 import com.coursemaker.domain.enums.CourseStatus;
 import com.coursemaker.domain.enums.CourseVisibility;
+import com.coursemaker.domain.enums.EntityKind;
+import com.coursemaker.domain.enums.NotificationType;
 import com.coursemaker.domain.enums.UserRole;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
@@ -66,6 +68,32 @@ public final class EnumConverters {
         @Override
         public UserRole convertToEntityAttribute(String dbData) {
             return UserRole.from(dbData);
+        }
+    }
+
+    @Converter(autoApply = true)
+    public static class NotificationTypeConverter implements AttributeConverter<NotificationType, String> {
+        @Override
+        public String convertToDatabaseColumn(NotificationType attribute) {
+            return attribute == null ? null : attribute.getValue();
+        }
+
+        @Override
+        public NotificationType convertToEntityAttribute(String dbData) {
+            return NotificationType.from(dbData);
+        }
+    }
+
+    @Converter(autoApply = true)
+    public static class EntityKindConverter implements AttributeConverter<EntityKind, String> {
+        @Override
+        public String convertToDatabaseColumn(EntityKind attribute) {
+            return attribute == null ? null : attribute.getValue();
+        }
+
+        @Override
+        public EntityKind convertToEntityAttribute(String dbData) {
+            return EntityKind.from(dbData);
         }
     }
 }

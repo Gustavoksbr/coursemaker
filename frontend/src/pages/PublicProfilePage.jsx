@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, CalendarDays, GraduationCap, Waypoints } from 'lucide-react'
+import { BookOpen, CalendarDays, GraduationCap, Mail, Waypoints } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { CourseCard } from '@/components/course/CourseCard'
 import { PostCard } from '@/components/post/PostCard'
@@ -15,7 +15,8 @@ import { cn } from '@/lib/cn'
 
 export default function PublicProfilePage() {
   const { nickname } = useParams()
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [tab, setTab] = useState('courses')
 
   const { data: profile, isPending, isError, error, refetch } = useQuery({
@@ -66,10 +67,24 @@ export default function PublicProfilePage() {
           </p>
         </div>
 
-        {isMe && (
+        {isMe ? (
           <Link to="/profile" className="btn-secondary shrink-0">
             Editar perfil
           </Link>
+        ) : (
+          <button
+            type="button"
+            className="btn-secondary shrink-0"
+            onClick={() => {
+              if (!isAuthenticated) {
+                navigate('/login')
+                return
+              }
+              navigate(`/mensagens/${profile.nickname}`)
+            }}
+          >
+            <Mail size={16} /> Enviar mensagem
+          </button>
         )}
       </header>
 

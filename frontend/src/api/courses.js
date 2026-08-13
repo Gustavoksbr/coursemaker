@@ -8,7 +8,6 @@ export const courseKeys = {
   byId: (id) => ['courses', 'id', id],
   students: (courseId) => ['courses', courseId, 'students'],
   progress: (courseId) => ['courses', courseId, 'progress'],
-  comments: (courseId) => ['courses', courseId, 'comments'],
   bans: (courseId) => ['courses', courseId, 'bans'],
   inProgress: ['enrollments', 'in-progress'],
   completed: ['enrollments', 'completed'],
@@ -198,20 +197,8 @@ export async function uncompleteLesson(lessonId) {
 }
 
 // ------------------------------------------------------------------ engagement
-
-export async function listComments(courseId) {
-  const { data } = await api.get(`/courses/${courseId}/comments`)
-  return data
-}
-
-export async function createComment(courseId, payload) {
-  const { data } = await api.post(`/courses/${courseId}/comments`, payload)
-  return data
-}
-
-export async function deleteComment(id) {
-  await api.delete(`/comments/${id}`)
-}
+// Comment list/create/delete moved to '@/api/comments' (kind-aware: course/post/trilha).
+// Banning a commenter stays course-only, so it lives here.
 
 export async function listBans(courseId) {
   const { data } = await api.get(`/courses/${courseId}/bans`)

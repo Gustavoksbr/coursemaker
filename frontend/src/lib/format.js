@@ -9,6 +9,28 @@ export function formatDate(iso) {
   return dateFormatter.format(new Date(iso))
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+
+/** "13 de ago. de 2026, 14:05" - full precision, for a tooltip over a message timestamp. */
+export function formatDateTime(iso) {
+  if (!iso) return ''
+  return dateTimeFormatter.format(new Date(iso))
+}
+
+const timeFormatter = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' })
+
+/** "14:05" - short clock time, shown inline next to each message. */
+export function formatTime(iso) {
+  if (!iso) return ''
+  return timeFormatter.format(new Date(iso))
+}
+
 const RELATIVE_UNITS = [
   { limit: 60, unit: 'second', divisor: 1 },
   { limit: 3600, unit: 'minute', divisor: 60 },

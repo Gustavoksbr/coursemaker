@@ -10,6 +10,7 @@ import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { BlockList } from '@/components/blocks/BlockRenderer'
+import { CommentThread } from '@/components/comments/CommentThread'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useToast } from '@/context/ToastContext'
@@ -114,6 +115,10 @@ export default function PostViewPage() {
         )}
 
         <RelatedItemsSection kind="post" contentId={post.id} />
+
+        {!detail.requiresPassword && (
+          <CommentThread kind="post" contentId={post.id} isOwner={detail.isOwner} />
+        )}
       </article>
 
       <ChatWidget kind="post" contentId={post.id} />

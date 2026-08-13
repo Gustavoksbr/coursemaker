@@ -1,9 +1,40 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Bell, BookOpen, Bookmark, GraduationCap, LogOut, Menu, PenSquare, User as UserIcon, Waypoints, X } from 'lucide-react'
+import {
+  Bell,
+  BookOpen,
+  Bookmark,
+  CheckCheck,
+  GraduationCap,
+  LogOut,
+  Mail,
+  Menu,
+  MessageSquare,
+  PenSquare,
+  User as UserIcon,
+  UserPlus,
+  Waypoints,
+  X,
+} from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useMessaging } from '@/context/MessagingContext'
+import { useNotifications } from '@/context/NotificationContext'
 import { Avatar } from '@/components/ui/Avatar'
+import { Spinner } from '@/components/ui/Feedback'
 import { cn } from '@/lib/cn'
+import { formatRelative } from '@/lib/format'
+
+const NOTIFICATION_ICON = {
+  enrollment: UserPlus,
+  trilha_follow: Waypoints,
+  comment: MessageSquare,
+}
+
+const NOTIFICATION_TEXT = {
+  enrollment: 'se matriculou em',
+  trilha_follow: 'comecou a seguir',
+  comment: 'comentou em',
+}
 
 const NAV_LINKS = [
   { to: '/cursos', label: 'Cursos', icon: GraduationCap },
@@ -15,6 +46,8 @@ const LIBRARY_LINK = { to: '/biblioteca', label: 'Biblioteca', icon: Bookmark }
 
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth()
+  const { notifications, loading: notificationsLoading, unreadCount, markRead, markAllRead } = useNotifications()
+  const { unreadCount: messagesUnreadCount } = useMessaging()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -79,30 +112,106 @@ export function Navbar() {
         <div className="ml-auto flex items-center gap-2">
           {isAuthenticated ? (
             <>
+              <Link
+                to="/mensagens"
+                className="btn-ghost relative px-2"
+                aria-label="Mensagens"
+                title="Mensagens"
+              >
+                <Mail size={18} />
+                {messagesUnreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-white">
+                    {messagesUnreadCount > 9 ? '9+' : messagesUnreadCount}
+                  </span>
+                )}
+              </Link>
+
               <div className="relative" ref={notificationsRef}>
                 <button
                   type="button"
                   onClick={() => setNotificationsOpen((open) => !open)}
-                  className="btn-ghost px-2"
+                  className="btn-ghost relative px-2"
                   aria-haspopup="menu"
                   aria-expanded={notificationsOpen}
                   aria-label="Notificacoes"
                   title="Notificacoes"
                 >
                   <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-white">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </button>
 
                 {notificationsOpen && (
                   <div
                     role="menu"
-                    className="absolute right-0 mt-2 w-72 animate-slide-up overflow-hidden rounded-lg border border-slate-700 bg-slate-800 shadow-xl"
+                    className="absolute right-0 mt-2 w-80 animate-slide-up overflow-hidden rounded-lg border border-slate-700 bg-slate-800 shadow-xl"
                   >
-                    <div className="border-b border-slate-700 px-4 py-3">
+                    <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
                       <p className="text-sm font-semibold text-slate-100">Notificacoes</p>
+                      {notifications.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => markAllRead()}
+                          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-brand-400"
+                        >
+                          <CheckCheck size={13} /> Marcar tudo como lido
+                        </button>
+                      )}
                     </div>
-                    <p className="px-4 py-6 text-center text-sm text-slate-500">
-                      Sua caixa de mensagens esta vazia.
-                    </p>
+
+                    <div className="max-h-96 overflow-y-auto">
+                      {notificationsLoading ? (
+                        <div className="flex justify-center py-6">
+                          <Spinner />
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <p className="px-4 py-6 text-center text-sm text-slate-500">
+                          Sua caixa de mensagens esta vazia.
+                        </p>
+                      ) : (
+                        <ul>
+                          {notifications.map((notification) => {
+                            const Icon = NOTIFICATION_ICON[notification.type] ?? Bell
+                            return (
+                              <li key={notification.id}>
+                                <Link
+                                  to={notification.entityLink}
+                                  role="menuitem"
+                                  onClick={() => {
+                                    if (!notification.read) markRead(notification.id)
+                                    setNotificationsOpen(false)
+                                  }}
+                                  className={cn(
+                                    'flex items-start gap-3 border-b border-slate-700/60 px-4 py-3 text-sm hover:bg-slate-700/50',
+                                    !notification.read && 'bg-brand-500/5',
+                                  )}
+                                >
+                                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-700 text-brand-400">
+                                    <Icon size={15} />
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block text-slate-200">
+                                      <span className="font-semibold">{notification.actor.name}</span>{' '}
+                                      {NOTIFICATION_TEXT[notification.type]}{' '}
+                                      <span className="font-medium text-slate-300">{notification.entityTitle}</span>
+                                    </span>
+                                    <time dateTime={notification.createdAt} className="mt-0.5 block text-xs text-slate-500">
+                                      {formatRelative(notification.createdAt)}
+                                    </time>
+                                  </span>
+                                  {!notification.read && (
+                                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-400" />
+                                  )}
+                                </Link>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

@@ -9,6 +9,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // sockjs-client (used by the notification WebSocket) references the Node global `global`,
+  // which the browser does not have - polyfill it to globalThis so the SPA does not crash on load.
+  define: {
+    global: 'globalThis',
+  },
   server: {
     port: 5173,
   },

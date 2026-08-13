@@ -15,6 +15,8 @@ import TrilhaListPage from '@/pages/TrilhaListPage'
 import TrilhaViewPage from '@/pages/TrilhaViewPage'
 import LibraryPage from '@/pages/LibraryPage'
 import LibraryFolderPage from '@/pages/LibraryFolderPage'
+import ConversationListPage from '@/pages/ConversationListPage'
+import MessageThreadPage from '@/pages/MessageThreadPage'
 import ProfilePage from '@/pages/ProfilePage'
 import PublicProfilePage from '@/pages/PublicProfilePage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -71,6 +73,15 @@ const router = createBrowserRouter([
         // a nickname the way creating a course/post/trilha does.
         element: <ProtectedRoute requireNickname={false} />,
         children: [{ path: '/biblioteca/pastas/:folderId', element: <LibraryFolderPage /> }],
+      },
+
+      {
+        // Same reasoning: a DM conversation isn't content you publish under your own nickname.
+        element: <ProtectedRoute requireNickname={false} />,
+        children: [
+          { path: '/mensagens', element: <ConversationListPage /> },
+          { path: '/mensagens/:nickname', element: <MessageThreadPage /> },
+        ],
       },
 
       { path: '*', element: <NotFoundPage /> },

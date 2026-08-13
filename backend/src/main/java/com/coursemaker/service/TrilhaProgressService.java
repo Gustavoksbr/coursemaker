@@ -7,6 +7,8 @@ import com.coursemaker.domain.entity.TrilhaEnrollment;
 import com.coursemaker.domain.entity.TrilhaItem;
 import com.coursemaker.domain.entity.TrilhaItemCompletion;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.domain.enums.EntityKind;
+import com.coursemaker.domain.enums.NotificationType;
 import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaProgressResponse;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import com.coursemaker.repository.TrilhaEnrollmentRepository;
@@ -32,6 +34,7 @@ public class TrilhaProgressService {
     private final TrilhaItemCompletionRepository completionRepository;
     private final TrilhaItemRepository trilhaItemRepository;
     private final TrilhaService trilhaService;
+    private final NotificationService notificationService;
 
     @Transactional
     public void enroll(UUID trilhaId, User user) {
@@ -39,6 +42,9 @@ public class TrilhaProgressService {
         UserTrilhaId key = new UserTrilhaId(user.getId(), trilha.getId());
         if (!enrollmentRepository.existsById(key)) {
             enrollmentRepository.save(TrilhaEnrollment.of(user.getId(), trilha.getId()));
+            notificationService.notify(trilha.getOwner(), user, NotificationType.TRILHA_FOLLOW, EntityKind.TRILHA,
+                    trilha.getId(), trilha.getTitle(),
+                    "/trilhas/" + trilha.getOwner().getNickname() + "/" + trilha.getSlug());
         }
     }
 

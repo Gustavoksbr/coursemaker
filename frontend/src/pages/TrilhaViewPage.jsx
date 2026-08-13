@@ -9,6 +9,7 @@ import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { TrilhaItemsList } from '@/components/trilha/TrilhaItemsList'
+import { CommentThread } from '@/components/comments/CommentThread'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import {
@@ -209,6 +210,8 @@ export default function TrilhaViewPage() {
           onToggleComplete={toggleComplete}
         />
       </section>
+
+      <CommentThread kind="trilha" contentId={trilha.id} isOwner={detail.isOwner} />
     </div>
   )
 }

@@ -74,6 +74,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/me/completed").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/enrollments/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/enrollments/me/*").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/notifications",
+                                "/api/v1/notifications/unread-count").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/notifications/*/read",
+                                "/api/v1/notifications/read-all").authenticated()
+
+                        // --- Mensagens ---
+                        .requestMatchers(HttpMethod.GET, "/api/v1/messages/conversations",
+                                "/api/v1/messages/unread-count", "/api/v1/messages/with/*").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/messages/with/*").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/messages/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/messages/*").authenticated()
+
+                        // --- WebSocket handshake: STOMP auth happens at the CONNECT-frame level
+                        // (see StompAuthChannelInterceptor), not via the Authorization header, since a
+                        // browser cannot attach custom headers to a WS/SockJS handshake request. ---
+                        .requestMatchers("/ws/**").permitAll()
 
                         // --- Public reads (the service layer still hides drafts and private content) ---
                         .requestMatchers(HttpMethod.GET,

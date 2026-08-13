@@ -4,6 +4,8 @@ import com.coursemaker.domain.entity.CompositeIds.UserCourseId;
 import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.Enrollment;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.domain.enums.EntityKind;
+import com.coursemaker.domain.enums.NotificationType;
 import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.course.CourseDtos.StudentResponse;
 import com.coursemaker.dto.enrollment.EnrollmentDtos.EnrollmentStatusResponse;
@@ -43,6 +45,7 @@ public class EnrollmentService {
     private final CourseMapper courseMapper;
     private final LessonRepository lessonRepository;
     private final LessonCompletionRepository lessonCompletionRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public EnrollmentStatusResponse enroll(UUID courseId, String password, User user) {
@@ -70,6 +73,9 @@ public class EnrollmentService {
         UserCourseId key = new UserCourseId(user.getId(), courseId);
         if (!enrollmentRepository.existsById(key)) {
             enrollmentRepository.save(Enrollment.of(user.getId(), courseId));
+            notificationService.notify(course.getOwner(), user, NotificationType.ENROLLMENT, EntityKind.COURSE,
+                    course.getId(), course.getName(),
+                    "/courses/" + course.getOwner().getNickname() + "/" + course.getSlug());
         }
         return status(courseId, user);
     }
