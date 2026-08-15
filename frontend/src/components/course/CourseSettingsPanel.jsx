@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronUp, Eye, EyeOff, Save, Trash2, Users } from 'lucide-react'
+import { ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
@@ -8,88 +8,30 @@ import { ConfirmModal } from '@/components/ui/Modal'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { useToast } from '@/context/ToastContext'
 import { courseKeys, deleteCourse, updateCourse } from '@/api/courses'
-import { errorMessage, fieldErrors } from '@/lib/api'
+import { errorMessage } from '@/lib/api'
 import { LIMITS, STATUS, VISIBILITY } from '@/lib/constants'
 
 /**
  * Everything about the course itself - a full-width card above the curriculum, mirroring how
  * PostEditorPage lays out its own settings section above the block editor.
+ *
+ * `draft` (from `useCourseSettingsDraft`) owns the form values and dirty/save state: this panel is
+ * a controlled view over it, so the page's single "Salvar alteracoes" button covers settings too,
+ * instead of settings having their own separate save button.
  */
-export function CourseSettingsPanel({
-  course,
-  landingDescription,
-  courseQueryKey,
-  onDeleted,
-  onOpenStudents,
-  onDraftChange,
-}) {
+export function CourseSettingsPanel({ course, draft, courseQueryKey, onDeleted, onOpenStudents }) {
   const queryClient = useQueryClient()
   const toast = useToast()
-  const [errors, setErrors] = useState({})
   const [confirmDelete, setConfirmDelete] = useState(false)
   // Collapsed by default: these fields are set once and rarely touched again, unlike the lessons below.
   const [expanded, setExpanded] = useState(false)
 
-  const [form, setForm] = useState(() => ({
-    name: course.name,
-    description: course.description ?? '',
-    landingDescription: landingDescription ?? '',
-    thumbnailUrl: course.thumbnailUrl ?? '',
-    visibility: course.visibility,
-    categories: course.categories ?? [],
-    progressEnabled: course.progressEnabled,
-    password: '',
-  }))
-
-  // Adopt server state after a save or a refetch elsewhere.
-  useEffect(() => {
-    setForm((current) => ({
-      ...current,
-      name: course.name,
-      description: course.description ?? '',
-      landingDescription: landingDescription ?? '',
-      thumbnailUrl: course.thumbnailUrl ?? '',
-      visibility: course.visibility,
-      categories: course.categories ?? [],
-      progressEnabled: course.progressEnabled,
-    }))
-  }, [course, landingDescription])
-
-  // Mirrors the current form up to the editor page, so "preview" can show unsaved edits without
-  // lifting this whole form out of the panel.
-  useEffect(() => {
-    onDraftChange?.(form)
-  }, [form, onDraftChange])
+  const { form, errors, setField } = draft
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: courseQueryKey })
     queryClient.invalidateQueries({ queryKey: courseKeys.all })
   }
-
-  const { mutate: save, isPending: saving } = useMutation({
-    mutationFn: () =>
-      updateCourse(course.id, {
-        name: form.name.trim(),
-        description: form.description,
-        landingDescription: form.landingDescription,
-        thumbnailUrl: form.thumbnailUrl,
-        visibility: form.visibility,
-        categories: form.categories,
-        progressEnabled: form.progressEnabled,
-        // Only send a password when one was typed: the API reads null as "keep the current one".
-        password: form.password.trim() ? form.password : undefined,
-      }),
-    onSuccess: () => {
-      setErrors({})
-      setForm((current) => ({ ...current, password: '' }))
-      invalidate()
-      toast.success('Configuracoes salvas.')
-    },
-    onError: (error) => {
-      setErrors(fieldErrors(error))
-      toast.error(errorMessage(error, 'Nao foi possivel salvar as configuracoes.'))
-    },
-  })
 
   const { mutate: toggleStatus, isPending: togglingStatus } = useMutation({
     mutationFn: () =>
@@ -149,7 +91,7 @@ export function CourseSettingsPanel({
                 id="settings-name"
                 maxLength={LIMITS.NAME}
                 value={form.name}
-                onChange={(event) => setForm({ ...form, name: event.target.value })}
+                onChange={(event) => setField({ name: event.target.value })}
                 invalid={Boolean(errors.name)}
               />
             </Field>
@@ -158,7 +100,7 @@ export function CourseSettingsPanel({
               <Select
                 id="settings-visibility"
                 value={form.visibility}
-                onChange={(event) => setForm({ ...form, visibility: event.target.value })}
+                onChange={(event) => setField({ visibility: event.target.value })}
               >
                 <option value={VISIBILITY.PUBLIC}>Publico</option>
                 <option value={VISIBILITY.PRIVATE}>Privado (senha)</option>
@@ -182,7 +124,7 @@ export function CourseSettingsPanel({
                 type="password"
                 maxLength={LIMITS.PASSWORD}
                 value={form.password}
-                onChange={(event) => setForm({ ...form, password: event.target.value })}
+                onChange={(event) => setField({ password: event.target.value })}
                 placeholder="••••••••"
               />
             </Field>
@@ -194,7 +136,7 @@ export function CourseSettingsPanel({
               rows={2}
               maxLength={LIMITS.DESCRIPTION}
               value={form.description}
-              onChange={(event) => setForm({ ...form, description: event.target.value })}
+              onChange={(event) => setField({ description: event.target.value })}
               placeholder="Aparece nos cards do catalogo."
             />
           </Field>
@@ -210,7 +152,7 @@ export function CourseSettingsPanel({
               rows={4}
               maxLength={LIMITS.LANDING_DESCRIPTION}
               value={form.landingDescription}
-              onChange={(event) => setForm({ ...form, landingDescription: event.target.value })}
+              onChange={(event) => setField({ landingDescription: event.target.value })}
             />
           </Field>
 
@@ -218,14 +160,14 @@ export function CourseSettingsPanel({
             <Field label="Thumbnail" error={errors.thumbnailUrl} hint="Proporcao 16:9.">
               <ImageUploadField
                 value={form.thumbnailUrl}
-                onChange={(thumbnailUrl) => setForm({ ...form, thumbnailUrl })}
+                onChange={(thumbnailUrl) => setField({ thumbnailUrl })}
               />
             </Field>
 
             <Field label="Categorias">
               <CategoryInput
                 value={form.categories}
-                onChange={(categories) => setForm({ ...form, categories })}
+                onChange={(categories) => setField({ categories })}
               />
             </Field>
           </div>
@@ -234,14 +176,8 @@ export function CourseSettingsPanel({
             label="Acompanhamento de progresso"
             description="Alunos podem marcar licoes como concluidas."
             checked={form.progressEnabled}
-            onChange={(event) => setForm({ ...form, progressEnabled: event.target.checked })}
+            onChange={(event) => setField({ progressEnabled: event.target.checked })}
           />
-
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-700 pt-4">
-            <Button loading={saving} onClick={() => save()}>
-              <Save size={16} /> Salvar configuracoes
-            </Button>
-          </div>
         </div>
       )}
 

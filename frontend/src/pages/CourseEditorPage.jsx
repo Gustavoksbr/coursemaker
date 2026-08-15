@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { UnsavedChangesPrompt } from '@/components/ui/UnsavedChangesPrompt'
+import { useCourseSettingsDraft } from '@/hooks/useCourseSettingsDraft'
 import { useCurriculumDraft } from '@/hooks/useCurriculumDraft'
 import { useRelatedItemsDraft } from '@/hooks/useRelatedItemsDraft'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
@@ -62,12 +63,12 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
   const toast = useToast()
   const [studentsOpen, setStudentsOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [settingsDraft, setSettingsDraft] = useState(null)
 
   const course = detail.summary
   const curriculumDraft = useCurriculumDraft(course.id, detail.modules)
   const relatedDraft = useRelatedItemsDraft('course', course.id)
-  const isDirty = curriculumDraft.isDirty || relatedDraft.isDirty
+  const settingsDraft = useCourseSettingsDraft(course, detail.landingDescription, courseQueryKey)
+  const isDirty = curriculumDraft.isDirty || relatedDraft.isDirty || settingsDraft.isDirty
   const blocker = useUnsavedChangesGuard(isDirty)
 
   const activeLessonId = searchParams.get('lesson')
@@ -92,10 +93,14 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
     .flatMap((module) => module.lessons.map((lesson) => ({ ...lesson, moduleTitle: module.title })))
     .find((lesson) => lesson.id === activeLessonId)
 
-  // Curriculum and related items are independent drafts on this page, so one failing should not
-  // block the other from committing - each gets its own outcome/toast.
+  // Curriculum, related items and settings are independent drafts on this page, so one failing
+  // should not block the others from committing - each gets its own outcome/toast.
   const handleSave = async () => {
-    const [curriculumResult, relatedResult] = await Promise.allSettled([curriculumDraft.flush(), relatedDraft.flush()])
+    const [curriculumResult, relatedResult, settingsResult] = await Promise.allSettled([
+      curriculumDraft.flush(),
+      relatedDraft.flush(),
+      settingsDraft.flush(),
+    ])
 
     if (curriculumResult.status === 'fulfilled') {
       const { lessonIdRemap } = curriculumResult.value
@@ -123,7 +128,13 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
       toast.error(errorMessage(error, label ? `Nao foi possivel salvar ${label}.` : 'Nao foi possivel salvar os relacionados.'))
     }
 
-    if (curriculumResult.status === 'fulfilled' && relatedResult.status === 'fulfilled') {
+    if (settingsResult.status === 'rejected') {
+      const error = settingsResult.reason
+      const label = error.draftStepLabel
+      toast.error(errorMessage(error, label ? `Nao foi possivel salvar ${label}.` : 'Nao foi possivel salvar as configuracoes.'))
+    }
+
+    if (curriculumResult.status === 'fulfilled' && relatedResult.status === 'fulfilled' && settingsResult.status === 'fulfilled') {
       toast.success('Alteracoes salvas.')
     }
   }
@@ -148,7 +159,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
           <Button
             onClick={handleSave}
             disabled={!isDirty}
-            loading={curriculumDraft.isFlushing || relatedDraft.isFlushing}
+            loading={curriculumDraft.isFlushing || relatedDraft.isFlushing || settingsDraft.isFlushing}
             title={isDirty ? undefined : 'Faca uma alteracao para poder salvar'}
           >
             <Save size={16} /> Salvar alteracoes
@@ -172,11 +183,10 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
 
         <CourseSettingsPanel
           course={course}
-          landingDescription={detail.landingDescription}
+          draft={settingsDraft}
           courseQueryKey={courseQueryKey}
           onDeleted={onDeleted}
           onOpenStudents={() => setStudentsOpen(true)}
-          onDraftChange={setSettingsDraft}
         />
 
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
@@ -240,16 +250,8 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
 
       {previewOpen && (
         <CoursePreview
-          course={{
-            ...course,
-            name: settingsDraft?.name ?? course.name,
-            description: settingsDraft?.description ?? course.description,
-            thumbnailUrl: settingsDraft?.thumbnailUrl ?? course.thumbnailUrl,
-            visibility: settingsDraft?.visibility ?? course.visibility,
-            categories: settingsDraft?.categories ?? course.categories,
-            progressEnabled: settingsDraft?.progressEnabled ?? course.progressEnabled,
-          }}
-          landingDescription={settingsDraft?.landingDescription ?? detail.landingDescription}
+          course={{ ...course, ...settingsDraft.form }}
+          landingDescription={settingsDraft.form.landingDescription}
           modules={curriculumDraft.modules}
           curriculumDraft={curriculumDraft}
           onClose={() => setPreviewOpen(false)}

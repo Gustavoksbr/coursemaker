@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff, Save, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
@@ -8,62 +8,25 @@ import { ConfirmModal } from '@/components/ui/Modal'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { useToast } from '@/context/ToastContext'
 import { deleteTrilha, trilhaKeys, updateTrilha } from '@/api/trilhas'
-import { errorMessage, fieldErrors } from '@/lib/api'
+import { errorMessage } from '@/lib/api'
 import { LIMITS, STATUS } from '@/lib/constants'
 
-/** Everything about the trilha itself, mirroring CourseSettingsPanel. */
-export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted, onDraftChange }) {
+/**
+ * Everything about the trilha itself, mirroring CourseSettingsPanel. `draft` (from
+ * `useTrilhaSettingsDraft`) owns the form values and dirty/save state: this panel is a controlled
+ * view over it, so the page's single "Salvar estrutura" button covers settings too.
+ */
+export function TrilhaSettingsPanel({ trilha, draft, trilhaQueryKey, onDeleted }) {
   const queryClient = useQueryClient()
   const toast = useToast()
-  const [errors, setErrors] = useState({})
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const [form, setForm] = useState(() => ({
-    title: trilha.title,
-    description: trilha.description ?? '',
-    thumbnailUrl: trilha.thumbnailUrl ?? '',
-    categories: trilha.categories ?? [],
-  }))
-
-  useEffect(() => {
-    setForm((current) => ({
-      ...current,
-      title: trilha.title,
-      description: trilha.description ?? '',
-      thumbnailUrl: trilha.thumbnailUrl ?? '',
-      categories: trilha.categories ?? [],
-    }))
-  }, [trilha])
-
-  // Mirrors the current form up to the editor page, so "preview" can show unsaved edits without
-  // lifting this whole form out of the panel.
-  useEffect(() => {
-    onDraftChange?.(form)
-  }, [form, onDraftChange])
+  const { form, errors, setField } = draft
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: trilhaQueryKey })
     queryClient.invalidateQueries({ queryKey: trilhaKeys.all })
   }
-
-  const { mutate: save, isPending: saving } = useMutation({
-    mutationFn: () =>
-      updateTrilha(trilha.id, {
-        title: form.title.trim(),
-        description: form.description,
-        thumbnailUrl: form.thumbnailUrl,
-        categories: form.categories,
-      }),
-    onSuccess: () => {
-      setErrors({})
-      invalidate()
-      toast.success('Configuracoes salvas.')
-    },
-    onError: (error) => {
-      setErrors(fieldErrors(error))
-      toast.error(errorMessage(error, 'Nao foi possivel salvar as configuracoes.'))
-    },
-  })
 
   const { mutate: toggleStatus, isPending: togglingStatus } = useMutation({
     mutationFn: () =>
@@ -96,7 +59,7 @@ export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted, onDraft
           id="trilha-settings-title"
           maxLength={LIMITS.NAME}
           value={form.title}
-          onChange={(event) => setForm({ ...form, title: event.target.value })}
+          onChange={(event) => setField({ title: event.target.value })}
           invalid={Boolean(errors.title)}
         />
       </Field>
@@ -107,7 +70,7 @@ export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted, onDraft
           rows={3}
           maxLength={LIMITS.DESCRIPTION}
           value={form.description}
-          onChange={(event) => setForm({ ...form, description: event.target.value })}
+          onChange={(event) => setField({ description: event.target.value })}
           placeholder="Do que trata essa sequencia de cursos e posts?"
         />
       </Field>
@@ -116,12 +79,12 @@ export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted, onDraft
         <Field label="Thumbnail" error={errors.thumbnailUrl} hint="Proporcao 16:9.">
           <ImageUploadField
             value={form.thumbnailUrl}
-            onChange={(thumbnailUrl) => setForm({ ...form, thumbnailUrl })}
+            onChange={(thumbnailUrl) => setField({ thumbnailUrl })}
           />
         </Field>
 
         <Field label="Categorias">
-          <CategoryInput value={form.categories} onChange={(categories) => setForm({ ...form, categories })} />
+          <CategoryInput value={form.categories} onChange={(categories) => setField({ categories })} />
         </Field>
       </div>
 
@@ -144,9 +107,6 @@ export function TrilhaSettingsPanel({ trilha, trilhaQueryKey, onDeleted, onDraft
               <Eye size={16} /> Publicar trilha
             </>
           )}
-        </Button>
-        <Button loading={saving} onClick={() => save()}>
-          <Save size={16} /> Salvar configuracoes
         </Button>
       </div>
 

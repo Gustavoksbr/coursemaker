@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { UnsavedChangesPrompt } from '@/components/ui/UnsavedChangesPrompt'
+import { useTrilhaSettingsDraft } from '@/hooks/useTrilhaSettingsDraft'
 import { useTrilhaStructureDraft } from '@/hooks/useTrilhaStructureDraft'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { useToast } from '@/context/ToastContext'
@@ -55,22 +56,36 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [settingsDraft, setSettingsDraft] = useState(null)
   const trilha = detail.summary
   const structureDraft = useTrilhaStructureDraft(trilha.id, detail.structure)
-  const blocker = useUnsavedChangesGuard(structureDraft.isDirty)
+  const settingsDraft = useTrilhaSettingsDraft(trilha, trilhaQueryKey)
+  const isDirty = structureDraft.isDirty || settingsDraft.isDirty
+  const blocker = useUnsavedChangesGuard(isDirty)
 
+  // Structure and settings are independent drafts on this page, so one failing should not block
+  // the other from committing - each gets its own outcome/toast.
   const handleSave = async () => {
-    try {
-      await structureDraft.flush()
+    const [structureResult, settingsResult] = await Promise.allSettled([structureDraft.flush(), settingsDraft.flush()])
+
+    if (structureResult.status === 'fulfilled') {
       // The public trilha page (and this editor's own initial load) share this exact query key -
       // without invalidating it here, navigating to the trilha page right after saving would show
       // whatever was cached from before this save, not what was just published.
       queryClient.invalidateQueries({ queryKey: trilhaQueryKey })
-      toast.success('Estrutura da trilha salva.')
-    } catch (error) {
+    } else {
+      const error = structureResult.reason
       const label = error.draftStepLabel
       toast.error(errorMessage(error, label ? `Nao foi possivel salvar ${label}.` : 'Nao foi possivel salvar a estrutura.'))
+    }
+
+    if (settingsResult.status === 'rejected') {
+      const error = settingsResult.reason
+      const label = error.draftStepLabel
+      toast.error(errorMessage(error, label ? `Nao foi possivel salvar ${label}.` : 'Nao foi possivel salvar as configuracoes.'))
+    }
+
+    if (structureResult.status === 'fulfilled' && settingsResult.status === 'fulfilled') {
+      toast.success('Alteracoes salvas.')
     }
   }
 
@@ -88,11 +103,11 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
 
         <Button
           onClick={handleSave}
-          disabled={!structureDraft.isDirty}
-          loading={structureDraft.isFlushing}
-          title={structureDraft.isDirty ? undefined : 'Faca uma alteracao para poder salvar'}
+          disabled={!isDirty}
+          loading={structureDraft.isFlushing || settingsDraft.isFlushing}
+          title={isDirty ? undefined : 'Faca uma alteracao para poder salvar'}
         >
-          <Save size={16} /> Salvar estrutura
+          <Save size={16} /> Salvar alteracoes
         </Button>
 
         <button type="button" onClick={() => setPreviewOpen(true)} className="btn-secondary text-xs">
@@ -112,9 +127,9 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
 
       <TrilhaSettingsPanel
         trilha={trilha}
+        draft={settingsDraft}
         trilhaQueryKey={trilhaQueryKey}
         onDeleted={onDeleted}
-        onDraftChange={setSettingsDraft}
       />
 
       <TrilhaStructureEditor draft={structureDraft} />
@@ -122,13 +137,7 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
 
       {previewOpen && (
         <TrilhaPreview
-          trilha={{
-            ...trilha,
-            title: settingsDraft?.title ?? trilha.title,
-            description: settingsDraft?.description ?? trilha.description,
-            thumbnailUrl: settingsDraft?.thumbnailUrl ?? trilha.thumbnailUrl,
-            categories: settingsDraft?.categories ?? trilha.categories,
-          }}
+          trilha={{ ...trilha, ...settingsDraft.form }}
           structureDraft={structureDraft}
           onClose={() => setPreviewOpen(false)}
         />
