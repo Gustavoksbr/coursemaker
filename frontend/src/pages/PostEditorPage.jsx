@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff, Save, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, Save, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
@@ -13,10 +13,10 @@ import { BlockListEditor } from '@/components/blocks/BlockListEditor'
 import { PostPreview } from '@/components/post/PostPreview'
 import { RelatedItemsEditor } from '@/components/related/RelatedItemsEditor'
 import { UnsavedChangesPrompt } from '@/components/ui/UnsavedChangesPrompt'
+import { useBlocksDraft } from '@/hooks/useBlocksDraft'
 import { useRelatedItemsDraft } from '@/hooks/useRelatedItemsDraft'
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { useToast } from '@/context/ToastContext'
-import { blockKeys } from '@/api/shared'
 import {
   createPost,
   createPostBlock,
@@ -63,8 +63,10 @@ export default function PostEditorPage() {
   })
 
   const isNew = !id
+  const blocksDraft = useBlocksDraft(id, postBlockApi)
   const relatedDraft = useRelatedItemsDraft('post', id)
-  const blocker = useUnsavedChangesGuard(relatedDraft.isDirty)
+  const contentDirty = blocksDraft.isDirty || relatedDraft.isDirty
+  const blocker = useUnsavedChangesGuard(contentDirty)
 
   const { data: detail, isPending, isError, error, refetch } = useQuery({
     queryKey: postKeys.byId(id),
@@ -157,22 +159,36 @@ export default function PostEditorPage() {
   const needsPassword = form.visibility === VISIBILITY.PRIVATE
   const needsNewPassword = needsPassword && !detail?.hasPassword && !form.password.trim()
 
-  const handleSaveRelated = async () => {
-    try {
-      await relatedDraft.flush()
-      toast.success('Relacionados salvos.')
-    } catch (relatedError) {
-      const label = relatedError.draftStepLabel
-      toast.error(
-        errorMessage(relatedError, label ? `Nao foi possivel salvar ${label}.` : 'Nao foi possivel salvar os relacionados.'),
-      )
+  // Blocks and related items both defer to the network only here - one click, one save, instead
+  // of a per-block confirm plus a separate "Salvar relacionados".
+  const handleSaveContent = async () => {
+    const [blocksResult, relatedResult] = await Promise.allSettled([blocksDraft.flush(), relatedDraft.flush()])
+
+    if (blocksResult.status === 'rejected') {
+      const error = blocksResult.reason
+      const label = error.draftStepLabel
+      toast.error(errorMessage(error, label ? `Nao foi possivel salvar ${label}.` : 'Nao foi possivel salvar o conteudo.'))
+    }
+    if (relatedResult.status === 'rejected') {
+      const error = relatedResult.reason
+      const label = error.draftStepLabel
+      toast.error(errorMessage(error, label ? `Nao foi possivel salvar ${label}.` : 'Nao foi possivel salvar os relacionados.'))
+    }
+    if (blocksResult.status === 'fulfilled') {
+      // The public post page (which embeds blocks in the same response) shares this query key -
+      // without invalidating it here, visiting it right after saving would show whatever was
+      // cached from before this save, not what was just published.
+      invalidate()
+    }
+    if (blocksResult.status === 'fulfilled' && relatedResult.status === 'fulfilled') {
+      toast.success('Alteracoes salvas.')
     }
   }
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-8 sm:px-6">
-      <header className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0">
+      <header className="sticky top-16 z-30 -mx-4 flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-slate-100">
             {isNew ? 'Novo post' : 'Editar post'}
           </h1>
@@ -190,8 +206,26 @@ export default function PostEditorPage() {
               visibility={post.visibility}
               featured={post.featured}
             />
-            <button type="button" onClick={() => setPreviewOpen(true)} className="btn-ghost ml-auto text-xs">
+            <Button
+              onClick={handleSaveContent}
+              disabled={!contentDirty}
+              loading={blocksDraft.isFlushing || relatedDraft.isFlushing}
+              title={contentDirty ? undefined : 'Faca uma alteracao para poder salvar'}
+            >
+              <Save size={16} /> Salvar alteracoes
+            </Button>
+            <button type="button" onClick={() => setPreviewOpen(true)} className="btn-ghost text-xs">
               <Eye size={14} /> Pre-visualizar
+            </button>
+
+            {/* Navigating away while dirty is already intercepted by useUnsavedChangesGuard's
+                blocker below, which shows the confirm prompt. */}
+            <button
+              type="button"
+              onClick={() => navigate(`/posts/${post.owner.nickname}/${post.slug}`)}
+              className="btn-ghost text-xs"
+            >
+              <X size={14} /> Cancelar alteracoes
             </button>
           </>
         )}
@@ -307,20 +341,12 @@ export default function PostEditorPage() {
             <h2 className="mb-4 text-lg font-bold text-slate-100">Conteudo</h2>
             <BlockListEditor
               parentId={id}
-              api={postBlockApi}
-              queryKey={blockKeys.post(id)}
+              draft={blocksDraft}
               emptyMessage="Adicione texto, codigo, imagens ou videos a este post."
             />
           </section>
 
-          <section className="space-y-3">
-            {relatedDraft.isDirty && (
-              <div className="flex justify-end">
-                <Button size="sm" onClick={handleSaveRelated} loading={relatedDraft.isFlushing}>
-                  <Save size={14} /> Salvar relacionados
-                </Button>
-              </div>
-            )}
+          <section>
             <RelatedItemsEditor kind="post" contentId={id} draft={relatedDraft} />
           </section>
         </>
@@ -339,7 +365,7 @@ export default function PostEditorPage() {
       {previewOpen && post && (
         <PostPreview
           post={{ ...post, ...form }}
-          postId={id}
+          blocks={blocksDraft.blocks}
           onClose={() => setPreviewOpen(false)}
         />
       )}

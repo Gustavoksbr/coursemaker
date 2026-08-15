@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Eye, Pencil, Save } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Eye, Pencil, Save, X } from 'lucide-react'
 import { CoursePreview } from '@/components/course/CoursePreview'
 import { CourseSettingsPanel } from '@/components/course/CourseSettingsPanel'
 import { CurriculumEditor } from '@/components/course/CurriculumEditor'
@@ -56,6 +56,8 @@ export default function CourseEditorPage() {
  * draft that never gets a second chance, since a reducer's lazy init only runs on mount.
  */
 function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
   const [studentsOpen, setStudentsOpen] = useState(false)
@@ -102,6 +104,10 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
       if (activeLessonId && lessonIdRemap[activeLessonId]) {
         selectLesson(lessonIdRemap[activeLessonId])
       }
+      // The public course page (and this editor's own initial load) share this exact query key -
+      // without invalidating it here, navigating to the course page right after saving would show
+      // whatever was cached from before this save, not what was just published.
+      queryClient.invalidateQueries({ queryKey: courseQueryKey })
     } else {
       const error = curriculumResult.reason
       if (activeLessonId && error.lessonIdRemap?.[activeLessonId]) {
@@ -125,7 +131,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
   return (
     <>
       <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
-        <header className="mb-6 flex flex-wrap items-center gap-3">
+        <header className="sticky top-16 z-30 -mx-4 mb-6 flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6">
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-bold text-slate-100">{course.name}</h1>
             <p className="truncate text-xs text-slate-500">
@@ -139,14 +145,28 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
             featured={course.featured}
           />
 
-          {isDirty && (
-            <Button onClick={handleSave} loading={curriculumDraft.isFlushing || relatedDraft.isFlushing}>
-              <Save size={16} /> Salvar alteracoes
-            </Button>
-          )}
+          <Button
+            onClick={handleSave}
+            disabled={!isDirty}
+            loading={curriculumDraft.isFlushing || relatedDraft.isFlushing}
+            title={isDirty ? undefined : 'Faca uma alteracao para poder salvar'}
+          >
+            <Save size={16} /> Salvar alteracoes
+          </Button>
 
           <button type="button" onClick={() => setPreviewOpen(true)} className="btn-secondary text-xs">
             <Eye size={14} /> Pre-visualizar
+          </button>
+
+          {/* Navigating away while dirty is already intercepted by useUnsavedChangesGuard's
+              blocker below, which shows the confirm prompt - so this only needs to ask for the
+              destination, not duplicate that confirmation logic. */}
+          <button
+            type="button"
+            onClick={() => navigate(`/courses/${course.owner.nickname}/${course.slug}`)}
+            className="btn-ghost text-xs"
+          >
+            <X size={14} /> Cancelar alteracoes
           </button>
         </header>
 
@@ -188,8 +208,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
                 <BlockListEditor
                   key={activeLesson.id}
                   parentId={activeLesson.id}
-                  api={curriculumDraft.blocksApiFor(activeLesson.id)}
-                  queryKey={curriculumDraft.blockQueryKeyFor(activeLesson.id)}
+                  draft={curriculumDraft.blocksDraftFor(activeLesson.id)}
                   emptyMessage="Adicione texto, codigo, imagens ou videos a esta licao."
                 />
               </div>

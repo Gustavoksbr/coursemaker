@@ -153,7 +153,7 @@ export default function CourseViewPage() {
         {detail.canViewContent && detail.modules.length > 0 && sidebarOpen && (
           <aside className="hidden w-72 shrink-0 border-r border-slate-800 lg:block">
             <div className="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto p-3">
-              {course.progressEnabled && detail.progress && (
+              {!detail.isOwner && course.progressEnabled && detail.progress && (
                 <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/60 p-3">
                   <ProgressBar
                     completed={detail.progress.completedLessons}
@@ -185,7 +185,7 @@ export default function CourseViewPage() {
               sidebarOpen={sidebarOpen}
               onToggleSidebar={() => setSidebarOpen((open) => !open)}
               onCompleteLesson={markLessonComplete}
-              canTrackProgress={course.progressEnabled && isAuthenticated}
+              canTrackProgress={course.progressEnabled && isAuthenticated && !detail.isOwner}
             />
           ) : (
             <Landing
@@ -307,7 +307,7 @@ export function Landing({
         )}
       </div>
 
-      {course.progressEnabled && detail.progress && (
+      {!isOwner && course.progressEnabled && detail.progress && (
         <ProgressBar
           completed={detail.progress.completedLessons}
           total={detail.progress.totalLessons}

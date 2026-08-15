@@ -148,52 +148,53 @@ export function useCurriculumDraft(courseId, initialModules) {
     dispatch({ type: 'SET_LESSONS', moduleId, collection: reorder(current, ids) })
   }
 
-  /** Fake `{list,create,update,remove,reorder}` for `BlockListEditor`, backed by the draft instead of the network. */
-  function blocksApiFor(lessonId) {
+  /**
+   * Live draft for one lesson's blocks: `blocks` always reflects the latest edits (nothing waits on
+   * an explicit per-block save), and every mutator writes straight into this draft - only `flush()`
+   * (called from the page's own "Salvar alteracoes") ever touches the network.
+   */
+  function blocksDraftFor(lessonId) {
+    const collection = state.blocksByLessonKey[lessonId] ?? emptyCollection([])
     return {
-      list: async (parentId) => {
-        const existing = state.blocksByLessonKey[parentId]
+      blocks: collection.local,
+      async seed() {
+        const existing = state.blocksByLessonKey[lessonId]
         if (existing) return existing.local
         // A lesson that only exists in the draft (not created on the server yet) obviously has no
         // blocks to fetch - asking the API about a temp id would just 400.
-        if (isTempId(parentId)) {
-          dispatch({ type: 'SET_BLOCKS', lessonId: parentId, collection: emptyCollection([]) })
+        if (isTempId(lessonId)) {
+          dispatch({ type: 'SET_BLOCKS', lessonId, collection: emptyCollection([]) })
           return []
         }
-        const fetched = await listLessonBlocks(parentId)
+        const fetched = await listLessonBlocks(lessonId)
         const seeded = fetched.map((block) => ({
           id: block.id,
           type: block.type,
           content: block.content,
           language: block.language,
         }))
-        dispatch({ type: 'SET_BLOCKS', lessonId: parentId, collection: emptyCollection(seeded) })
+        dispatch({ type: 'SET_BLOCKS', lessonId, collection: emptyCollection(seeded) })
         return seeded
       },
-      create: async (parentId, fields) => {
-        const current = state.blocksByLessonKey[parentId] ?? emptyCollection([])
-        const { collection, id } = insert(current, fields)
-        dispatch({ type: 'SET_BLOCKS', lessonId: parentId, collection })
-        return { id, ...fields }
+      addBlock(fields) {
+        const current = state.blocksByLessonKey[lessonId] ?? emptyCollection([])
+        const { collection: next, id } = insert(current, fields)
+        dispatch({ type: 'SET_BLOCKS', lessonId, collection: next })
+        return id
       },
-      update: async (id, fields) => {
+      updateBlock(id, fields) {
         const current = state.blocksByLessonKey[lessonId] ?? emptyCollection([])
         dispatch({ type: 'SET_BLOCKS', lessonId, collection: patch(current, id, fields) })
-        return { id, ...fields }
       },
-      remove: async (id) => {
+      removeBlock(id) {
         const current = state.blocksByLessonKey[lessonId] ?? emptyCollection([])
         dispatch({ type: 'SET_BLOCKS', lessonId, collection: remove(current, id) })
       },
-      reorder: async (parentId, ids) => {
-        const current = state.blocksByLessonKey[parentId] ?? emptyCollection([])
-        dispatch({ type: 'SET_BLOCKS', lessonId: parentId, collection: reorder(current, ids) })
+      reorderBlocks(ids) {
+        const current = state.blocksByLessonKey[lessonId] ?? emptyCollection([])
+        dispatch({ type: 'SET_BLOCKS', lessonId, collection: reorder(current, ids) })
       },
     }
-  }
-
-  function blockQueryKeyFor(lessonId) {
-    return ['curriculumDraft', 'lessonBlocks', lessonId]
   }
 
   /**
@@ -313,8 +314,7 @@ export function useCurriculumDraft(courseId, initialModules) {
     renameLesson,
     deleteLesson: deleteLessonDraft,
     reorderLessons: reorderLessonsDraft,
-    blocksApiFor,
-    blockQueryKeyFor,
+    blocksDraftFor,
     flush,
   }
 }

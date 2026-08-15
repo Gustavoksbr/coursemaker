@@ -14,9 +14,3 @@ export function listParams({ q, author, visibility, categories, featured, sort, 
   if (size != null) params.set('size', String(size))
   return params
 }
-
-/** Query keys for content blocks. Lessons and posts have separate endpoints but identical shapes. */
-export const blockKeys = {
-  lesson: (lessonId) => ['lessons', lessonId, 'blocks'],
-  post: (postId) => ['posts', postId, 'blocks'],
-}

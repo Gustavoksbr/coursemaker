@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { PreviewOverlay } from '@/components/shared/PreviewOverlay'
 import { Landing, LessonView } from '@/pages/CourseViewPage'
 import { flattenLessons } from '@/components/course/CurriculumNav'
@@ -56,10 +55,16 @@ export function CoursePreview({ course, landingDescription, modules, curriculumD
 
 /** Blocks are draft-only until the editor's "Salvar" flush, so they are read from the draft, not fetched fresh. */
 function PreviewLesson({ course, lesson, lessons, activeIndex, curriculumDraft, onSelectLesson }) {
-  const { data: blocks } = useQuery({
-    queryKey: curriculumDraft.blockQueryKeyFor(lesson.id),
-    queryFn: () => curriculumDraft.blocksApiFor(lesson.id).list(lesson.id),
-  })
+  const blockDraft = curriculumDraft.blocksDraftFor(lesson.id)
+
+  // `blocksDraftFor(...).seed()` is idempotent per lesson (a no-op once that lesson's blocks are
+  // already in the draft), so it's safe to call on every lesson switch without a cache layer.
+  useEffect(() => {
+    blockDraft.seed()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson.id])
+
+  const blocks = blockDraft.blocks
 
   return (
     <LessonView

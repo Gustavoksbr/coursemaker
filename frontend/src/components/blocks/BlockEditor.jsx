@@ -1,6 +1,4 @@
-import { useState } from 'react'
 import { Code2, FileText, Image as ImageIcon, Video } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 import { Field, Select, Textarea } from '@/components/ui/Field'
 import { RichTextEditor } from './RichTextEditor'
 import { ImageUploadField } from './ImageUploadField'
@@ -16,43 +14,35 @@ export const BLOCK_META = {
 }
 
 /**
- * Edits one block. Changes are local until "Salvar", so cancelling really discards them — the
- * parent keeps the draft visible in preview mode while it is open.
+ * Edits one block. Always live: every change writes straight into the parent draft, there is no
+ * separate "Salvar bloco" step - the block content only reaches the server when the page's own
+ * "Salvar alteracoes" flushes the whole draft.
  */
-export function BlockEditor({ block, onSave, onCancel, onDraftChange, saving }) {
-  const [draft, setDraft] = useState({
-    type: block.type,
-    content: block.content ?? '',
-    language: block.language ?? 'javascript',
-  })
+export function BlockEditor({ block, onChange }) {
+  const content = block.content ?? ''
+  const language = block.language ?? 'javascript'
 
-  const update = (patch) => {
-    const next = { ...draft, ...patch }
-    setDraft(next)
-    onDraftChange?.(next)
-  }
-
-  const videoId = draft.type === BLOCK_TYPE.VIDEO ? youtubeId(draft.content) : null
-  const invalidVideo = draft.type === BLOCK_TYPE.VIDEO && draft.content.trim() && !videoId
+  const videoId = block.type === BLOCK_TYPE.VIDEO ? youtubeId(content) : null
+  const invalidVideo = block.type === BLOCK_TYPE.VIDEO && content.trim() && !videoId
 
   return (
-    <div className="space-y-4 rounded-lg border border-brand-500/50 bg-slate-800 p-4">
-      {draft.type === BLOCK_TYPE.TEXT && (
-        <RichTextEditor value={draft.content} onChange={(content) => update({ content })} />
+    <div className="space-y-4 rounded-lg border border-slate-700 bg-slate-800 p-4">
+      {block.type === BLOCK_TYPE.TEXT && (
+        <RichTextEditor value={content} onChange={(next) => onChange({ content: next })} />
       )}
 
-      {draft.type === BLOCK_TYPE.CODE && (
+      {block.type === BLOCK_TYPE.CODE && (
         <div className="space-y-3">
-          <Field label="Linguagem" htmlFor="block-language">
+          <Field label="Linguagem" htmlFor={`block-language-${block.id}`}>
             <Select
-              id="block-language"
-              value={draft.language}
-              onChange={(event) => update({ language: event.target.value })}
+              id={`block-language-${block.id}`}
+              value={language}
+              onChange={(event) => onChange({ language: event.target.value })}
               className="w-52"
             >
-              {HIGHLIGHTABLE_LANGUAGES.map((language) => (
-                <option key={language} value={language}>
-                  {language}
+              {HIGHLIGHTABLE_LANGUAGES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
                 </option>
               ))}
             </Select>
@@ -60,8 +50,8 @@ export function BlockEditor({ block, onSave, onCancel, onDraftChange, saving }) 
           <Textarea
             rows={10}
             maxLength={LIMITS.BLOCK_CONTENT}
-            value={draft.content}
-            onChange={(event) => update({ content: event.target.value })}
+            value={content}
+            onChange={(event) => onChange({ content: event.target.value })}
             placeholder="Cole seu codigo aqui..."
             aria-label="Codigo"
             className="font-mono text-[13px]"
@@ -70,26 +60,26 @@ export function BlockEditor({ block, onSave, onCancel, onDraftChange, saving }) 
         </div>
       )}
 
-      {draft.type === BLOCK_TYPE.IMAGE && (
+      {block.type === BLOCK_TYPE.IMAGE && (
         <Field label="Imagem" hint="Cole a URL da imagem ou envie um arquivo.">
-          <ImageUploadField value={draft.content} onChange={(content) => update({ content })} />
+          <ImageUploadField value={content} onChange={(next) => onChange({ content: next })} />
         </Field>
       )}
 
-      {draft.type === BLOCK_TYPE.VIDEO && (
+      {block.type === BLOCK_TYPE.VIDEO && (
         <Field
           label="URL do YouTube"
-          htmlFor="block-video"
+          htmlFor={`block-video-${block.id}`}
           error={invalidVideo ? 'Nao reconhecemos este link do YouTube.' : undefined}
           hint="Ex.: https://www.youtube.com/watch?v=..."
         >
           <input
-            id="block-video"
+            id={`block-video-${block.id}`}
             type="url"
             maxLength={LIMITS.URL}
             className="input"
-            value={draft.content}
-            onChange={(event) => update({ content: event.target.value })}
+            value={content}
+            onChange={(event) => onChange({ content: event.target.value })}
             placeholder="https://www.youtube.com/watch?v=..."
           />
           {videoId && (
@@ -104,15 +94,6 @@ export function BlockEditor({ block, onSave, onCancel, onDraftChange, saving }) 
           )}
         </Field>
       )}
-
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
-          Cancelar
-        </Button>
-        <Button size="sm" onClick={() => onSave(draft)} loading={saving} disabled={invalidVideo}>
-          Salvar bloco
-        </Button>
-      </div>
     </div>
   )
 }

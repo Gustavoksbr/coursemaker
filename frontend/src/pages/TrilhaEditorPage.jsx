@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Eye, Save } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Eye, Save, X } from 'lucide-react'
 import { TrilhaPreview } from '@/components/trilha/TrilhaPreview'
 import { TrilhaSettingsPanel } from '@/components/trilha/TrilhaSettingsPanel'
 import { TrilhaStructureEditor } from '@/components/trilha/TrilhaStructureEditor'
@@ -51,6 +51,8 @@ export default function TrilhaEditorPage() {
  * split in `CourseEditorPage.jsx` for why (a reducer's lazy init only ever runs once).
  */
 function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const toast = useToast()
   const [previewOpen, setPreviewOpen] = useState(false)
   const [settingsDraft, setSettingsDraft] = useState(null)
@@ -61,6 +63,10 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
   const handleSave = async () => {
     try {
       await structureDraft.flush()
+      // The public trilha page (and this editor's own initial load) share this exact query key -
+      // without invalidating it here, navigating to the trilha page right after saving would show
+      // whatever was cached from before this save, not what was just published.
+      queryClient.invalidateQueries({ queryKey: trilhaQueryKey })
       toast.success('Estrutura da trilha salva.')
     } catch (error) {
       const label = error.draftStepLabel
@@ -70,7 +76,7 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 space-y-6 px-4 py-6 sm:px-6">
-      <header className="flex flex-wrap items-center gap-3">
+      <header className="sticky top-16 z-30 -mx-4 flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold text-slate-100">{trilha.title}</h1>
           <p className="truncate text-xs text-slate-500">
@@ -80,14 +86,27 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
 
         <ContentBadges status={trilha.status} visibility={trilha.visibility} featured={trilha.featured} />
 
-        {structureDraft.isDirty && (
-          <Button onClick={handleSave} loading={structureDraft.isFlushing}>
-            <Save size={16} /> Salvar estrutura
-          </Button>
-        )}
+        <Button
+          onClick={handleSave}
+          disabled={!structureDraft.isDirty}
+          loading={structureDraft.isFlushing}
+          title={structureDraft.isDirty ? undefined : 'Faca uma alteracao para poder salvar'}
+        >
+          <Save size={16} /> Salvar estrutura
+        </Button>
 
         <button type="button" onClick={() => setPreviewOpen(true)} className="btn-secondary text-xs">
           <Eye size={14} /> Pre-visualizar
+        </button>
+
+        {/* Navigating away while dirty is already intercepted by useUnsavedChangesGuard's blocker
+            below, which shows the confirm prompt. */}
+        <button
+          type="button"
+          onClick={() => navigate(`/trilhas/${trilha.owner.nickname}/${trilha.slug}`)}
+          className="btn-ghost text-xs"
+        >
+          <X size={14} /> Cancelar alteracoes
         </button>
       </header>
 
