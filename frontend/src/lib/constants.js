@@ -17,6 +17,7 @@ export const BLOCK_TYPE = {
   CODE: 'code',
   IMAGE: 'image',
   VIDEO: 'video',
+  QUESTION: 'question',
 }
 
 export const ROLE = {

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import DOMPurify from 'dompurify'
 import { FileQuestion } from 'lucide-react'
 import { CodeBlock } from './CodeBlock'
+import { QuestionBlock } from './QuestionBlock'
 import { BLOCK_TYPE } from '@/lib/constants'
 import { youtubeEmbedUrl } from '@/lib/youtube'
 import { cn } from '@/lib/cn'
@@ -20,6 +21,8 @@ export function BlockRenderer({ block }) {
       return <ImageBlock src={block.content} />
     case BLOCK_TYPE.VIDEO:
       return <VideoBlock url={block.content} />
+    case BLOCK_TYPE.QUESTION:
+      return <QuestionBlock content={block.content} />
     default:
       return (
         <p className="flex items-center gap-2 text-sm text-slate-500">

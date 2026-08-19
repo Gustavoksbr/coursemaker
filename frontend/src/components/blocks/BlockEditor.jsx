@@ -1,7 +1,8 @@
-import { Code2, FileText, Image as ImageIcon, Video } from 'lucide-react'
+import { Code2, FileText, Image as ImageIcon, ListChecks, Video } from 'lucide-react'
 import { Field, Select, Textarea } from '@/components/ui/Field'
 import { RichTextEditor } from './RichTextEditor'
 import { ImageUploadField } from './ImageUploadField'
+import { QuestionEditor } from './QuestionEditor'
 import { BLOCK_TYPE, LIMITS } from '@/lib/constants'
 import { HIGHLIGHTABLE_LANGUAGES } from '@/lib/highlighter'
 import { youtubeId } from '@/lib/youtube'
@@ -11,6 +12,7 @@ export const BLOCK_META = {
   [BLOCK_TYPE.CODE]: { label: 'Codigo', icon: Code2 },
   [BLOCK_TYPE.IMAGE]: { label: 'Imagem', icon: ImageIcon },
   [BLOCK_TYPE.VIDEO]: { label: 'Video', icon: Video },
+  [BLOCK_TYPE.QUESTION]: { label: 'Questao', icon: ListChecks },
 }
 
 /**
@@ -93,6 +95,10 @@ export function BlockEditor({ block, onChange }) {
             </div>
           )}
         </Field>
+      )}
+
+      {block.type === BLOCK_TYPE.QUESTION && (
+        <QuestionEditor blockId={block.id} content={content} onChange={(next) => onChange({ content: next })} />
       )}
     </div>
   )

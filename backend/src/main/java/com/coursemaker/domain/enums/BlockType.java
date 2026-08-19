@@ -15,7 +15,10 @@ public enum BlockType {
     IMAGE("image"),
 
     /** YouTube URL. */
-    VIDEO("video");
+    VIDEO("video"),
+
+    /** Multiple-choice question. `content` holds a JSON-encoded alternatives list. */
+    QUESTION("question");
 
     private final String value;
 

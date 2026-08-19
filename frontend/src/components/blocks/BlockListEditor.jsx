@@ -6,6 +6,7 @@ import { ConfirmModal } from '@/components/ui/Modal'
 import { EmptyState, Spinner } from '@/components/ui/Feedback'
 import { useDragReorder } from '@/hooks/useDragReorder'
 import { BLOCK_TYPE } from '@/lib/constants'
+import { defaultQuestionContent } from '@/lib/questionBlock'
 import { cn } from '@/lib/cn'
 
 const DEFAULT_CONTENT = {
@@ -72,8 +73,10 @@ export function BlockListEditor({ parentId, draft, emptyMessage }) {
 
   const addBlock = (type) => {
     draft.addBlock({
+      // A fresh call per block: QUESTION's default embeds generated alternative ids, which a
+      // shared static value (like the other types use) would bake in once and reuse everywhere.
       type,
-      content: DEFAULT_CONTENT[type],
+      content: type === BLOCK_TYPE.QUESTION ? defaultQuestionContent() : DEFAULT_CONTENT[type],
       language: type === BLOCK_TYPE.CODE ? 'javascript' : undefined,
     })
   }
