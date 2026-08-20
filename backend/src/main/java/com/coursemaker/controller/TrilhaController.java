@@ -17,6 +17,7 @@ import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaSummary;
 import com.coursemaker.dto.trilha.TrilhaDtos.UpdateTrilhaItemRequest;
 import com.coursemaker.dto.trilha.TrilhaDtos.UpdateTrilhaRequest;
 import com.coursemaker.dto.trilha.TrilhaDtos.UpdateTrilhaStepRequest;
+import com.coursemaker.service.CertificateService;
 import com.coursemaker.service.TrilhaProgressService;
 import com.coursemaker.service.TrilhaService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +26,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -50,6 +53,7 @@ public class TrilhaController {
 
     private final TrilhaService trilhaService;
     private final TrilhaProgressService trilhaProgressService;
+    private final CertificateService certificateService;
 
     // -------------------------------------------------------------- trilhas
 
@@ -245,6 +249,18 @@ public class TrilhaController {
     public TrilhaProgressResponse uncompleteItem(@PathVariable UUID itemId,
                                                  @AuthenticationPrincipal AuthenticatedUser principal) {
         return trilhaProgressService.markIncomplete(itemId, principal.user());
+    }
+
+    @Operation(summary = "Baixa o certificado de conclusao da trilha em PDF "
+            + "(apenas para quem ja concluiu todos os itens)")
+    @GetMapping("/api/v1/trilhas/{id}/certificate")
+    public ResponseEntity<byte[]> downloadCertificate(@PathVariable UUID id,
+                                                       @AuthenticationPrincipal AuthenticatedUser principal) {
+        byte[] pdf = certificateService.generateTrilhaCertificate(id, principal.user());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"certificado.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     // ---------------------------------------------------------- course side

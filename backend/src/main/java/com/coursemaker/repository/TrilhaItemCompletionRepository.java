@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,4 +18,12 @@ public interface TrilhaItemCompletionRepository extends JpaRepository<TrilhaItem
               AND tc.id.trilhaItemId IN (SELECT ti.id FROM TrilhaItem ti WHERE ti.trilha.id = :trilhaId)
             """)
     List<UUID> findCompletedItemIds(@Param("userId") UUID userId, @Param("trilhaId") UUID trilhaId);
+
+    /** The moment the last item was completed, i.e. when the trilha itself was finished. */
+    @Query("""
+            SELECT MAX(tc.completedAt) FROM TrilhaItemCompletion tc
+            WHERE tc.id.userId = :userId
+              AND tc.id.trilhaItemId IN (SELECT ti.id FROM TrilhaItem ti WHERE ti.trilha.id = :trilhaId)
+            """)
+    Instant findLatestCompletionAt(@Param("userId") UUID userId, @Param("trilhaId") UUID trilhaId);
 }

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,4 +18,12 @@ public interface LessonCompletionRepository extends JpaRepository<LessonCompleti
               AND lc.id.lessonId IN (SELECT l.id FROM Lesson l WHERE l.module.course.id = :courseId)
             """)
     List<UUID> findCompletedLessonIds(@Param("userId") UUID userId, @Param("courseId") UUID courseId);
+
+    /** The moment the last lesson was completed, i.e. when the course itself was finished. */
+    @Query("""
+            SELECT MAX(lc.completedAt) FROM LessonCompletion lc
+            WHERE lc.id.userId = :userId
+              AND lc.id.lessonId IN (SELECT l.id FROM Lesson l WHERE l.module.course.id = :courseId)
+            """)
+    Instant findLatestCompletionAt(@Param("userId") UUID userId, @Param("courseId") UUID courseId);
 }

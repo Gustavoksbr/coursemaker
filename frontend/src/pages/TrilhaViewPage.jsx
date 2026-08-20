@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { ContentBadges } from '@/components/ui/Badge'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
+import { CertificateButton } from '@/components/shared/CertificateButton'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { TrilhaItemsList } from '@/components/trilha/TrilhaItemsList'
@@ -193,13 +194,16 @@ export default function TrilhaViewPage() {
       </div>
 
       {detail.progress && (
-        <ProgressBar
-          completed={detail.progress.completedItems}
-          total={detail.progress.totalItems}
-          percentage={detail.progress.percentage}
-          unit={{ singular: 'item', plural: 'itens' }}
-          ariaLabel="Progresso na trilha"
-        />
+        <div className="space-y-3">
+          <ProgressBar
+            completed={detail.progress.completedItems}
+            total={detail.progress.totalItems}
+            percentage={detail.progress.percentage}
+            unit={{ singular: 'item', plural: 'itens' }}
+            ariaLabel="Progresso na trilha"
+          />
+          {detail.progress.percentage >= 100 && <CertificateButton kind="trilha" contentId={trilha.id} />}
+        </div>
       )}
 
       <section>

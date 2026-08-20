@@ -24,6 +24,7 @@ import { Thumbnail } from '@/components/ui/Thumbnail'
 import { BlockList } from '@/components/blocks/BlockRenderer'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { CurriculumNav, flattenLessons } from '@/components/course/CurriculumNav'
+import { CertificateButton } from '@/components/shared/CertificateButton'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
 import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
@@ -308,12 +309,15 @@ export function Landing({
       </div>
 
       {!isOwner && course.progressEnabled && detail.progress && (
-        <ProgressBar
-          completed={detail.progress.completedLessons}
-          total={detail.progress.totalLessons}
-          percentage={detail.progress.percentage}
-          ariaLabel="Progresso no curso"
-        />
+        <div className="space-y-3">
+          <ProgressBar
+            completed={detail.progress.completedLessons}
+            total={detail.progress.totalLessons}
+            percentage={detail.progress.percentage}
+            ariaLabel="Progresso no curso"
+          />
+          {detail.progress.percentage >= 100 && <CertificateButton kind="course" contentId={course.id} />}
+        </div>
       )}
 
       {detail.landingDescription && (

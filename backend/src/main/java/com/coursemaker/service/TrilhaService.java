@@ -137,6 +137,12 @@ public class TrilhaService {
         return completed >= total;
     }
 
+    /** Whether `user` has finished every item of `trilha` - the certificate feature's eligibility check. */
+    @Transactional(readOnly = true)
+    public boolean isTrilhaCompletedByUser(Trilha trilha, User user) {
+        return isFinished(trilha, user);
+    }
+
     @Transactional(readOnly = true)
     public List<TrilhaSummary> listByOwner(UUID ownerId, User viewer) {
         List<Trilha> trilhas = trilhaRepository.findAllByOwnerId(ownerId).stream()

@@ -8,6 +8,7 @@ import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.course.CourseDtos.CreateCourseRequest;
 import com.coursemaker.dto.course.CourseDtos.SlugAvailability;
 import com.coursemaker.dto.course.CourseDtos.UpdateCourseRequest;
+import com.coursemaker.service.CertificateService;
 import com.coursemaker.service.CourseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,7 +16,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -40,6 +43,7 @@ import java.util.UUID;
 public class CourseController {
 
     private final CourseService courseService;
+    private final CertificateService certificateService;
 
     @Operation(summary = "Lista cursos com filtros, ordenacao e paginacao. "
             + "Repita category=... para filtrar por varias categorias (OR)")
@@ -108,5 +112,17 @@ public class CourseController {
     public CourseSummary toggleFeatured(@PathVariable UUID id,
                                         @AuthenticationPrincipal AuthenticatedUser principal) {
         return courseService.toggleFeatured(id, principal.user());
+    }
+
+    @Operation(summary = "Baixa o certificado de conclusao do curso em PDF "
+            + "(apenas para quem ja concluiu todas as licoes)")
+    @GetMapping("/{id}/certificate")
+    public ResponseEntity<byte[]> downloadCertificate(@PathVariable UUID id,
+                                                       @AuthenticationPrincipal AuthenticatedUser principal) {
+        byte[] pdf = certificateService.generateCourseCertificate(id, principal.user());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"certificado.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

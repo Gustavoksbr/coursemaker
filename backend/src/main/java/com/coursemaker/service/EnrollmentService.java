@@ -166,6 +166,12 @@ public class EnrollmentService {
         return completed >= total;
     }
 
+    /** Whether `user` has finished every lesson of `course` - the certificate feature's eligibility check. */
+    @Transactional(readOnly = true)
+    public boolean isCourseCompletedByUser(Course course, User user) {
+        return isFinished(course, user);
+    }
+
     @Transactional(readOnly = true)
     public List<StudentResponse> listStudents(UUID courseId, User owner) {
         Course course = courseService.loadForEditing(courseId, owner);
