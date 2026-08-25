@@ -1,9 +1,9 @@
 import { api } from '@/lib/api'
 
 export const libraryKeys = {
-  folders: ['library', 'folders'],
-  folder: (id) => ['library', 'folders', id],
-  folderItems: (id, page) => ['library', 'folders', id, 'items', page],
+  folders: (areaId) => ['library', 'folders', 'list', areaId],
+  folder: (id, areaId) => ['library', 'folders', 'one', id, areaId],
+  folderItems: (id, page, areaId) => ['library', 'folders', 'items', id, page, areaId],
   status: (kind, contentId) => ['library', 'status', kind, contentId],
 }
 
@@ -54,8 +54,8 @@ export async function moveTrilhaToFolder(trilhaId, folderId) {
 
 // ------------------------------------------------------------------ folders
 
-export async function listFolders() {
-  const { data } = await api.get('/library/folders')
+export async function listFolders(areaId) {
+  const { data } = await api.get('/library/folders', { params: { areaId } })
   return data
 }
 
@@ -73,12 +73,12 @@ export async function deleteFolder(id) {
   await api.delete(`/library/folders/${id}`)
 }
 
-export async function getFolder(id) {
-  const { data } = await api.get(`/library/folders/${id}`)
+export async function getFolder(id, areaId) {
+  const { data } = await api.get(`/library/folders/${id}`, { params: { areaId } })
   return data
 }
 
-export async function listFolderItems(id, page = 0, size = 12) {
-  const { data } = await api.get(`/library/folders/${id}/items`, { params: { page, size } })
+export async function listFolderItems(id, page = 0, size = 12, areaId) {
+  const { data } = await api.get(`/library/folders/${id}/items`, { params: { page, size, areaId } })
   return data
 }

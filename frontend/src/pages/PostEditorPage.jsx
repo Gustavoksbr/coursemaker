@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useCurrentArea } from '@/context/AreaContext'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Eye, EyeOff, Save, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
+import { AreaSelect } from '@/components/ui/AreaSelect'
 import { ContentBadges } from '@/components/ui/Badge'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
@@ -45,7 +47,8 @@ const postBlockApi = {
  * so the first save creates it and the route switches to the edit form.
  */
 export default function PostEditorPage() {
-  const { id } = useParams()
+  const { areaSlug, id } = useParams()
+  const { area } = useCurrentArea()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const toast = useToast()
@@ -60,6 +63,7 @@ export default function PostEditorPage() {
     visibility: VISIBILITY.PUBLIC,
     categories: [],
     password: '',
+    areaId: '',
   })
 
   const isNew = !id
@@ -84,8 +88,16 @@ export default function PostEditorPage() {
       thumbnailUrl: post.thumbnailUrl ?? '',
       visibility: post.visibility,
       categories: post.categories ?? [],
+      areaId: post.area?.id ?? '',
     }))
   }, [detail])
+
+  // A new post is always fixed to the area you're currently browsing - only an existing post's
+  // area (set above) is something the owner can change, from the settings-panel-style AreaSelect.
+  useEffect(() => {
+    if (isNew && area) setForm((current) => ({ ...current, areaId: area.id }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, area?.id])
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: postKeys.all })
@@ -100,6 +112,7 @@ export default function PostEditorPage() {
         thumbnailUrl: form.thumbnailUrl,
         visibility: form.visibility,
         categories: form.categories,
+        areaId: form.areaId,
         // Only send a password when one was typed: the API reads null as "keep the current one".
         password: form.password.trim() ? form.password : undefined,
       }
@@ -110,7 +123,7 @@ export default function PostEditorPage() {
       setForm((current) => ({ ...current, password: '' }))
       invalidate()
       toast.success(isNew ? 'Post criado! Agora adicione o conteudo.' : 'Post salvo.')
-      if (isNew) navigate(`/posts/${post.id}/edit`, { replace: true })
+      if (isNew) navigate(`/${areaSlug}/posts/${post.id}/edit`, { replace: true })
     },
     onError: (mutationError) => {
       setErrors(fieldErrors(mutationError))
@@ -136,7 +149,7 @@ export default function PostEditorPage() {
     onSuccess: () => {
       invalidate()
       toast.success('Post excluido.')
-      navigate('/posts')
+      navigate(`/${areaSlug}/pesquisar?tab=posts`)
     },
     onError: (mutationError) =>
       toast.error(errorMessage(mutationError, 'Nao foi possivel excluir o post.')),
@@ -194,7 +207,7 @@ export default function PostEditorPage() {
           </h1>
           {post && (
             <p className="truncate text-xs text-slate-500">
-              /posts/{post.owner.nickname}/{post.slug}
+              /{post.area.slug}/posts/{post.owner.nickname}/{post.slug}
             </p>
           )}
         </div>
@@ -222,7 +235,7 @@ export default function PostEditorPage() {
                 blocker below, which shows the confirm prompt. */}
             <button
               type="button"
-              onClick={() => navigate(`/posts/${post.owner.nickname}/${post.slug}`)}
+              onClick={() => navigate(`/${post.area.slug}/posts/${post.owner.nickname}/${post.slug}`)}
               className="btn-ghost text-xs"
             >
               <X size={14} /> Cancelar alteracoes
@@ -267,6 +280,25 @@ export default function PostEditorPage() {
             value={form.categories}
             onChange={(categories) => setForm({ ...form, categories })}
           />
+        </Field>
+
+        <Field
+          label="Area"
+          htmlFor="post-area"
+          required
+          hint={isNew ? 'Novo conteudo nasce na area que voce esta navegando.' : undefined}
+        >
+          {isNew ? (
+            <Select id="post-area" value={area?.name ?? ''} disabled>
+              <option>{area?.name ?? 'Carregando...'}</option>
+            </Select>
+          ) : (
+            <AreaSelect
+              id="post-area"
+              value={form.areaId}
+              onChange={(areaId) => setForm({ ...form, areaId })}
+            />
+          )}
         </Field>
 
         <Field label="Visibilidade" htmlFor="post-visibility">
@@ -325,7 +357,11 @@ export default function PostEditorPage() {
               </Button>
             </>
           )}
-          <Button loading={saving} onClick={() => save()} disabled={!form.title.trim() || needsNewPassword}>
+          <Button
+            loading={saving}
+            onClick={() => save()}
+            disabled={!form.title.trim() || !form.areaId || needsNewPassword}
+          >
             <Save size={16} /> {isNew ? 'Criar post' : 'Salvar'}
           </Button>
         </div>

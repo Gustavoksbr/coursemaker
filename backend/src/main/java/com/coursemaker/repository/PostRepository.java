@@ -13,19 +13,21 @@ import java.util.UUID;
 
 public interface PostRepository extends JpaRepository<Post, UUID> {
 
-    @Query("SELECT p FROM Post p JOIN FETCH p.owner WHERE p.id = :id")
+    @Query("SELECT p FROM Post p JOIN FETCH p.owner JOIN FETCH p.area WHERE p.id = :id")
     Optional<Post> findByIdWithOwner(@Param("id") UUID id);
 
-    @Query("SELECT p FROM Post p JOIN FETCH p.owner o "
+    @Query("SELECT p FROM Post p JOIN FETCH p.owner o JOIN FETCH p.area "
             + "WHERE lower(o.nickname) = lower(:nickname) AND p.slug = :slug")
     Optional<Post> findByOwnerNicknameAndSlug(@Param("nickname") String nickname, @Param("slug") String slug);
 
     boolean existsByOwnerIdAndSlug(UUID ownerId, String slug);
 
+    boolean existsByAreaId(UUID areaId);
+
     @Query("SELECT p.slug FROM Post p WHERE p.owner.id = :ownerId AND p.slug LIKE concat(:base, '%')")
     List<String> findSlugsStartingWith(@Param("ownerId") UUID ownerId, @Param("base") String base);
 
-    @Query("SELECT p FROM Post p JOIN FETCH p.owner o WHERE o.id = :ownerId ORDER BY p.createdAt DESC")
+    @Query("SELECT p FROM Post p JOIN FETCH p.owner o JOIN FETCH p.area WHERE o.id = :ownerId ORDER BY p.createdAt DESC")
     List<Post> findAllByOwnerId(@Param("ownerId") UUID ownerId);
 
     /** Mirrors {@link CourseRepository#search}; see the notes there. */
@@ -44,6 +46,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR p.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR p.is_featured)
+              AND (CAST(:areaId AS uuid) IS NULL OR p.area_id = CAST(:areaId AS uuid))
               AND (p.status = 'available' OR p.owner_id = CAST(:viewerId AS uuid))
             ORDER BY
               CASE WHEN CAST(:sort AS text) = 'likes'
@@ -67,6 +70,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR p.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR p.is_featured)
+              AND (CAST(:areaId AS uuid) IS NULL OR p.area_id = CAST(:areaId AS uuid))
               AND (p.status = 'available' OR p.owner_id = CAST(:viewerId AS uuid))
             """,
             nativeQuery = true)
@@ -75,6 +79,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                       @Param("visibility") String visibility,
                       @Param("categories") String categories,
                       @Param("featuredOnly") Boolean featuredOnly,
+                      @Param("areaId") UUID areaId,
                       @Param("sort") String sort,
                       @Param("viewerId") UUID viewerId,
                       Pageable pageable);

@@ -75,7 +75,7 @@ export default function PostViewPage() {
             <div className="ml-auto flex items-center gap-2">
               <SaveToLibraryButton kind="post" contentId={post.id} saved={post.savedByMe} onChange={invalidate} />
               {detail.isOwner && (
-                <Link to={`/posts/${post.id}/edit`} className="btn-secondary">
+                <Link to={`/${post.area.slug}/posts/${post.id}/edit`} className="btn-secondary">
                   <Pencil size={16} /> Editar
                 </Link>
               )}
@@ -87,7 +87,7 @@ export default function PostViewPage() {
               {post.categories.map((category) => (
                 <Link
                   key={category}
-                  to={`/posts?category=${encodeURIComponent(category)}`}
+                  to={`/${post.area.slug}/pesquisar?tab=posts&category=${encodeURIComponent(category)}`}
                   className="badge bg-slate-700/60 text-slate-300 hover:bg-slate-700"
                 >
                   {category}

@@ -5,10 +5,12 @@ import { PageLoader } from '@/components/ui/Feedback'
 /**
  * Gate for authenticated routes. Anyone without a session lands on /login with the attempted URL
  * remembered, and anyone who has not picked a nickname yet is pushed through that step first —
- * the backend refuses to create content without one.
+ * the backend refuses to create content without one. `requireAdmin` additionally sends anyone
+ * without the admin role back to the homepage, no explanation page — there's nothing for a
+ * non-admin to do there.
  */
-export function ProtectedRoute({ requireNickname = true }) {
-  const { isAuthenticated, loading, needsNickname } = useAuth()
+export function ProtectedRoute({ requireNickname = true, requireAdmin = false }) {
+  const { isAuthenticated, loading, needsNickname, isAdmin } = useAuth()
   const location = useLocation()
 
   if (loading) return <PageLoader />
@@ -19,6 +21,10 @@ export function ProtectedRoute({ requireNickname = true }) {
 
   if (requireNickname && needsNickname) {
     return <Navigate to="/setup-nickname" state={{ from: location }} replace />
+  }
+
+  if (requireAdmin && !isAdmin) {
+    return <Navigate to="/" replace />
   }
 
   return <Outlet />

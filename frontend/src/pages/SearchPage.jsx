@@ -11,6 +11,7 @@ import { TrilhaCard } from '@/components/trilha/TrilhaCard'
 import { PersonCard } from '@/components/user/PersonCard'
 import { Pagination } from '@/components/ui/Pagination'
 import { CardSkeletonGrid, EmptyState, ErrorState } from '@/components/ui/Feedback'
+import { useCurrentArea } from '@/context/AreaContext'
 import { useCatalogFilters } from '@/hooks/useCatalogFilters'
 import { useCatalogList } from '@/hooks/useCatalogList'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -32,6 +33,7 @@ const TABS = [
 ]
 
 export default function SearchPage() {
+  const { area } = useCurrentArea()
   const [filters, setFilters] = useCatalogFilters()
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') || 'principais'
@@ -75,20 +77,21 @@ export default function SearchPage() {
 
       <SearchTabs active={tab} onChange={changeTab} tabs={TABS} />
 
-      {tab === 'principais' && <PrincipaisTab q={filters.q} onSeeAll={changeTab} />}
-      {tab === 'cursos' && <CursosTab />}
-      {tab === 'posts' && <PostsTab />}
-      {tab === 'trilhas' && <TrilhasTab />}
+      {tab === 'principais' && <PrincipaisTab q={filters.q} areaId={area?.id} onSeeAll={changeTab} />}
+      {tab === 'cursos' && <CursosTab areaId={area?.id} />}
+      {tab === 'posts' && <PostsTab areaId={area?.id} />}
+      {tab === 'trilhas' && <TrilhasTab areaId={area?.id} />}
       {tab === 'pessoas' && <PessoasTab q={filters.q} />}
     </div>
   )
 }
 
-function CatalogTab({ icon: Icon, emptyTitle, filters, setFilters, listFn, queryKeyFn, renderCard }) {
+function CatalogTab({ icon: Icon, emptyTitle, filters, setFilters, listFn, queryKeyFn, renderCard, areaId }) {
   const { data, isPending, isError, error, refetch, availableCategories } = useCatalogList({
     filters,
     listFn,
     queryKeyFn,
+    extraFilters: { areaId },
   })
 
   return (
@@ -122,7 +125,7 @@ function CatalogTab({ icon: Icon, emptyTitle, filters, setFilters, listFn, query
   )
 }
 
-function CursosTab() {
+function CursosTab({ areaId }) {
   const [filters, setFilters] = useCatalogFilters()
   return (
     <CatalogTab
@@ -133,11 +136,12 @@ function CursosTab() {
       listFn={listCourses}
       queryKeyFn={courseKeys.list}
       renderCard={(course) => <CourseCard key={course.id} course={course} />}
+      areaId={areaId}
     />
   )
 }
 
-function PostsTab() {
+function PostsTab({ areaId }) {
   const [filters, setFilters] = useCatalogFilters()
   return (
     <CatalogTab
@@ -148,11 +152,12 @@ function PostsTab() {
       listFn={listPosts}
       queryKeyFn={postKeys.list}
       renderCard={(post) => <PostCard key={post.id} post={post} />}
+      areaId={areaId}
     />
   )
 }
 
-function TrilhasTab() {
+function TrilhasTab({ areaId }) {
   const [filters, setFilters] = useCatalogFilters()
   return (
     <CatalogTab
@@ -163,6 +168,7 @@ function TrilhasTab() {
       listFn={listTrilhas}
       queryKeyFn={trilhaKeys.list}
       renderCard={(trilha) => <TrilhaCard key={trilha.id} trilha={trilha} />}
+      areaId={areaId}
     />
   )
 }
@@ -198,10 +204,10 @@ function PessoasTab({ q }) {
   )
 }
 
-function PrincipaisTab({ q, onSeeAll }) {
+function PrincipaisTab({ q, areaId, onSeeAll }) {
   const { data, isPending, isError, error, refetch } = useQuery({
-    queryKey: searchKeys.unified(q, PREVIEW_SIZE),
-    queryFn: () => unifiedSearch(q, PREVIEW_SIZE),
+    queryKey: searchKeys.unified(q, PREVIEW_SIZE, areaId),
+    queryFn: () => unifiedSearch(q, PREVIEW_SIZE, areaId),
   })
 
   if (isError) return <ErrorState message={errorMessage(error)} onRetry={refetch} />

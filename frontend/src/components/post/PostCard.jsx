@@ -6,7 +6,7 @@ import { Thumbnail } from '@/components/ui/Thumbnail'
 import { formatRelative } from '@/lib/format'
 
 export function PostCard({ post }) {
-  const href = `/posts/${post.owner.nickname}/${post.slug}`
+  const href = `/${post.area.slug}/posts/${post.owner.nickname}/${post.slug}`
 
   return (
     <article className="card group flex flex-col overflow-hidden">

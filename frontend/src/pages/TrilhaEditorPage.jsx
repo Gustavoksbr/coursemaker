@@ -17,7 +17,7 @@ import { getTrilhaBySlug, trilhaKeys } from '@/api/trilhas'
 import { errorMessage } from '@/lib/api'
 
 export default function TrilhaEditorPage() {
-  const { nickname, slug } = useParams()
+  const { areaSlug, nickname, slug } = useParams()
   const navigate = useNavigate()
 
   const trilhaQueryKey = trilhaKeys.bySlug(nickname, slug)
@@ -39,11 +39,15 @@ export default function TrilhaEditorPage() {
   }
 
   if (!detail.isOwner) {
-    return <Navigate to={`/trilhas/${nickname}/${slug}`} replace />
+    return <Navigate to={`/${areaSlug}/trilhas/${nickname}/${slug}`} replace />
   }
 
   return (
-    <TrilhaEditorContent detail={detail} trilhaQueryKey={trilhaQueryKey} onDeleted={() => navigate('/trilhas')} />
+    <TrilhaEditorContent
+      detail={detail}
+      trilhaQueryKey={trilhaQueryKey}
+      onDeleted={() => navigate(`/${areaSlug}/pesquisar?tab=trilhas`)}
+    />
   )
 }
 
@@ -95,7 +99,7 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold text-slate-100">{trilha.title}</h1>
           <p className="truncate text-xs text-slate-500">
-            /trilhas/{trilha.owner.nickname}/{trilha.slug}
+            /{trilha.area.slug}/trilhas/{trilha.owner.nickname}/{trilha.slug}
           </p>
         </div>
 
@@ -118,7 +122,7 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
             below, which shows the confirm prompt. */}
         <button
           type="button"
-          onClick={() => navigate(`/trilhas/${trilha.owner.nickname}/${trilha.slug}`)}
+          onClick={() => navigate(`/${trilha.area.slug}/trilhas/${trilha.owner.nickname}/${trilha.slug}`)}
           className="btn-ghost text-xs"
         >
           <X size={14} /> Cancelar alteracoes

@@ -2,12 +2,14 @@ package com.coursemaker.dto.trilha;
 
 import com.coursemaker.domain.enums.CourseStatus;
 import com.coursemaker.domain.enums.CourseVisibility;
+import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.course.CourseDtos.ProgressResponse;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
 import com.coursemaker.dto.user.UserSummary;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
@@ -32,6 +34,7 @@ public final class TrilhaDtos {
             CourseStatus status,
             List<String> categories,
             boolean featured,
+            AreaSummary area,
             UserSummary owner,
             long itemCount,
             long enrollmentCount,
@@ -88,7 +91,8 @@ public final class TrilhaDtos {
             @Size(max = 5000) String description,
             @Size(max = 2000) String thumbnailUrl,
             CourseVisibility visibility,
-            List<@Size(max = MAX_CATEGORY_LENGTH) String> categories) {
+            List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
+            @NotNull UUID areaId) {
     }
 
     /** Partial update: null means "leave unchanged". */
@@ -98,7 +102,8 @@ public final class TrilhaDtos {
             @Size(max = 2000) String thumbnailUrl,
             CourseVisibility visibility,
             CourseStatus status,
-            List<@Size(max = MAX_CATEGORY_LENGTH) String> categories) {
+            List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
+            UUID areaId) {
     }
 
     /** Exactly one of {@code courseId}/{@code postId} must be set. {@code stepId} is optional. */

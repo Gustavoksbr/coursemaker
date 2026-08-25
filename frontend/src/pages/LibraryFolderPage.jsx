@@ -8,11 +8,14 @@ import { ConfirmModal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { CardSkeletonGrid, EmptyState, ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { useToast } from '@/context/ToastContext'
+import { useCurrentArea } from '@/context/AreaContext'
 import { deleteFolder, getFolder, libraryKeys, listFolderItems } from '@/api/library'
 import { errorMessage, statusOf } from '@/lib/api'
 
 export default function LibraryFolderPage() {
-  const { folderId } = useParams()
+  const { areaSlug, folderId } = useParams()
+  const { area } = useCurrentArea()
+  const areaId = area?.id
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const toast = useToast()
@@ -21,12 +24,14 @@ export default function LibraryFolderPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const folderQuery = useQuery({
-    queryKey: libraryKeys.folder(folderId),
-    queryFn: () => getFolder(folderId),
+    queryKey: libraryKeys.folder(folderId, areaId),
+    queryFn: () => getFolder(folderId, areaId),
+    enabled: Boolean(areaId),
   })
   const itemsQuery = useQuery({
-    queryKey: libraryKeys.folderItems(folderId, page),
-    queryFn: () => listFolderItems(folderId, page, 12),
+    queryKey: libraryKeys.folderItems(folderId, page, areaId),
+    queryFn: () => listFolderItems(folderId, page, 12, areaId),
+    enabled: Boolean(areaId),
     placeholderData: (previous) => previous,
   })
 
@@ -37,7 +42,7 @@ export default function LibraryFolderPage() {
       // folder list itself.
       queryClient.invalidateQueries({ queryKey: ['library'] })
       toast.success('Pasta excluida. Os itens voltaram para Favoritos.')
-      navigate('/biblioteca')
+      navigate(`/${areaSlug}/biblioteca`)
     },
     onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel excluir a pasta.')),
   })
@@ -46,7 +51,7 @@ export default function LibraryFolderPage() {
 
   if (folderQuery.isError) {
     if (statusOf(folderQuery.error) === 404) {
-      return <Navigate to="/biblioteca" replace />
+      return <Navigate to={`/${areaSlug}/biblioteca`} replace />
     }
     return (
       <ErrorState
@@ -64,7 +69,7 @@ export default function LibraryFolderPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
-      <Link to="/biblioteca" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+      <Link to={`/${areaSlug}/biblioteca`} className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
         <ArrowLeft size={15} /> Biblioteca
       </Link>
 

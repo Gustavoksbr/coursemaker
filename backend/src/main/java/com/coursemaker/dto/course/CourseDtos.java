@@ -2,9 +2,11 @@ package com.coursemaker.dto.course;
 
 import com.coursemaker.domain.enums.CourseStatus;
 import com.coursemaker.domain.enums.CourseVisibility;
+import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.curriculum.CurriculumDtos.ModuleResponse;
 import com.coursemaker.dto.user.UserSummary;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
@@ -28,6 +30,7 @@ public final class CourseDtos {
             List<String> categories,
             boolean featured,
             boolean progressEnabled,
+            AreaSummary area,
             UserSummary owner,
             long likeCount,
             long enrollmentCount,
@@ -73,7 +76,8 @@ public final class CourseDtos {
             CourseVisibility visibility,
             @Size(max = MAX_PASSWORD_LENGTH) String password,
             List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
-            Boolean progressEnabled) {
+            Boolean progressEnabled,
+            @NotNull UUID areaId) {
     }
 
     /** Partial update: null means "leave unchanged". */
@@ -86,7 +90,8 @@ public final class CourseDtos {
             CourseStatus status,
             @Size(max = MAX_PASSWORD_LENGTH) String password,
             List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
-            Boolean progressEnabled) {
+            Boolean progressEnabled,
+            UUID areaId) {
     }
 
     /** Response of the slug availability check used by the create-course modal. */

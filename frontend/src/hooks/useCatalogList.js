@@ -11,8 +11,8 @@ import { PAGE_SIZE } from '@/lib/constants'
  * `useCatalogFilters` or otherwise). See `useCatalogQuery` for the version that also owns a
  * debounced search input, used by the three standalone catalogue pages.
  */
-export function useCatalogList({ filters, listFn, queryKeyFn }) {
-  const query = { ...filters, size: PAGE_SIZE }
+export function useCatalogList({ filters, listFn, queryKeyFn, extraFilters = {} }) {
+  const query = { ...filters, ...extraFilters, size: PAGE_SIZE }
   const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: queryKeyFn(query),
     queryFn: () => listFn(query),
@@ -23,6 +23,7 @@ export function useCatalogList({ filters, listFn, queryKeyFn }) {
     q: filters.q,
     author: filters.author,
     visibility: filters.visibility,
+    ...extraFilters,
     sort: 'recent',
     page: 0,
     size: 100,

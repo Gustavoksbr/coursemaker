@@ -9,6 +9,7 @@ import { CreateCourseModal } from '@/components/course/CreateCourseModal'
 import { NicknameGateModal } from '@/components/auth/NicknameGateModal'
 import { CardSkeletonGrid, EmptyState, ErrorState } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
+import { useCurrentArea } from '@/context/AreaContext'
 import { useNicknameGate } from '@/hooks/useNicknameGate'
 import { search, searchKeys } from '@/api/users'
 import { errorMessage } from '@/lib/api'
@@ -17,6 +18,7 @@ const RESULTS_PER_SECTION = 6
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth()
+  const { area } = useCurrentArea()
   const navigate = useNavigate()
   const [term, setTerm] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
@@ -24,7 +26,8 @@ export default function HomePage() {
 
   // The homepage itself never shows search results anymore - searching redirects to /pesquisar,
   // which owns the full Principais/Cursos/Posts/Trilhas/Pessoas experience. This query always
-  // fetches the empty-term "destaques" view for the landing page furniture below.
+  // fetches the empty-term "destaques" view for the landing page furniture below, across every
+  // area - the homepage is the one place that stays a single shared front door.
   const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: searchKeys.unified('', RESULTS_PER_SECTION),
     queryFn: () => search('', RESULTS_PER_SECTION),
@@ -37,7 +40,7 @@ export default function HomePage() {
     event.preventDefault()
     const trimmed = term.trim()
     if (!trimmed) return
-    navigate(`/pesquisar?q=${encodeURIComponent(trimmed)}`)
+    navigate(`/${area.slug}/pesquisar?q=${encodeURIComponent(trimmed)}`)
   }
 
   return (
@@ -45,10 +48,10 @@ export default function HomePage() {
       <section className="border-b border-slate-800 bg-gradient-to-b from-slate-800/50 to-slate-900">
         <div className="mx-auto max-w-3xl px-4 py-14 text-center sm:px-6 sm:py-20">
           <h1 className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl">
-            Aprenda e ensine <span className="text-brand-400">programacao</span>
+            Aprenda e ensine <span className="text-brand-400">o que quiser</span>
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-slate-400">
-            Cursos estruturados e posts tecnicos escritos por desenvolvedores.
+            Cursos estruturados, posts e trilhas escritos por quem entende do assunto.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8">
@@ -81,7 +84,7 @@ export default function HomePage() {
               icon={GraduationCap}
               title="Cursos em destaque"
               total={courses?.total}
-              seeAllHref="/cursos"
+              seeAllHref={`/${area?.slug}/pesquisar?tab=cursos`}
               seeAllLabel="Ver todos os cursos"
               loading={isPending}
               empty={
@@ -99,7 +102,7 @@ export default function HomePage() {
               icon={BookOpen}
               title="Posts recentes"
               total={posts?.total}
-              seeAllHref="/posts"
+              seeAllHref={`/${area?.slug}/pesquisar?tab=posts`}
               seeAllLabel="Ver todos os posts"
               loading={isPending}
               empty={

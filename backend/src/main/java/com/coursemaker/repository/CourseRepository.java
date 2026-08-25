@@ -13,19 +13,21 @@ import java.util.UUID;
 
 public interface CourseRepository extends JpaRepository<Course, UUID> {
 
-    @Query("SELECT c FROM Course c JOIN FETCH c.owner WHERE c.id = :id")
+    @Query("SELECT c FROM Course c JOIN FETCH c.owner JOIN FETCH c.area WHERE c.id = :id")
     Optional<Course> findByIdWithOwner(@Param("id") UUID id);
 
-    @Query("SELECT c FROM Course c JOIN FETCH c.owner o "
+    @Query("SELECT c FROM Course c JOIN FETCH c.owner o JOIN FETCH c.area "
             + "WHERE lower(o.nickname) = lower(:nickname) AND c.slug = :slug")
     Optional<Course> findByOwnerNicknameAndSlug(@Param("nickname") String nickname, @Param("slug") String slug);
 
     boolean existsByOwnerIdAndSlug(UUID ownerId, String slug);
 
+    boolean existsByAreaId(UUID areaId);
+
     @Query("SELECT c.slug FROM Course c WHERE c.owner.id = :ownerId AND c.slug LIKE concat(:base, '%')")
     List<String> findSlugsStartingWith(@Param("ownerId") UUID ownerId, @Param("base") String base);
 
-    @Query("SELECT c FROM Course c JOIN FETCH c.owner o WHERE o.id = :ownerId ORDER BY c.createdAt DESC")
+    @Query("SELECT c FROM Course c JOIN FETCH c.owner o JOIN FETCH c.area WHERE o.id = :ownerId ORDER BY c.createdAt DESC")
     List<Course> findAllByOwnerId(@Param("ownerId") UUID ownerId);
 
     /**
@@ -55,6 +57,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR c.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR c.is_featured)
+              AND (CAST(:areaId AS uuid) IS NULL OR c.area_id = CAST(:areaId AS uuid))
               AND (c.status = 'available' OR c.owner_id = CAST(:viewerId AS uuid))
             ORDER BY
               CASE WHEN CAST(:sort AS text) = 'likes'
@@ -78,6 +81,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR c.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR c.is_featured)
+              AND (CAST(:areaId AS uuid) IS NULL OR c.area_id = CAST(:areaId AS uuid))
               AND (c.status = 'available' OR c.owner_id = CAST(:viewerId AS uuid))
             """,
             nativeQuery = true)
@@ -86,6 +90,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
                         @Param("visibility") String visibility,
                         @Param("categories") String categories,
                         @Param("featuredOnly") Boolean featuredOnly,
+                        @Param("areaId") UUID areaId,
                         @Param("sort") String sort,
                         @Param("viewerId") UUID viewerId,
                         Pageable pageable);

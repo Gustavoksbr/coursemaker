@@ -110,11 +110,12 @@ public class EnrollmentService {
 
     /** The single most recently opened enrolled course, for the library's "continuar assistindo". */
     @Transactional(readOnly = true)
-    public CourseSummary lastAccessedCourse(User user) {
+    public CourseSummary lastAccessedCourse(User user, UUID areaId) {
         return enrollmentRepository.findMostRecentlyAccessed(user.getId(), PageRequest.of(0, 1)).stream()
                 .findFirst()
                 .flatMap(enrollment -> courseRepository.findByIdWithOwner(enrollment.getId().getCourseId()))
                 .filter(course -> accessService.canView(course, user))
+                .filter(course -> areaId == null || course.getArea().getId().equals(areaId))
                 .map(course -> courseMapper.toSummary(course, user))
                 .orElse(null);
     }
@@ -124,7 +125,7 @@ public class EnrollmentService {
      * prove it is done, so those always count as "em andamento" too.
      */
     @Transactional(readOnly = true)
-    public List<CourseSummary> myInProgressCourses(User user) {
+    public List<CourseSummary> myInProgressCourses(User user, UUID areaId) {
         List<UUID> courseIds = enrollmentRepository.findAllCourseIdsByUser(user.getId());
         if (courseIds.isEmpty()) {
             return List.of();
@@ -133,6 +134,7 @@ public class EnrollmentService {
                 .map(courseRepository::findByIdWithOwner)
                 .flatMap(Optional::stream)
                 .filter(course -> accessService.canView(course, user))
+                .filter(course -> areaId == null || course.getArea().getId().equals(areaId))
                 .filter(course -> !isFinished(course, user))
                 .toList();
         return courseMapper.toSummaries(inProgress, user);
@@ -140,7 +142,7 @@ public class EnrollmentService {
 
     /** Enrolled courses the user has finished, for the library's "concluidos". */
     @Transactional(readOnly = true)
-    public List<CourseSummary> myCompletedCourses(User user) {
+    public List<CourseSummary> myCompletedCourses(User user, UUID areaId) {
         List<UUID> courseIds = enrollmentRepository.findAllCourseIdsByUser(user.getId());
         if (courseIds.isEmpty()) {
             return List.of();
@@ -149,6 +151,7 @@ public class EnrollmentService {
                 .map(courseRepository::findByIdWithOwner)
                 .flatMap(Optional::stream)
                 .filter(course -> accessService.canView(course, user))
+                .filter(course -> areaId == null || course.getArea().getId().equals(areaId))
                 .filter(course -> isFinished(course, user))
                 .toList();
         return courseMapper.toSummaries(completed, user);

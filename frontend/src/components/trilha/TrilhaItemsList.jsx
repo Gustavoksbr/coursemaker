@@ -94,8 +94,8 @@ function ItemRows({ items, canTrackProgress, onToggleComplete }) {
 function TrilhaItemRow({ item, index, canTrackProgress, onToggleComplete }) {
   const content = item.course ?? item.post
   const href = item.course
-    ? `/courses/${content.owner.nickname}/${content.slug}`
-    : `/posts/${content.owner.nickname}/${content.slug}`
+    ? `/${content.area.slug}/courses/${content.owner.nickname}/${content.slug}`
+    : `/${content.area.slug}/posts/${content.owner.nickname}/${content.slug}`
 
   return (
     <li className="rounded-xl border border-slate-700 bg-slate-800/40 p-3">

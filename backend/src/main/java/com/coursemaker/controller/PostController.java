@@ -59,11 +59,12 @@ public class PostController {
             @RequestParam(required = false) CourseVisibility visibility,
             @RequestParam(required = false) List<@Size(max = 50) String> category,
             @RequestParam(required = false) Boolean featured,
+            @RequestParam(required = false) UUID areaId,
             @RequestParam(required = false, defaultValue = "recent") @Size(max = 20) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size,
             @AuthenticationPrincipal AuthenticatedUser principal) {
-        return postService.search(q, author, visibility, category, featured, sort, page, size,
+        return postService.search(q, author, visibility, category, featured, areaId, sort, page, size,
                 AuthenticatedUser.userOrNull(principal));
     }
 

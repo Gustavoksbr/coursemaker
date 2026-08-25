@@ -9,6 +9,7 @@ function baselineFrom(trilha) {
     description: trilha.description ?? '',
     thumbnailUrl: trilha.thumbnailUrl ?? '',
     categories: trilha.categories ?? [],
+    areaId: trilha.area.id,
   }
 }
 
@@ -41,6 +42,7 @@ export function useTrilhaSettingsDraft(trilha, trilhaQueryKey) {
         description: form.description,
         thumbnailUrl: form.thumbnailUrl,
         categories: form.categories,
+        areaId: form.areaId,
       }),
     onSuccess: () => {
       setErrors({})

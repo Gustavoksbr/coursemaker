@@ -4,18 +4,20 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, Loader2, X } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input } from '@/components/ui/Field'
+import { Field, Input, Select } from '@/components/ui/Field'
+import { useCurrentArea } from '@/context/AreaContext'
 import { useToast } from '@/context/ToastContext'
 import { useDebounce } from '@/hooks/useDebounce'
 import { checkTrilhaSlug, createTrilha, trilhaKeys } from '@/api/trilhas'
 import { errorMessage, fieldErrors } from '@/lib/api'
 import { LIMITS } from '@/lib/constants'
 
-const BLANK = { title: '', slug: '' }
+const BLANK = { title: '', slug: '', areaId: '' }
 
 /** Trilha creation is a single step: just a title. Everything else is filled in on the editor. */
 export function CreateTrilhaModal({ open, onClose }) {
   const navigate = useNavigate()
+  const { area } = useCurrentArea()
   const queryClient = useQueryClient()
   const toast = useToast()
   const [form, setForm] = useState(BLANK)
@@ -32,6 +34,11 @@ export function CreateTrilhaModal({ open, onClose }) {
       setSlugCheck(null)
     }
   }, [open])
+
+  // A trilha is always created in the area you're currently browsing.
+  useEffect(() => {
+    if (open && area) setForm((current) => ({ ...current, areaId: area.id }))
+  }, [open, area?.id])
 
   useEffect(() => {
     if (!open || !debouncedTitle.trim()) {
@@ -60,12 +67,13 @@ export function CreateTrilhaModal({ open, onClose }) {
       createTrilha({
         title: form.title.trim(),
         slug: form.slug.trim() || undefined,
+        areaId: form.areaId,
       }),
     onSuccess: (trilha) => {
       queryClient.invalidateQueries({ queryKey: trilhaKeys.all })
       toast.success('Trilha criada! Agora monte a sequencia.')
       onClose()
-      navigate(`/trilhas/${trilha.owner.nickname}/${trilha.slug}/edit`)
+      navigate(`/${trilha.area.slug}/trilhas/${trilha.owner.nickname}/${trilha.slug}/edit`)
     },
     onError: (error) => {
       setErrors(fieldErrors(error))
@@ -74,7 +82,7 @@ export function CreateTrilhaModal({ open, onClose }) {
   })
 
   const effectiveSlug = form.slug.trim() || slugCheck?.suggestion || ''
-  const canSubmit = form.title.trim().length > 0
+  const canSubmit = form.title.trim().length > 0 && Boolean(form.areaId)
 
   return (
     <Modal open={open} onClose={onClose} title="Criar trilha" size="md">
@@ -116,9 +124,15 @@ export function CreateTrilhaModal({ open, onClose }) {
 
         {effectiveSlug && (
           <p className="break-all text-xs text-slate-500">
-            Ficara em <span className="font-mono text-slate-400">/trilhas/voce/{effectiveSlug}</span>
+            Ficara em <span className="font-mono text-slate-400">/{area?.slug}/trilhas/voce/{effectiveSlug}</span>
           </p>
         )}
+
+        <Field label="Area" htmlFor="trilha-area" required hint="A trilha nasce na area que voce esta navegando.">
+          <Select id="trilha-area" value={area?.name ?? ''} disabled>
+            <option>{area?.name ?? 'Carregando...'}</option>
+          </Select>
+        </Field>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={onClose}>

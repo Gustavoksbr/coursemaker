@@ -65,11 +65,12 @@ public class TrilhaController {
             @RequestParam(required = false) CourseVisibility visibility,
             @RequestParam(required = false) List<@Size(max = 50) String> category,
             @RequestParam(required = false) Boolean featured,
+            @RequestParam(required = false) UUID areaId,
             @RequestParam(required = false, defaultValue = "recent") @Size(max = 20) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size,
             @AuthenticationPrincipal AuthenticatedUser principal) {
-        return trilhaService.search(q, author, visibility, category, featured, sort, page, size,
+        return trilhaService.search(q, author, visibility, category, featured, areaId, sort, page, size,
                 AuthenticatedUser.userOrNull(principal));
     }
 
@@ -95,14 +96,16 @@ public class TrilhaController {
 
     @Operation(summary = "Trilhas que o usuario autenticado segue, para a biblioteca")
     @GetMapping("/api/v1/trilhas/me/following")
-    public List<TrilhaSummary> myFollowedTrilhas(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return trilhaService.myFollowedTrilhas(principal.user());
+    public List<TrilhaSummary> myFollowedTrilhas(@RequestParam(required = false) UUID areaId,
+                                                 @AuthenticationPrincipal AuthenticatedUser principal) {
+        return trilhaService.myFollowedTrilhas(principal.user(), areaId);
     }
 
     @Operation(summary = "Trilhas seguidas que o usuario autenticado ja concluiu, para a biblioteca")
     @GetMapping("/api/v1/trilhas/me/completed")
-    public List<TrilhaSummary> myCompletedTrilhas(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return trilhaService.myCompletedTrilhas(principal.user());
+    public List<TrilhaSummary> myCompletedTrilhas(@RequestParam(required = false) UUID areaId,
+                                                  @AuthenticationPrincipal AuthenticatedUser principal) {
+        return trilhaService.myCompletedTrilhas(principal.user(), areaId);
     }
 
     @Operation(summary = "Cria uma trilha (nasce como rascunho)")

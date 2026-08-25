@@ -2,6 +2,7 @@ package com.coursemaker.dto.post;
 
 import com.coursemaker.domain.enums.CourseStatus;
 import com.coursemaker.domain.enums.CourseVisibility;
+import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.curriculum.CurriculumDtos.BlockResponse;
 import com.coursemaker.dto.user.UserSummary;
 import jakarta.validation.constraints.NotBlank;
@@ -27,6 +28,7 @@ public final class PostDtos {
             CourseStatus status,
             List<String> categories,
             boolean featured,
+            AreaSummary area,
             UserSummary owner,
             long likeCount,
             boolean likedByMe,
@@ -60,7 +62,8 @@ public final class PostDtos {
             @Size(max = 2000) String thumbnailUrl,
             CourseVisibility visibility,
             @Size(max = MAX_PASSWORD_LENGTH) String password,
-            List<@Size(max = MAX_CATEGORY_LENGTH) String> categories) {
+            List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
+            @NotNull UUID areaId) {
     }
 
     /** Partial update: null means "leave unchanged". */
@@ -71,7 +74,8 @@ public final class PostDtos {
             CourseVisibility visibility,
             CourseStatus status,
             @Size(max = MAX_PASSWORD_LENGTH) String password,
-            List<@Size(max = MAX_CATEGORY_LENGTH) String> categories) {
+            List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
+            UUID areaId) {
     }
 
     public record ValidatePostAccessRequest(

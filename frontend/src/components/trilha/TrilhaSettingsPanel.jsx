@@ -4,6 +4,7 @@ import { Eye, EyeOff, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
+import { AreaSelect } from '@/components/ui/AreaSelect'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { useToast } from '@/context/ToastContext'
@@ -87,6 +88,14 @@ export function TrilhaSettingsPanel({ trilha, draft, trilhaQueryKey, onDeleted }
           <CategoryInput value={form.categories} onChange={(categories) => setField({ categories })} />
         </Field>
       </div>
+
+      <Field label="Area" htmlFor="trilha-settings-area" error={errors.areaId}>
+        <AreaSelect
+          id="trilha-settings-area"
+          value={form.areaId}
+          onChange={(areaId) => setField({ areaId })}
+        />
+      </Field>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-slate-700 pt-4">
         <button

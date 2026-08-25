@@ -134,11 +134,11 @@ public class LibraryService {
     // -------------------------------------------------------------- folders
 
     @Transactional
-    public List<LibraryFolderResponse> listFolders(User user) {
+    public List<LibraryFolderResponse> listFolders(User user, UUID areaId) {
         ensureDefaultFolder(user);
         List<LibraryFolder> folders = folderRepository.findByUserOrdered(user.getId());
         Map<UUID, Long> counts = new HashMap<>();
-        for (Object[] row : itemRepository.countByFolderForUser(user.getId())) {
+        for (Object[] row : itemRepository.countByFolderForUser(user.getId(), areaId)) {
             counts.put((UUID) row[0], ((Number) row[1]).longValue());
         }
         return folders.stream()
@@ -147,15 +147,15 @@ public class LibraryService {
     }
 
     @Transactional(readOnly = true)
-    public LibraryFolderResponse getFolder(UUID folderId, User user) {
+    public LibraryFolderResponse getFolder(UUID folderId, User user, UUID areaId) {
         LibraryFolder folder = requireOwnedFolder(folderId, user);
-        return toResponse(folder, itemRepository.countByFolderId(folderId));
+        return toResponse(folder, itemRepository.countByFolderId(folderId, areaId));
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<LibraryItemResponse> listFolderItems(UUID folderId, User user, int page, int size) {
+    public PageResponse<LibraryItemResponse> listFolderItems(UUID folderId, User user, UUID areaId, int page, int size) {
         requireOwnedFolder(folderId, user);
-        Page<LibraryItem> result = itemRepository.findByUserAndFolderOrdered(user.getId(), folderId,
+        Page<LibraryItem> result = itemRepository.findByUserAndFolderOrdered(user.getId(), folderId, areaId,
                 PageRequest.of(Math.max(0, page), Math.clamp(size, 1, MAX_PAGE_SIZE)));
         return PageResponse.of(result, toItemResponses(result.getContent(), user));
     }
@@ -180,7 +180,7 @@ public class LibraryService {
         }
         folder.setName(name);
         LibraryFolder saved = folderRepository.save(folder);
-        return toResponse(saved, itemRepository.countByFolderId(saved.getId()));
+        return toResponse(saved, itemRepository.countByFolderId(saved.getId(), null));
     }
 
     @Transactional

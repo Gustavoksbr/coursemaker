@@ -10,6 +10,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { EmptyState, Spinner } from '@/components/ui/Feedback'
+import { useCurrentArea } from '@/context/AreaContext'
 import { courseKeys, lastAccessedCourse, myCompletedCourses, myInProgressCourses } from '@/api/courses'
 import { myCompletedTrilhas, myFollowedTrilhas, trilhaKeys } from '@/api/trilhas'
 import { libraryKeys, listFolders } from '@/api/library'
@@ -23,14 +24,40 @@ const SECTIONS = [
 ]
 
 export default function LibraryPage() {
+  const { area } = useCurrentArea()
+  const areaId = area?.id
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
 
-  const lastAccessedQuery = useQuery({ queryKey: courseKeys.lastAccessed, queryFn: lastAccessedCourse })
-  const inProgressQuery = useQuery({ queryKey: courseKeys.inProgress, queryFn: myInProgressCourses })
-  const completedCoursesQuery = useQuery({ queryKey: courseKeys.completed, queryFn: myCompletedCourses })
-  const completedTrilhasQuery = useQuery({ queryKey: trilhaKeys.completed, queryFn: myCompletedTrilhas })
-  const followingQuery = useQuery({ queryKey: trilhaKeys.following, queryFn: myFollowedTrilhas })
-  const foldersQuery = useQuery({ queryKey: libraryKeys.folders, queryFn: listFolders })
+  const lastAccessedQuery = useQuery({
+    queryKey: courseKeys.lastAccessed(areaId),
+    queryFn: () => lastAccessedCourse(areaId),
+    enabled: Boolean(areaId),
+  })
+  const inProgressQuery = useQuery({
+    queryKey: courseKeys.inProgress(areaId),
+    queryFn: () => myInProgressCourses(areaId),
+    enabled: Boolean(areaId),
+  })
+  const completedCoursesQuery = useQuery({
+    queryKey: courseKeys.completed(areaId),
+    queryFn: () => myCompletedCourses(areaId),
+    enabled: Boolean(areaId),
+  })
+  const completedTrilhasQuery = useQuery({
+    queryKey: trilhaKeys.completed(areaId),
+    queryFn: () => myCompletedTrilhas(areaId),
+    enabled: Boolean(areaId),
+  })
+  const followingQuery = useQuery({
+    queryKey: trilhaKeys.following(areaId),
+    queryFn: () => myFollowedTrilhas(areaId),
+    enabled: Boolean(areaId),
+  })
+  const foldersQuery = useQuery({
+    queryKey: libraryKeys.folders(areaId),
+    queryFn: () => listFolders(areaId),
+    enabled: Boolean(areaId),
+  })
 
   const completedLoading = completedCoursesQuery.isPending || completedTrilhasQuery.isPending
   const completedItems = [
@@ -127,7 +154,7 @@ export default function LibraryPage() {
               title="Voce ainda nao segue nenhuma trilha"
               message="Trilhas que voce seguir aparecem aqui."
               action={
-                <Link to="/trilhas" className="btn-secondary">
+                <Link to={`/${area?.slug}/pesquisar?tab=trilhas`} className="btn-secondary">
                   Explorar trilhas
                 </Link>
               }
@@ -210,7 +237,7 @@ function CardSlot({ children }) {
 }
 
 function ContinueWatchingCard({ course }) {
-  const href = `/courses/${course.owner.nickname}/${course.slug}`
+  const href = `/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}`
   return (
     <Link
       to={href}

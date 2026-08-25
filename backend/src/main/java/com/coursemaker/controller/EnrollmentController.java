@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -55,20 +56,23 @@ public class EnrollmentController {
 
     @Operation(summary = "Cursos matriculados e ainda nao concluidos, para a biblioteca")
     @GetMapping("/api/v1/enrollments/me/in-progress")
-    public List<CourseSummary> myInProgressCourses(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return enrollmentService.myInProgressCourses(principal.user());
+    public List<CourseSummary> myInProgressCourses(@RequestParam(required = false) UUID areaId,
+                                                    @AuthenticationPrincipal AuthenticatedUser principal) {
+        return enrollmentService.myInProgressCourses(principal.user(), areaId);
     }
 
     @Operation(summary = "Cursos matriculados e concluidos, para a biblioteca")
     @GetMapping("/api/v1/enrollments/me/completed")
-    public List<CourseSummary> myCompletedCourses(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return enrollmentService.myCompletedCourses(principal.user());
+    public List<CourseSummary> myCompletedCourses(@RequestParam(required = false) UUID areaId,
+                                                   @AuthenticationPrincipal AuthenticatedUser principal) {
+        return enrollmentService.myCompletedCourses(principal.user(), areaId);
     }
 
     @Operation(summary = "Curso matriculado aberto mais recentemente, ou null se nenhum. Para \"continuar assistindo\"")
     @GetMapping("/api/v1/enrollments/me/last-accessed")
-    public CourseSummary lastAccessedCourse(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return enrollmentService.lastAccessedCourse(principal.user());
+    public CourseSummary lastAccessedCourse(@RequestParam(required = false) UUID areaId,
+                                            @AuthenticationPrincipal AuthenticatedUser principal) {
+        return enrollmentService.lastAccessedCourse(principal.user(), areaId);
     }
 
     @Operation(summary = "Valida a senha de um curso privado e libera o conteudo")

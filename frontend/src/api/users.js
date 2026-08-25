@@ -27,11 +27,13 @@ export async function updateProfile(id, payload) {
   return data
 }
 
-export async function search(q, limit = 6) {
-  const { data } = await api.get('/search', { params: q ? { q, limit } : { limit } })
+export async function search(q, limit = 6, areaId) {
+  const { data } = await api.get('/search', {
+    params: { ...(q ? { q } : {}), limit, ...(areaId ? { areaId } : {}) },
+  })
   return data
 }
 
 export const searchKeys = {
-  unified: (q, limit) => ['search', q, limit],
+  unified: (q, limit, areaId) => ['search', q, limit, areaId],
 }

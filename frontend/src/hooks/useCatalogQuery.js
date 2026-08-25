@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce'
  * The search page's tabs use `useCatalogList` directly instead: they share one search bar at the
  * page level, so they must not also debounce/write `q` themselves (see SearchPage.jsx).
  */
-export function useCatalogQuery({ filters, setFilters, listFn, queryKeyFn }) {
+export function useCatalogQuery({ filters, setFilters, listFn, queryKeyFn, extraFilters }) {
   const [term, setTerm] = useState(filters.q)
   const debouncedTerm = useDebounce(term, 300)
 
@@ -19,6 +19,6 @@ export function useCatalogQuery({ filters, setFilters, listFn, queryKeyFn }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedTerm])
 
-  const list = useCatalogList({ filters, listFn, queryKeyFn })
+  const list = useCatalogList({ filters, listFn, queryKeyFn, extraFilters })
   return { term, setTerm, ...list }
 }

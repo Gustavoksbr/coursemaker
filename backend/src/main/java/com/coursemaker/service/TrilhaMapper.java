@@ -6,6 +6,7 @@ import com.coursemaker.domain.entity.Trilha;
 import com.coursemaker.domain.entity.TrilhaItem;
 import com.coursemaker.domain.entity.TrilhaStep;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.course.CourseDtos.ProgressResponse;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
@@ -83,6 +84,7 @@ public class TrilhaMapper {
                 trilha.getStatus(),
                 trilha.getCategories(),
                 trilha.isFeatured(),
+                AreaSummary.from(trilha.getArea()),
                 UserSummary.from(trilha.getOwner()),
                 trilhaItemRepository.countByTrilhaId(trilha.getId()),
                 trilhaEnrollmentRepository.countByTrilhaId(trilha.getId()),

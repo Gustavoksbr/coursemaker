@@ -175,8 +175,8 @@ function ItemGroup({ groupKey, title, items, steps, draft, onAddClick }) {
           {items.map((item) => {
             const content = item.course ?? item.post
             const href = item.course
-              ? `/courses/${content.owner.nickname}/${content.slug}`
-              : `/posts/${content.owner.nickname}/${content.slug}`
+              ? `/${content.area.slug}/courses/${content.owner.nickname}/${content.slug}`
+              : `/${content.area.slug}/posts/${content.owner.nickname}/${content.slug}`
             const isEditingNote = editingNote?.itemId === item.id
 
             return (

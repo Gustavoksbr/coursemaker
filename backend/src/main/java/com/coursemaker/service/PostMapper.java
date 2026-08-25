@@ -2,6 +2,7 @@ package com.coursemaker.service;
 
 import com.coursemaker.domain.entity.Post;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
 import com.coursemaker.dto.user.UserSummary;
 import com.coursemaker.repository.LibraryItemRepository;
@@ -52,6 +53,7 @@ public class PostMapper {
                         post.getStatus(),
                         post.getCategories(),
                         post.isFeatured(),
+                        AreaSummary.from(post.getArea()),
                         UserSummary.from(post.getOwner()),
                         likeCounts.getOrDefault(post.getId(), 0L),
                         liked.contains(post.getId()),

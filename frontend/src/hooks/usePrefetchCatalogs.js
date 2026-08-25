@@ -56,12 +56,14 @@ export function usePrefetchCatalogs() {
   useEffect(() => {
     if (!isAuthenticated) return
 
-    queryClient.prefetchQuery({ queryKey: courseKeys.lastAccessed, queryFn: lastAccessedCourse })
-    queryClient.prefetchQuery({ queryKey: courseKeys.inProgress, queryFn: myInProgressCourses })
-    queryClient.prefetchQuery({ queryKey: courseKeys.completed, queryFn: myCompletedCourses })
-    queryClient.prefetchQuery({ queryKey: trilhaKeys.completed, queryFn: myCompletedTrilhas })
-    queryClient.prefetchQuery({ queryKey: trilhaKeys.following, queryFn: myFollowedTrilhas })
-    queryClient.prefetchQuery({ queryKey: libraryKeys.folders, queryFn: listFolders })
+    // Prefetched without an area filter - the library screen itself always requests the current
+    // area's variant, so this only warms the cache for a visitor who has not picked one yet.
+    queryClient.prefetchQuery({ queryKey: courseKeys.lastAccessed(), queryFn: () => lastAccessedCourse() })
+    queryClient.prefetchQuery({ queryKey: courseKeys.inProgress(), queryFn: () => myInProgressCourses() })
+    queryClient.prefetchQuery({ queryKey: courseKeys.completed(), queryFn: () => myCompletedCourses() })
+    queryClient.prefetchQuery({ queryKey: trilhaKeys.completed(), queryFn: () => myCompletedTrilhas() })
+    queryClient.prefetchQuery({ queryKey: trilhaKeys.following(), queryFn: () => myFollowedTrilhas() })
+    queryClient.prefetchQuery({ queryKey: libraryKeys.folders(), queryFn: () => listFolders() })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated])
 }

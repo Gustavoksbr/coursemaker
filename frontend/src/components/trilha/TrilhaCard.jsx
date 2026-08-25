@@ -7,7 +7,7 @@ import { Thumbnail } from '@/components/ui/Thumbnail'
 import { plural } from '@/lib/format'
 
 export function TrilhaCard({ trilha }) {
-  const href = `/trilhas/${trilha.owner.nickname}/${trilha.slug}`
+  const href = `/${trilha.area.slug}/trilhas/${trilha.owner.nickname}/${trilha.slug}`
 
   return (
     <article className="card group flex flex-col overflow-hidden">

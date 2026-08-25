@@ -1,5 +1,6 @@
 package com.coursemaker.service;
 
+import com.coursemaker.domain.entity.Area;
 import com.coursemaker.domain.entity.Post;
 import com.coursemaker.domain.entity.User;
 import com.coursemaker.domain.enums.CourseStatus;
@@ -14,6 +15,7 @@ import com.coursemaker.dto.post.PostDtos.UpdatePostRequest;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
 import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
+import com.coursemaker.repository.AreaRepository;
 import com.coursemaker.repository.PostBlockRepository;
 import com.coursemaker.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class PostService {
     private static final int MAX_PAGE_SIZE = 50;
 
     private final PostRepository postRepository;
+    private final AreaRepository areaRepository;
     private final PostBlockRepository postBlockRepository;
     private final PostAccessService accessService;
     private final PrivatePostAccessService privateAccessService;
@@ -43,7 +46,7 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public PageResponse<PostSummary> search(String q, String author, CourseVisibility visibility,
-                                            List<String> categories, Boolean featuredOnly, String sort,
+                                            List<String> categories, Boolean featuredOnly, UUID areaId, String sort,
                                             int page, int size, User viewer) {
         Page<Post> result = postRepository.search(
                 blankToNull(q),
@@ -51,6 +54,7 @@ public class PostService {
                 visibility == null ? null : visibility.getValue(),
                 CourseService.joinCategories(categories),
                 featuredOnly,
+                areaId,
                 sort == null ? "recent" : sort,
                 viewer == null ? null : viewer.getId(),
                 PageRequest.of(Math.max(0, page), Math.clamp(size, 1, MAX_PAGE_SIZE)));
@@ -112,8 +116,12 @@ public class PostService {
                     "Posts privados exigem uma senha de acesso");
         }
 
+        Area area = areaRepository.findById(request.areaId())
+                .orElseThrow(() -> ResourceNotFoundException.of("Area"));
+
         Post post = Post.builder()
                 .owner(owner)
+                .area(area)
                 .title(request.title().trim())
                 .slug(slug)
                 .description(request.description())
@@ -145,6 +153,10 @@ public class PostService {
         }
         if (request.categories() != null) {
             post.setCategories(CourseService.normalizeCategories(request.categories()));
+        }
+        if (request.areaId() != null) {
+            post.setArea(areaRepository.findById(request.areaId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Area")));
         }
         applyVisibility(post, request);
 

@@ -4,7 +4,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
 import { useToast } from '@/context/ToastContext'
-import { createFolder, libraryKeys, renameFolder } from '@/api/library'
+import { createFolder, renameFolder } from '@/api/library'
 import { errorMessage } from '@/lib/api'
 
 /** Create-or-rename modal: pass `folder` to rename it, omit it to create a new one. */
@@ -21,8 +21,8 @@ export function FolderModal({ open, onClose, folder }) {
   const { mutate: submit, isPending } = useMutation({
     mutationFn: () => (isEditing ? renameFolder(folder.id, name.trim()) : createFolder(name.trim())),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: libraryKeys.folders })
-      if (isEditing) queryClient.invalidateQueries({ queryKey: libraryKeys.folder(folder.id) })
+      // Every area-filtered variant of the folder list/detail queries shares this prefix.
+      queryClient.invalidateQueries({ queryKey: ['library', 'folders'] })
       toast.success(isEditing ? 'Pasta renomeada.' : 'Pasta criada.')
       onClose()
     },

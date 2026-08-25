@@ -13,19 +13,21 @@ import java.util.UUID;
 
 public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
 
-    @Query("SELECT t FROM Trilha t JOIN FETCH t.owner WHERE t.id = :id")
+    @Query("SELECT t FROM Trilha t JOIN FETCH t.owner JOIN FETCH t.area WHERE t.id = :id")
     Optional<Trilha> findByIdWithOwner(@Param("id") UUID id);
 
-    @Query("SELECT t FROM Trilha t JOIN FETCH t.owner o "
+    @Query("SELECT t FROM Trilha t JOIN FETCH t.owner o JOIN FETCH t.area "
             + "WHERE lower(o.nickname) = lower(:nickname) AND t.slug = :slug")
     Optional<Trilha> findByOwnerNicknameAndSlug(@Param("nickname") String nickname, @Param("slug") String slug);
 
     boolean existsByOwnerIdAndSlug(UUID ownerId, String slug);
 
+    boolean existsByAreaId(UUID areaId);
+
     @Query("SELECT t.slug FROM Trilha t WHERE t.owner.id = :ownerId AND t.slug LIKE concat(:base, '%')")
     List<String> findSlugsStartingWith(@Param("ownerId") UUID ownerId, @Param("base") String base);
 
-    @Query("SELECT t FROM Trilha t JOIN FETCH t.owner o WHERE o.id = :ownerId ORDER BY t.createdAt DESC")
+    @Query("SELECT t FROM Trilha t JOIN FETCH t.owner o JOIN FETCH t.area WHERE o.id = :ownerId ORDER BY t.createdAt DESC")
     List<Trilha> findAllByOwnerId(@Param("ownerId") UUID ownerId);
 
     /** Every trilha that contains this course, most recently added first -- backs "ver mais". */
@@ -63,6 +65,7 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR t.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR t.is_featured)
+              AND (CAST(:areaId AS uuid) IS NULL OR t.area_id = CAST(:areaId AS uuid))
               AND (t.status = 'available' OR t.owner_id = CAST(:viewerId AS uuid))
             ORDER BY
               CASE WHEN CAST(:sort AS text) = 'name' THEN t.title ELSE '' END ASC,
@@ -83,6 +86,7 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR t.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR t.is_featured)
+              AND (CAST(:areaId AS uuid) IS NULL OR t.area_id = CAST(:areaId AS uuid))
               AND (t.status = 'available' OR t.owner_id = CAST(:viewerId AS uuid))
             """,
             nativeQuery = true)
@@ -91,6 +95,7 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
                         @Param("visibility") String visibility,
                         @Param("categories") String categories,
                         @Param("featuredOnly") Boolean featuredOnly,
+                        @Param("areaId") UUID areaId,
                         @Param("sort") String sort,
                         @Param("viewerId") UUID viewerId,
                         Pageable pageable);

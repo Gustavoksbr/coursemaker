@@ -114,10 +114,11 @@ public class LibraryController {
 
     // -------------------------------------------------------------- folders
 
-    @Operation(summary = "Lista as pastas da biblioteca")
+    @Operation(summary = "Lista as pastas da biblioteca (contagens filtradas pela area quando informada)")
     @GetMapping("/folders")
-    public List<LibraryFolderResponse> folders(@AuthenticationPrincipal AuthenticatedUser principal) {
-        return libraryService.listFolders(principal.user());
+    public List<LibraryFolderResponse> folders(@RequestParam(required = false) UUID areaId,
+                                               @AuthenticationPrincipal AuthenticatedUser principal) {
+        return libraryService.listFolders(principal.user(), areaId);
     }
 
     @Operation(summary = "Cria uma pasta")
@@ -147,16 +148,18 @@ public class LibraryController {
     @Operation(summary = "Detalhes de uma pasta")
     @GetMapping("/folders/{folderId}")
     public LibraryFolderResponse getFolder(@PathVariable UUID folderId,
+                                           @RequestParam(required = false) UUID areaId,
                                            @AuthenticationPrincipal AuthenticatedUser principal) {
-        return libraryService.getFolder(folderId, principal.user());
+        return libraryService.getFolder(folderId, principal.user(), areaId);
     }
 
     @Operation(summary = "Itens de uma pasta, paginado")
     @GetMapping("/folders/{folderId}/items")
     public PageResponse<LibraryItemResponse> folderItems(@PathVariable UUID folderId,
+                                                          @RequestParam(required = false) UUID areaId,
                                                           @RequestParam(defaultValue = "0") int page,
                                                           @RequestParam(defaultValue = "12") int size,
                                                           @AuthenticationPrincipal AuthenticatedUser principal) {
-        return libraryService.listFolderItems(folderId, principal.user(), page, size);
+        return libraryService.listFolderItems(folderId, principal.user(), areaId, page, size);
     }
 }

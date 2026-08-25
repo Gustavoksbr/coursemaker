@@ -267,7 +267,7 @@ export function Landing({
             <SaveToLibraryButton kind="course" contentId={course.id} saved={course.savedByMe} onChange={onSavedChange} />
             {isOwner ? (
               <Link
-                to={`/courses/${course.owner.nickname}/${course.slug}/edit`}
+                to={`/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}/edit`}
                 className="btn-secondary"
               >
                 <Pencil size={16} /> Editar curso

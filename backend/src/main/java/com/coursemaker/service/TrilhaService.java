@@ -1,5 +1,6 @@
 package com.coursemaker.service;
 
+import com.coursemaker.domain.entity.Area;
 import com.coursemaker.domain.entity.CompositeIds.CourseTrilhaId;
 import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.CourseTrilhaHighlight;
@@ -28,6 +29,7 @@ import com.coursemaker.dto.trilha.TrilhaDtos.UpdateTrilhaStepRequest;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
 import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
+import com.coursemaker.repository.AreaRepository;
 import com.coursemaker.repository.CourseRepository;
 import com.coursemaker.repository.CourseTrilhaHighlightRepository;
 import com.coursemaker.repository.PostRepository;
@@ -55,6 +57,7 @@ public class TrilhaService {
     private static final int MAX_HIGHLIGHTS = 5;
 
     private final TrilhaRepository trilhaRepository;
+    private final AreaRepository areaRepository;
     private final TrilhaItemRepository trilhaItemRepository;
     private final TrilhaStepRepository trilhaStepRepository;
     private final CourseTrilhaHighlightRepository highlightRepository;
@@ -69,7 +72,7 @@ public class TrilhaService {
 
     @Transactional(readOnly = true)
     public PageResponse<TrilhaSummary> search(String q, String author, CourseVisibility visibility,
-                                              List<String> categories, Boolean featuredOnly, String sort,
+                                              List<String> categories, Boolean featuredOnly, UUID areaId, String sort,
                                               int page, int size, User viewer) {
         Page<Trilha> result = trilhaRepository.search(
                 blankToNull(q),
@@ -77,6 +80,7 @@ public class TrilhaService {
                 visibility == null ? null : visibility.getValue(),
                 CourseService.joinCategories(categories),
                 featuredOnly,
+                areaId,
                 sort == null ? "recent" : sort,
                 viewer == null ? null : viewer.getId(),
                 PageRequest.of(Math.max(0, page), Math.clamp(size, 1, MAX_PAGE_SIZE)));
@@ -99,7 +103,7 @@ public class TrilhaService {
 
     /** Trilhas the user follows (is enrolled in), for the library page. */
     @Transactional(readOnly = true)
-    public List<TrilhaSummary> myFollowedTrilhas(User user) {
+    public List<TrilhaSummary> myFollowedTrilhas(User user, UUID areaId) {
         List<UUID> trilhaIds = trilhaEnrollmentRepository.findAllTrilhaIdsByUser(user.getId());
         if (trilhaIds.isEmpty()) {
             return List.of();
@@ -108,13 +112,14 @@ public class TrilhaService {
                 .map(trilhaRepository::findByIdWithOwner)
                 .flatMap(java.util.Optional::stream)
                 .filter(trilha -> canView(trilha, user))
+                .filter(trilha -> areaId == null || trilha.getArea().getId().equals(areaId))
                 .toList();
         return trilhaMapper.toSummaries(trilhas, user);
     }
 
     /** Followed trilhas the user has finished every item of, for the library's "concluidos". */
     @Transactional(readOnly = true)
-    public List<TrilhaSummary> myCompletedTrilhas(User user) {
+    public List<TrilhaSummary> myCompletedTrilhas(User user, UUID areaId) {
         List<UUID> trilhaIds = trilhaEnrollmentRepository.findAllTrilhaIdsByUser(user.getId());
         if (trilhaIds.isEmpty()) {
             return List.of();
@@ -123,6 +128,7 @@ public class TrilhaService {
                 .map(trilhaRepository::findByIdWithOwner)
                 .flatMap(java.util.Optional::stream)
                 .filter(trilha -> canView(trilha, user))
+                .filter(trilha -> areaId == null || trilha.getArea().getId().equals(areaId))
                 .filter(trilha -> isFinished(trilha, user))
                 .toList();
         return trilhaMapper.toSummaries(trilhas, user);
@@ -170,8 +176,12 @@ public class TrilhaService {
         String slug = slugGenerator.uniqueSlug(desired,
                 trilhaRepository.findSlugsStartingWith(owner.getId(), slugGenerator.slugify(desired)));
 
+        Area area = areaRepository.findById(request.areaId())
+                .orElseThrow(() -> ResourceNotFoundException.of("Area"));
+
         Trilha trilha = Trilha.builder()
                 .owner(owner)
+                .area(area)
                 .title(request.title().trim())
                 .slug(slug)
                 .description(request.description())
@@ -206,6 +216,10 @@ public class TrilhaService {
         }
         if (request.categories() != null) {
             trilha.setCategories(CourseService.normalizeCategories(request.categories()));
+        }
+        if (request.areaId() != null) {
+            trilha.setArea(areaRepository.findById(request.areaId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Area")));
         }
         return trilhaMapper.toSummary(trilhaRepository.save(trilha), viewer);
     }

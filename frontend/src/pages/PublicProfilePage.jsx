@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, CalendarDays, GraduationCap, Mail, Waypoints } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
+import { Select } from '@/components/ui/Field'
 import { CourseCard } from '@/components/course/CourseCard'
 import { PostCard } from '@/components/post/PostCard'
 import { TrilhaCard } from '@/components/trilha/TrilhaCard'
@@ -18,6 +19,7 @@ export default function PublicProfilePage() {
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [tab, setTab] = useState('courses')
+  const [areaFilter, setAreaFilter] = useState('')
 
   const { data: profile, isPending, isError, error, refetch } = useQuery({
     queryKey: userKeys.profile(nickname),
@@ -37,7 +39,16 @@ export default function PublicProfilePage() {
   }
 
   const isMe = user?.id === profile.id
-  const items = tab === 'courses' ? profile.courses : tab === 'posts' ? profile.posts : profile.trilhas
+  const allItems = tab === 'courses' ? profile.courses : tab === 'posts' ? profile.posts : profile.trilhas
+  const availableAreas = [...new Map(allItems.map((item) => [item.area.id, item.area])).values()].sort((a, b) =>
+    a.name.localeCompare(b.name, 'pt-BR'),
+  )
+  const items = areaFilter ? allItems.filter((item) => item.area.id === areaFilter) : allItems
+
+  const changeTab = (nextTab) => {
+    setTab(nextTab)
+    setAreaFilter('')
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6">
@@ -88,42 +99,66 @@ export default function PublicProfilePage() {
         )}
       </header>
 
-      <div className="border-b border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
         <div className="flex gap-1">
           <Tab
             active={tab === 'courses'}
-            onClick={() => setTab('courses')}
+            onClick={() => changeTab('courses')}
             icon={GraduationCap}
             label="Cursos"
             count={profile.courses.length}
           />
           <Tab
             active={tab === 'posts'}
-            onClick={() => setTab('posts')}
+            onClick={() => changeTab('posts')}
             icon={BookOpen}
             label="Posts"
             count={profile.posts.length}
           />
           <Tab
             active={tab === 'trilhas'}
-            onClick={() => setTab('trilhas')}
+            onClick={() => changeTab('trilhas')}
             icon={Waypoints}
             label="Trilhas"
             count={profile.trilhas.length}
           />
         </div>
+
+        {availableAreas.length > 1 && (
+          <Select
+            value={areaFilter}
+            onChange={(event) => setAreaFilter(event.target.value)}
+            aria-label="Filtrar por area"
+            className="mb-2 w-44"
+          >
+            <option value="">Todas as areas</option>
+            {availableAreas.map((candidateArea) => (
+              <option key={candidateArea.id} value={candidateArea.id}>
+                {candidateArea.name}
+              </option>
+            ))}
+          </Select>
+        )}
       </div>
 
       {items.length === 0 ? (
         <EmptyState
           icon={tab === 'courses' ? GraduationCap : tab === 'posts' ? BookOpen : Waypoints}
           title={
-            tab === 'courses' ? 'Nenhum curso ainda' : tab === 'posts' ? 'Nenhum post ainda' : 'Nenhuma trilha ainda'
+            areaFilter
+              ? 'Nada nessa area'
+              : tab === 'courses'
+                ? 'Nenhum curso ainda'
+                : tab === 'posts'
+                  ? 'Nenhum post ainda'
+                  : 'Nenhuma trilha ainda'
           }
           message={
-            isMe
-              ? 'O que voce publicar vai aparecer aqui.'
-              : `${profile.name} ainda nao publicou nada por aqui.`
+            areaFilter
+              ? 'Tente outra area ou "Todas as areas".'
+              : isMe
+                ? 'O que voce publicar vai aparecer aqui.'
+                : `${profile.name} ainda nao publicou nada por aqui.`
           }
         />
       ) : (

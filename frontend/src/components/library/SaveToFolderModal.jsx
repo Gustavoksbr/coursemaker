@@ -42,7 +42,7 @@ export function SaveToFolderModal({ open, onClose, kind, contentId, onChange }) 
     queryFn: () => STATUS_FETCHERS[kind](contentId),
     enabled: open,
   })
-  const foldersQuery = useQuery({ queryKey: libraryKeys.folders, queryFn: listFolders, enabled: open })
+  const foldersQuery = useQuery({ queryKey: libraryKeys.folders(), queryFn: () => listFolders(), enabled: open })
 
   useEffect(() => {
     if (!open) {

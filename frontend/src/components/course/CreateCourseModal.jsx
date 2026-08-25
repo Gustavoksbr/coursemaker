@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
 import { useAuth } from '@/context/AuthContext'
+import { useCurrentArea } from '@/context/AreaContext'
 import { useToast } from '@/context/ToastContext'
 import { useDebounce } from '@/hooks/useDebounce'
 import { checkCourseSlug, courseKeys, createCourse } from '@/api/courses'
@@ -22,6 +23,7 @@ const BLANK = {
   password: '',
   categories: [],
   progressEnabled: false,
+  areaId: '',
 }
 
 /**
@@ -31,6 +33,7 @@ const BLANK = {
 export function CreateCourseModal({ open, onClose }) {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { area } = useCurrentArea()
   const queryClient = useQueryClient()
   const toast = useToast()
   const [step, setStep] = useState(1)
@@ -59,6 +62,12 @@ export function CreateCourseModal({ open, onClose }) {
       setSlugCheck(null)
     }
   }, [open])
+
+  // A course is always created in the area you're currently browsing, so this stays in sync with
+  // it for as long as the modal is open rather than letting the user pick a different one.
+  useEffect(() => {
+    if (open && area) setForm((current) => ({ ...current, areaId: area.id }))
+  }, [open, area?.id])
 
   useEffect(() => {
     if (!open || !debouncedName.trim()) {
@@ -94,12 +103,13 @@ export function CreateCourseModal({ open, onClose }) {
         password: form.visibility === VISIBILITY.PRIVATE ? form.password : undefined,
         categories: form.categories,
         progressEnabled: form.progressEnabled,
+        areaId: form.areaId,
       }),
     onSuccess: (course) => {
       queryClient.invalidateQueries({ queryKey: courseKeys.all })
       toast.success('Curso criado! Agora monte o conteudo.')
       onClose()
-      navigate(`/courses/${course.owner.nickname}/${course.slug}/edit`)
+      navigate(`/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}/edit`)
     },
     onError: (error) => {
       setErrors(fieldErrors(error))
@@ -110,7 +120,7 @@ export function CreateCourseModal({ open, onClose }) {
   const effectiveSlug = form.slug.trim() || slugCheck?.suggestion || ''
   const canAdvance = form.name.trim().length > 0
   const canSubmit =
-    canAdvance && (form.visibility !== VISIBILITY.PRIVATE || form.password.length >= 4)
+    canAdvance && Boolean(form.areaId) && (form.visibility !== VISIBILITY.PRIVATE || form.password.length >= 4)
 
   return (
     <>
@@ -165,7 +175,7 @@ export function CreateCourseModal({ open, onClose }) {
             <p className="break-all text-xs text-slate-500">
               Ficara em{' '}
               <span className="font-mono text-slate-400">
-                /courses/{user.nickname}/{effectiveSlug}
+                /{area?.slug}/courses/{user.nickname}/{effectiveSlug}
               </span>
               {slugCheck && !slugCheck.available && !form.slug.trim() && (
                 <span className="ml-1 text-amber-400">
@@ -218,6 +228,12 @@ export function CreateCourseModal({ open, onClose }) {
               value={form.categories}
               onChange={(categories) => setForm({ ...form, categories })}
             />
+          </Field>
+
+          <Field label="Area" htmlFor="course-area" required hint="O curso nasce na area que voce esta navegando.">
+            <Select id="course-area" value={area?.name ?? ''} disabled>
+              <option>{area?.name ?? 'Carregando...'}</option>
+            </Select>
           </Field>
 
           <Field label="Visibilidade" htmlFor="course-visibility">

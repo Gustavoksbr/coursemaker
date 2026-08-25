@@ -44,6 +44,10 @@ public class Trilha {
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "area_id", nullable = false)
+    private Area area;
+
     @Column(nullable = false)
     private String title;
 

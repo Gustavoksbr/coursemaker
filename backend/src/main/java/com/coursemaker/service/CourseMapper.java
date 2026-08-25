@@ -2,6 +2,7 @@ package com.coursemaker.service;
 
 import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.user.UserSummary;
 import com.coursemaker.repository.CourseLikeRepository;
@@ -86,6 +87,7 @@ public class CourseMapper {
                 course.getCategories(),
                 course.isFeatured(),
                 course.isProgressEnabled(),
+                AreaSummary.from(course.getArea()),
                 UserSummary.from(course.getOwner()),
                 likeCount,
                 enrollmentCount,

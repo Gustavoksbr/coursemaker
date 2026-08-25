@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { FullHeightLayout, Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
+import { AreaScopeGuard } from '@/components/layout/AreaScopeGuard'
 import { PageLoader } from '@/components/ui/Feedback'
 import { usePrefetchCatalogs } from '@/hooks/usePrefetchCatalogs'
 import HomePage from '@/pages/HomePage'
@@ -9,11 +10,8 @@ import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import SetupNicknamePage from '@/pages/SetupNicknamePage'
 import SearchPage from '@/pages/SearchPage'
-import CourseListPage from '@/pages/CourseListPage'
 import CourseViewPage from '@/pages/CourseViewPage'
-import PostListPage from '@/pages/PostListPage'
 import PostViewPage from '@/pages/PostViewPage'
-import TrilhaListPage from '@/pages/TrilhaListPage'
 import TrilhaViewPage from '@/pages/TrilhaViewPage'
 import LibraryPage from '@/pages/LibraryPage'
 import LibraryFolderPage from '@/pages/LibraryFolderPage'
@@ -21,6 +19,7 @@ import ConversationListPage from '@/pages/ConversationListPage'
 import MessageThreadPage from '@/pages/MessageThreadPage'
 import ProfilePage from '@/pages/ProfilePage'
 import PublicProfilePage from '@/pages/PublicProfilePage'
+import AdminAreasPage from '@/pages/admin/AdminAreasPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
 // The editors pull in Tiptap/ProseMirror, which is the single heaviest dependency here and is
@@ -47,13 +46,36 @@ const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
-      { path: '/pesquisar', element: <SearchPage /> },
-      { path: '/cursos', element: <CourseListPage /> },
-      { path: '/posts', element: <PostListPage /> },
-      { path: '/posts/:nickname/:slug', element: <PostViewPage /> },
-      { path: '/trilhas', element: <TrilhaListPage /> },
-      { path: '/trilhas/:nickname/:slug', element: <TrilhaViewPage /> },
       { path: '/users/:nickname', element: <PublicProfilePage /> },
+
+      {
+        // Everything below lives at /:areaSlug/... - the area a course/post/trilha belongs to is
+        // part of its address. AreaScopeGuard 404s an unknown slug instead of rendering a page
+        // scoped to nothing.
+        path: '/:areaSlug',
+        element: <AreaScopeGuard />,
+        children: [
+          { path: 'pesquisar', element: <SearchPage /> },
+          { path: 'posts/:nickname/:slug', element: <PostViewPage /> },
+          { path: 'trilhas/:nickname/:slug', element: <TrilhaViewPage /> },
+
+          {
+            element: <ProtectedRoute />,
+            children: [
+              { path: 'posts/new', element: lazyPage(PostEditorPage) },
+              { path: 'posts/:id/edit', element: lazyPage(PostEditorPage) },
+              { path: 'trilhas/:nickname/:slug/edit', element: lazyPage(TrilhaEditorPage) },
+            ],
+          },
+
+          {
+            // Your library is just yours to look at, not content you publish, so it does not need
+            // a nickname the way creating a course/post/trilha does.
+            element: <ProtectedRoute requireNickname={false} />,
+            children: [{ path: 'biblioteca/pastas/:folderId', element: <LibraryFolderPage /> }],
+          },
+        ],
+      },
 
       {
         // Reachable right after registering, before a nickname exists.
@@ -63,28 +85,21 @@ const router = createBrowserRouter([
 
       {
         element: <ProtectedRoute />,
-        children: [
-          { path: '/profile', element: <ProfilePage /> },
-          { path: '/posts/new', element: lazyPage(PostEditorPage) },
-          { path: '/posts/:id/edit', element: lazyPage(PostEditorPage) },
-          { path: '/trilhas/:nickname/:slug/edit', element: lazyPage(TrilhaEditorPage) },
-        ],
+        children: [{ path: '/profile', element: <ProfilePage /> }],
       },
 
       {
-        // Your library is just yours to look at, not content you publish, so it does not need
-        // a nickname the way creating a course/post/trilha does.
-        element: <ProtectedRoute requireNickname={false} />,
-        children: [{ path: '/biblioteca/pastas/:folderId', element: <LibraryFolderPage /> }],
-      },
-
-      {
-        // Same reasoning: a DM conversation isn't content you publish under your own nickname.
+        // A DM conversation isn't content you publish under your own nickname, so no area either.
         element: <ProtectedRoute requireNickname={false} />,
         children: [
           { path: '/mensagens', element: <ConversationListPage /> },
           { path: '/mensagens/:nickname', element: <MessageThreadPage /> },
         ],
+      },
+
+      {
+        element: <ProtectedRoute requireNickname={false} requireAdmin />,
+        children: [{ path: '/admin/areas', element: <AdminAreasPage /> }],
       },
 
       { path: '*', element: <NotFoundPage /> },
@@ -93,14 +108,20 @@ const router = createBrowserRouter([
   {
     element: <FullHeightLayout />,
     children: [
-      { path: '/courses/:nickname/:slug', element: <CourseViewPage /> },
       {
-        element: <ProtectedRoute />,
-        children: [{ path: '/courses/:nickname/:slug/edit', element: lazyPage(CourseEditorPage) }],
-      },
-      {
-        element: <ProtectedRoute requireNickname={false} />,
-        children: [{ path: '/biblioteca', element: <LibraryPage /> }],
+        path: '/:areaSlug',
+        element: <AreaScopeGuard />,
+        children: [
+          { path: 'courses/:nickname/:slug', element: <CourseViewPage /> },
+          {
+            element: <ProtectedRoute />,
+            children: [{ path: 'courses/:nickname/:slug/edit', element: lazyPage(CourseEditorPage) }],
+          },
+          {
+            element: <ProtectedRoute requireNickname={false} />,
+            children: [{ path: 'biblioteca', element: <LibraryPage /> }],
+          },
+        ],
       },
     ],
   },

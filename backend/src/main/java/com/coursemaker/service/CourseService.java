@@ -1,5 +1,6 @@
 package com.coursemaker.service;
 
+import com.coursemaker.domain.entity.Area;
 import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.Lesson;
 import com.coursemaker.domain.entity.LessonBlock;
@@ -20,6 +21,7 @@ import com.coursemaker.dto.curriculum.CurriculumDtos.ModuleResponse;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
 import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
+import com.coursemaker.repository.AreaRepository;
 import com.coursemaker.repository.CourseRepository;
 import com.coursemaker.repository.EnrollmentRepository;
 import com.coursemaker.repository.LessonBlockRepository;
@@ -58,6 +60,7 @@ public class CourseService {
     private static final String DEFAULT_BLOCK_CONTENT = "<p>Escreva aqui o conteúdo da sua aula.</p>";
 
     private final CourseRepository courseRepository;
+    private final AreaRepository areaRepository;
     private final ModuleRepository moduleRepository;
     private final LessonRepository lessonRepository;
     private final LessonBlockRepository lessonBlockRepository;
@@ -74,7 +77,7 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public PageResponse<CourseSummary> search(String q, String author, CourseVisibility visibility,
-            List<String> categories, Boolean featuredOnly, String sort,
+            List<String> categories, Boolean featuredOnly, UUID areaId, String sort,
             int page, int size, User viewer) {
         Page<Course> result = courseRepository.search(
                 blankToNull(q),
@@ -82,6 +85,7 @@ public class CourseService {
                 visibility == null ? null : visibility.getValue(),
                 joinCategories(categories),
                 featuredOnly,
+                areaId,
                 sort == null ? "recent" : sort,
                 viewer == null ? null : viewer.getId(),
                 PageRequest.of(Math.max(0, page), Math.clamp(size, 1, MAX_PAGE_SIZE)));
@@ -155,8 +159,12 @@ public class CourseService {
                     "Cursos privados exigem uma senha de acesso");
         }
 
+        Area area = areaRepository.findById(request.areaId())
+                .orElseThrow(() -> ResourceNotFoundException.of("Area"));
+
         Course course = Course.builder()
                 .owner(owner)
+                .area(area)
                 .name(request.name().trim())
                 .slug(slug)
                 .description(request.description())
@@ -221,6 +229,10 @@ public class CourseService {
         }
         if (request.progressEnabled() != null) {
             course.setProgressEnabled(request.progressEnabled());
+        }
+        if (request.areaId() != null) {
+            course.setArea(areaRepository.findById(request.areaId())
+                    .orElseThrow(() -> ResourceNotFoundException.of("Area")));
         }
         if (request.status() != null) {
             course.setStatus(request.status());

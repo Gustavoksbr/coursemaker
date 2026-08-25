@@ -9,9 +9,9 @@ export const courseKeys = {
   students: (courseId) => ['courses', courseId, 'students'],
   progress: (courseId) => ['courses', courseId, 'progress'],
   bans: (courseId) => ['courses', courseId, 'bans'],
-  inProgress: ['enrollments', 'in-progress'],
-  completed: ['enrollments', 'completed'],
-  lastAccessed: ['enrollments', 'last-accessed'],
+  inProgress: (areaId) => ['enrollments', 'in-progress', areaId],
+  completed: (areaId) => ['enrollments', 'completed', areaId],
+  lastAccessed: (areaId) => ['enrollments', 'last-accessed', areaId],
 }
 
 export async function listCourses(filters) {
@@ -151,19 +151,19 @@ export async function myEnrollments() {
   return data
 }
 
-export async function myInProgressCourses() {
-  const { data } = await api.get('/enrollments/me/in-progress')
+export async function myInProgressCourses(areaId) {
+  const { data } = await api.get('/enrollments/me/in-progress', { params: { areaId } })
   return data
 }
 
-export async function myCompletedCourses() {
-  const { data } = await api.get('/enrollments/me/completed')
+export async function myCompletedCourses(areaId) {
+  const { data } = await api.get('/enrollments/me/completed', { params: { areaId } })
   return data
 }
 
 /** The enrolled course this student opened most recently, or null. */
-export async function lastAccessedCourse() {
-  const { data } = await api.get('/enrollments/me/last-accessed')
+export async function lastAccessedCourse(areaId) {
+  const { data } = await api.get('/enrollments/me/last-accessed', { params: { areaId } })
   return data
 }
 

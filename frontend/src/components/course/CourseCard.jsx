@@ -7,7 +7,7 @@ import { Thumbnail } from '@/components/ui/Thumbnail'
 import { plural } from '@/lib/format'
 
 export function CourseCard({ course }) {
-  const href = `/courses/${course.owner.nickname}/${course.slug}`
+  const href = `/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}`
 
   return (
     <article className="card group flex flex-col overflow-hidden">

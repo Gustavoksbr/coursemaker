@@ -12,6 +12,7 @@ function baselineFrom(course, landingDescription) {
     visibility: course.visibility,
     categories: course.categories ?? [],
     progressEnabled: course.progressEnabled,
+    areaId: course.area.id,
   }
 }
 
@@ -55,6 +56,7 @@ export function useCourseSettingsDraft(course, landingDescription, courseQueryKe
         visibility: form.visibility,
         categories: form.categories,
         progressEnabled: form.progressEnabled,
+        areaId: form.areaId,
         // Only send a password when one was typed: the API reads null as "keep the current one".
         password: form.password.trim() ? form.password : undefined,
       }),

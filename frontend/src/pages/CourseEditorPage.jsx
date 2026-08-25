@@ -22,7 +22,7 @@ import { courseKeys, getCourseBySlug } from '@/api/courses'
 import { errorMessage } from '@/lib/api'
 
 export default function CourseEditorPage() {
-  const { nickname, slug } = useParams()
+  const { areaSlug, nickname, slug } = useParams()
   const navigate = useNavigate()
 
   const courseQueryKey = courseKeys.bySlug(nickname, slug)
@@ -45,10 +45,16 @@ export default function CourseEditorPage() {
 
   // Only the owner edits. The API enforces it too; this just avoids a wall of 403s.
   if (!detail.isOwner) {
-    return <Navigate to={`/courses/${nickname}/${slug}`} replace />
+    return <Navigate to={`/${areaSlug}/courses/${nickname}/${slug}`} replace />
   }
 
-  return <CourseEditorContent detail={detail} courseQueryKey={courseQueryKey} onDeleted={() => navigate('/cursos')} />
+  return (
+    <CourseEditorContent
+      detail={detail}
+      courseQueryKey={courseQueryKey}
+      onDeleted={() => navigate(`/${areaSlug}/pesquisar?tab=cursos`)}
+    />
+  )
 }
 
 /**
@@ -146,7 +152,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-bold text-slate-100">{course.name}</h1>
             <p className="truncate text-xs text-slate-500">
-              /courses/{course.owner.nickname}/{course.slug}
+              /{course.area.slug}/courses/{course.owner.nickname}/{course.slug}
             </p>
           </div>
 
@@ -174,7 +180,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
               destination, not duplicate that confirmation logic. */}
           <button
             type="button"
-            onClick={() => navigate(`/courses/${course.owner.nickname}/${course.slug}`)}
+            onClick={() => navigate(`/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}`)}
             className="btn-ghost text-xs"
           >
             <X size={14} /> Cancelar alteracoes

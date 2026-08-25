@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Users } from 'lucide-react
 import { Button } from '@/components/ui/Button'
 import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
+import { AreaSelect } from '@/components/ui/AreaSelect'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { useToast } from '@/context/ToastContext'
@@ -171,6 +172,14 @@ export function CourseSettingsPanel({ course, draft, courseQueryKey, onDeleted, 
               />
             </Field>
           </div>
+
+          <Field label="Area" htmlFor="settings-area" error={errors.areaId}>
+            <AreaSelect
+              id="settings-area"
+              value={form.areaId}
+              onChange={(areaId) => setField({ areaId })}
+            />
+          </Field>
 
           <Checkbox
             label="Acompanhamento de progresso"

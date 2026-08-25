@@ -34,20 +34,38 @@ public interface LibraryItemRepository extends JpaRepository<LibraryItem, UUID> 
         @Query("SELECT li.trilha.id FROM LibraryItem li WHERE li.user.id = :userId AND li.trilha.id IN :ids")
         List<UUID> findSavedTrilhaIds(@Param("userId") UUID userId, @Param("ids") Collection<UUID> ids);
 
+        /** {@code :areaId} optional - null matches every area, so callers can share this query as-is. */
         @Query("SELECT li FROM LibraryItem li "
                         + "LEFT JOIN FETCH li.course c LEFT JOIN FETCH c.owner "
                         + "LEFT JOIN FETCH li.post p LEFT JOIN FETCH p.owner "
                         + "LEFT JOIN FETCH li.trilha t LEFT JOIN FETCH t.owner "
-                        + "WHERE li.user.id = :userId AND li.folder.id = :folderId ORDER BY li.createdAt DESC")
+                        + "WHERE li.user.id = :userId AND li.folder.id = :folderId "
+                        + "AND (:areaId IS NULL "
+                        + "     OR (c IS NOT NULL AND c.area.id = :areaId) "
+                        + "     OR (p IS NOT NULL AND p.area.id = :areaId) "
+                        + "     OR (t IS NOT NULL AND t.area.id = :areaId)) "
+                        + "ORDER BY li.createdAt DESC")
         Page<LibraryItem> findByUserAndFolderOrdered(@Param("userId") UUID userId, @Param("folderId") UUID folderId,
-                        Pageable pageable);
+                        @Param("areaId") UUID areaId, Pageable pageable);
 
         @Query("SELECT li.folder.id, count(li) FROM LibraryItem li "
-                        + "WHERE li.user.id = :userId GROUP BY li.folder.id")
-        List<Object[]> countByFolderForUser(@Param("userId") UUID userId);
+                        + "LEFT JOIN li.course c LEFT JOIN li.post p LEFT JOIN li.trilha t "
+                        + "WHERE li.user.id = :userId "
+                        + "AND (:areaId IS NULL "
+                        + "     OR (c IS NOT NULL AND c.area.id = :areaId) "
+                        + "     OR (p IS NOT NULL AND p.area.id = :areaId) "
+                        + "     OR (t IS NOT NULL AND t.area.id = :areaId)) "
+                        + "GROUP BY li.folder.id")
+        List<Object[]> countByFolderForUser(@Param("userId") UUID userId, @Param("areaId") UUID areaId);
 
-        @Query("SELECT count(li) FROM LibraryItem li WHERE li.folder.id = :folderId")
-        long countByFolderId(@Param("folderId") UUID folderId);
+        @Query("SELECT count(li) FROM LibraryItem li "
+                        + "LEFT JOIN li.course c LEFT JOIN li.post p LEFT JOIN li.trilha t "
+                        + "WHERE li.folder.id = :folderId "
+                        + "AND (:areaId IS NULL "
+                        + "     OR (c IS NOT NULL AND c.area.id = :areaId) "
+                        + "     OR (p IS NOT NULL AND p.area.id = :areaId) "
+                        + "     OR (t IS NOT NULL AND t.area.id = :areaId))")
+        long countByFolderId(@Param("folderId") UUID folderId, @Param("areaId") UUID areaId);
 
         /** Used when a folder is deleted: its saves survive, re-filed into Favoritos. */
         @Modifying(clearAutomatically = true, flushAutomatically = true)

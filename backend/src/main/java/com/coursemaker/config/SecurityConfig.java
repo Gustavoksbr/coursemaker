@@ -102,6 +102,7 @@ public class SecurityConfig {
                                 "/api/v1/lessons/**",
                                 "/api/v1/trilhas/**",
                                 "/api/v1/users/**",
+                                "/api/v1/areas",
                                 "/api/v1/search").permitAll()
 
                         .anyRequest().authenticated())
