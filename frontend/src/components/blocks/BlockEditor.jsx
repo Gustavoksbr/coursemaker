@@ -5,7 +5,7 @@ import { ImageUploadField } from './ImageUploadField'
 import { QuestionEditor } from './QuestionEditor'
 import { BLOCK_TYPE, LIMITS } from '@/lib/constants'
 import { HIGHLIGHTABLE_LANGUAGES } from '@/lib/highlighter'
-import { youtubeId } from '@/lib/youtube'
+import { videoEmbedUrl } from '@/lib/video'
 
 export const BLOCK_META = {
   [BLOCK_TYPE.TEXT]: { label: 'Texto', icon: FileText },
@@ -24,8 +24,8 @@ export function BlockEditor({ block, onChange }) {
   const content = block.content ?? ''
   const language = block.language ?? 'javascript'
 
-  const videoId = block.type === BLOCK_TYPE.VIDEO ? youtubeId(content) : null
-  const invalidVideo = block.type === BLOCK_TYPE.VIDEO && content.trim() && !videoId
+  const videoEmbed = block.type === BLOCK_TYPE.VIDEO ? videoEmbedUrl(content) : null
+  const invalidVideo = block.type === BLOCK_TYPE.VIDEO && content.trim() && !videoEmbed
 
   return (
     <div className="space-y-4 rounded-lg border border-slate-700 bg-slate-800 p-4">
@@ -70,10 +70,10 @@ export function BlockEditor({ block, onChange }) {
 
       {block.type === BLOCK_TYPE.VIDEO && (
         <Field
-          label="URL do YouTube"
+          label="URL do video"
           htmlFor={`block-video-${block.id}`}
-          error={invalidVideo ? 'Nao reconhecemos este link do YouTube.' : undefined}
-          hint="Ex.: https://www.youtube.com/watch?v=..."
+          error={invalidVideo ? 'Nao reconhecemos este link. Suportamos YouTube e Google Drive.' : undefined}
+          hint="YouTube ou Google Drive. Ex.: https://www.youtube.com/watch?v=... ou https://drive.google.com/file/d/.../view"
         >
           <input
             id={`block-video-${block.id}`}
@@ -84,10 +84,10 @@ export function BlockEditor({ block, onChange }) {
             onChange={(event) => onChange({ content: event.target.value })}
             placeholder="https://www.youtube.com/watch?v=..."
           />
-          {videoId && (
+          {videoEmbed && (
             <div className="mt-3 aspect-video overflow-hidden rounded-lg">
               <iframe
-                src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+                src={videoEmbed}
                 title="Previa do video"
                 allowFullScreen
                 className="h-full w-full"

@@ -4,7 +4,7 @@ import { FileQuestion } from 'lucide-react'
 import { CodeBlock } from './CodeBlock'
 import { QuestionBlock } from './QuestionBlock'
 import { BLOCK_TYPE } from '@/lib/constants'
-import { youtubeEmbedUrl } from '@/lib/youtube'
+import { videoEmbedUrl } from '@/lib/video'
 import { cn } from '@/lib/cn'
 
 /**
@@ -49,12 +49,12 @@ function ImageBlock({ src }) {
 }
 
 function VideoBlock({ url }) {
-  const embedUrl = youtubeEmbedUrl(url)
+  const embedUrl = videoEmbedUrl(url)
 
   if (!embedUrl) {
     return (
       <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
-        Nao foi possivel reconhecer este link do YouTube.
+        Nao foi possivel reconhecer este link de video. Suportamos YouTube e Google Drive.
       </p>
     )
   }
