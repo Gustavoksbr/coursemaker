@@ -10,6 +10,7 @@ import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.course.CourseDtos.ProgressResponse;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
+import com.coursemaker.dto.school.SchoolDtos.SchoolSummary;
 import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaItemResponse;
 import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaStepResponse;
 import com.coursemaker.dto.trilha.TrilhaDtos.TrilhaStructure;
@@ -85,6 +86,7 @@ public class TrilhaMapper {
                 trilha.getCategories(),
                 trilha.isFeatured(),
                 AreaSummary.from(trilha.getArea()),
+                SchoolSummary.from(trilha.getSchool()),
                 UserSummary.from(trilha.getOwner()),
                 trilhaItemRepository.countByTrilhaId(trilha.getId()),
                 trilhaEnrollmentRepository.countByTrilhaId(trilha.getId()),

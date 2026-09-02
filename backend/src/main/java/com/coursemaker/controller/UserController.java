@@ -4,8 +4,10 @@ import com.coursemaker.config.AuthenticatedUser;
 import com.coursemaker.dto.PageResponse;
 import com.coursemaker.dto.auth.AuthDtos.AuthResponse;
 import com.coursemaker.dto.user.PersonSummary;
+import com.coursemaker.dto.school.SchoolDtos.SchoolSummary;
 import com.coursemaker.dto.user.PublicProfileResponse;
 import com.coursemaker.dto.user.UpdateUserRequest;
+import com.coursemaker.service.SchoolService;
 import com.coursemaker.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -34,6 +37,13 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final SchoolService schoolService;
+
+    @Operation(summary = "Escolas que o usuario logado tem permissao de publicar - alimenta o seletor de escola")
+    @GetMapping("/me/schools")
+    public List<SchoolSummary> mySchools(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return schoolService.listMine(principal.user());
+    }
 
     @Operation(summary = "Verifica se um nickname esta disponivel")
     @GetMapping("/nickname-available")

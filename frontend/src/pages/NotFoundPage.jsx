@@ -1,9 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Compass } from 'lucide-react'
-import { useCurrentArea } from '@/context/AreaContext'
 
 export default function NotFoundPage() {
-  const { area } = useCurrentArea()
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
       <Compass className="text-slate-700" size={40} />
@@ -17,11 +15,9 @@ export default function NotFoundPage() {
         <Link to="/" className="btn-primary">
           Voltar para a home
         </Link>
-        {area && (
-          <Link to={`/${area.slug}/pesquisar`} className="btn-secondary">
-            Ver conteudo
-          </Link>
-        )}
+        <Link to="/pesquisar" className="btn-secondary">
+          Ver conteudo
+        </Link>
       </div>
     </div>
   )

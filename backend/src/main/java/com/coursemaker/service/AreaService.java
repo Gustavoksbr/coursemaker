@@ -63,6 +63,18 @@ public class AreaService {
         if (!name.equalsIgnoreCase(area.getName()) && areaRepository.existsByName(name)) {
             throw new ConflictException("Ja existe uma area com esse nome");
         }
+
+        // The slug follows the name. It used to be frozen so an area-scoped content URL would never
+        // rot, but content URLs no longer carry the area - the slug now only shows up in the
+        // catalogue's `?area=` filter, where a stale slug that disagrees with the visible name is
+        // worse than a filter link going stale.
+        if (!name.equals(area.getName())) {
+            List<String> takenSlugs = areaRepository.findAll().stream()
+                    .filter(other -> !other.getId().equals(area.getId()))
+                    .map(Area::getSlug)
+                    .toList();
+            area.setSlug(slugGenerator.uniqueSlug(name, takenSlugs));
+        }
         area.setName(name);
         return AreaSummary.from(areaRepository.save(area));
     }

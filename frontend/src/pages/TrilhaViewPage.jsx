@@ -7,6 +7,7 @@ import { ContentBadges } from '@/components/ui/Badge'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { CertificateButton } from '@/components/shared/CertificateButton'
+import { FeatureToggleButton } from '@/components/shared/FeatureToggleButton'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { TrilhaItemsList } from '@/components/trilha/TrilhaItemsList'
@@ -22,6 +23,7 @@ import {
   unenrollTrilha,
 } from '@/api/trilhas'
 import { errorMessage } from '@/lib/api'
+import { trilhaHref } from '@/lib/contentLinks'
 
 export default function TrilhaViewPage() {
   const { nickname, slug } = useParams()
@@ -133,7 +135,12 @@ export default function TrilhaViewPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
       <header className="space-y-4">
-        <ContentBadges status={trilha.status} visibility={trilha.visibility} featured={trilha.featured} />
+        <ContentBadges
+          status={trilha.status}
+          visibility={trilha.visibility}
+          featured={trilha.featured}
+          school={trilha.school}
+        />
 
         <h1 className="break-words text-3xl font-bold tracking-tight text-slate-100">{trilha.title}</h1>
 
@@ -151,8 +158,14 @@ export default function TrilhaViewPage() {
 
           <div className="ml-auto flex items-center gap-2">
             <SaveToLibraryButton kind="trilha" contentId={trilha.id} saved={trilha.savedByMe} onChange={invalidate} />
+            <FeatureToggleButton
+              kind="trilha"
+              contentId={trilha.id}
+              featured={trilha.featured}
+              onChanged={invalidate}
+            />
             {detail.isOwner ? (
-              <Link to={`/${trilha.area.slug}/trilhas/${trilha.owner.nickname}/${trilha.slug}/edit`} className="btn-secondary">
+              <Link to={`${trilhaHref(trilha)}/edit`} className="btn-secondary">
                 <Pencil size={16} /> Editar trilha
               </Link>
             ) : (

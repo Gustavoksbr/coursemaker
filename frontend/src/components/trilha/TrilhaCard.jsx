@@ -2,25 +2,32 @@ import { Link } from 'react-router-dom'
 import { Layers, Users } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
+import { MaybeLink } from '@/components/ui/MaybeLink'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
+import { trilhaHref } from '@/lib/contentLinks'
 import { plural } from '@/lib/format'
 
 export function TrilhaCard({ trilha }) {
-  const href = `/${trilha.area.slug}/trilhas/${trilha.owner.nickname}/${trilha.slug}`
+  const href = trilhaHref(trilha)
 
   return (
     <article className="card group flex flex-col overflow-hidden">
-      <Link to={href} className="block" tabIndex={-1} aria-hidden="true">
+      <MaybeLink to={href} className="block" tabIndex={-1} aria-hidden="true">
         <Thumbnail src={trilha.thumbnailUrl} alt={trilha.title} />
-      </Link>
+      </MaybeLink>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <ContentBadges status={trilha.status} visibility={trilha.visibility} featured={trilha.featured} />
+        <ContentBadges
+          status={trilha.status}
+          visibility={trilha.visibility}
+          featured={trilha.featured}
+          school={trilha.school}
+        />
 
         <div className="flex-1">
           <h3 className="line-clamp-2 break-words font-bold leading-snug text-slate-100 group-hover:text-brand-400">
-            <Link to={href}>{trilha.title}</Link>
+            <MaybeLink to={href}>{trilha.title}</MaybeLink>
           </h3>
           {trilha.description && (
             <p className="mt-1.5 line-clamp-2 text-sm text-slate-400">{trilha.description}</p>

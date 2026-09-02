@@ -8,9 +8,12 @@ import { FolderCard } from '@/components/library/FolderCard'
 import { FolderModal } from '@/components/library/FolderModal'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
+import { MaybeLink } from '@/components/ui/MaybeLink'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { EmptyState, Spinner } from '@/components/ui/Feedback'
-import { useCurrentArea } from '@/context/AreaContext'
+import { useLibraryArea } from '@/context/AreaContext'
+import { courseHref } from '@/lib/contentLinks'
+import { cn } from '@/lib/cn'
 import { courseKeys, lastAccessedCourse, myCompletedCourses, myInProgressCourses } from '@/api/courses'
 import { myCompletedTrilhas, myFollowedTrilhas, trilhaKeys } from '@/api/trilhas'
 import { libraryKeys, listFolders } from '@/api/library'
@@ -24,39 +27,34 @@ const SECTIONS = [
 ]
 
 export default function LibraryPage() {
-  const { area } = useCurrentArea()
+  const { area, areas, setLibrarySlug } = useLibraryArea()
   const areaId = area?.id
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
 
+  // `areaId` undefined means "all areas" - a valid state, so these always run.
   const lastAccessedQuery = useQuery({
     queryKey: courseKeys.lastAccessed(areaId),
     queryFn: () => lastAccessedCourse(areaId),
-    enabled: Boolean(areaId),
   })
   const inProgressQuery = useQuery({
     queryKey: courseKeys.inProgress(areaId),
     queryFn: () => myInProgressCourses(areaId),
-    enabled: Boolean(areaId),
   })
   const completedCoursesQuery = useQuery({
     queryKey: courseKeys.completed(areaId),
     queryFn: () => myCompletedCourses(areaId),
-    enabled: Boolean(areaId),
   })
   const completedTrilhasQuery = useQuery({
     queryKey: trilhaKeys.completed(areaId),
     queryFn: () => myCompletedTrilhas(areaId),
-    enabled: Boolean(areaId),
   })
   const followingQuery = useQuery({
     queryKey: trilhaKeys.following(areaId),
     queryFn: () => myFollowedTrilhas(areaId),
-    enabled: Boolean(areaId),
   })
   const foldersQuery = useQuery({
     queryKey: libraryKeys.folders(areaId),
     queryFn: () => listFolders(areaId),
-    enabled: Boolean(areaId),
   })
 
   const completedLoading = completedCoursesQuery.isPending || completedTrilhasQuery.isPending
@@ -85,6 +83,25 @@ export default function LibraryPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Sua biblioteca</h1>
           <p className="mt-1 text-sm text-slate-400">Cursos, posts e trilhas que voce matriculou, segue ou salvou.</p>
+
+          {/* The one place area separation genuinely helps: keeping unrelated subjects apart on
+              your own shelf. Public discovery stays unscoped - there area is just a filter. */}
+          {areas.length > 1 && (
+            <div className="mt-4 flex flex-wrap items-center gap-1.5">
+              <AreaTab active={!area} onClick={() => setLibrarySlug(null)}>
+                Todas as areas
+              </AreaTab>
+              {areas.map((candidate) => (
+                <AreaTab
+                  key={candidate.id}
+                  active={area?.id === candidate.id}
+                  onClick={() => setLibrarySlug(candidate.slug)}
+                >
+                  {candidate.name}
+                </AreaTab>
+              ))}
+            </div>
+          )}
         </div>
 
         <section id="continuar" className="scroll-mt-20">
@@ -154,7 +171,7 @@ export default function LibraryPage() {
               title="Voce ainda nao segue nenhuma trilha"
               message="Trilhas que voce seguir aparecem aqui."
               action={
-                <Link to={`/${area?.slug}/pesquisar?tab=trilhas`} className="btn-secondary">
+                <Link to="/pesquisar?tab=trilhas" className="btn-secondary">
                   Explorar trilhas
                 </Link>
               }
@@ -200,6 +217,24 @@ export default function LibraryPage() {
   )
 }
 
+function AreaTab({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'badge border transition-colors',
+        active
+          ? 'border-brand-500 bg-brand-500 text-white'
+          : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 hover:text-slate-100',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
 function SectionTitle({ icon: Icon, title, count, bare }) {
   if (bare) {
     return (
@@ -237,15 +272,21 @@ function CardSlot({ children }) {
 }
 
 function ContinueWatchingCard({ course }) {
-  const href = `/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}`
+  const href = courseHref(course)
   return (
-    <Link
+    <MaybeLink
       to={href}
       className="card flex flex-col gap-4 overflow-hidden p-4 sm:flex-row sm:items-center"
     >
       <Thumbnail src={course.thumbnailUrl} alt={course.name} className="w-full rounded-lg sm:w-56" />
       <div className="min-w-0 flex-1">
-        <ContentBadges status={course.status} visibility={course.visibility} featured={course.featured} className="mb-2" />
+        <ContentBadges
+          status={course.status}
+          visibility={course.visibility}
+          featured={course.featured}
+          school={course.school}
+          className="mb-2"
+        />
         <h3 className="truncate text-lg font-bold text-slate-100">{course.name}</h3>
         {course.description && <p className="mt-1 line-clamp-2 text-sm text-slate-400">{course.description}</p>}
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
@@ -253,6 +294,6 @@ function ContinueWatchingCard({ course }) {
           {course.owner.name}
         </div>
       </div>
-    </Link>
+    </MaybeLink>
   )
 }

@@ -24,6 +24,23 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
 
     boolean existsByAreaId(UUID areaId);
 
+    boolean existsBySchoolId(UUID schoolId);
+
+    @Query(value = "SELECT count(*) FROM courses WHERE status = 'available'", nativeQuery = true)
+    long countPublished();
+
+    /** Distinct people with at least one published course, post or trilha - the landing counter. */
+    @Query(value = """
+            SELECT count(*) FROM (
+                SELECT owner_id FROM courses WHERE status = 'available'
+                UNION
+                SELECT owner_id FROM posts   WHERE status = 'available'
+                UNION
+                SELECT owner_id FROM trilhas WHERE status = 'available'
+            ) AS creators
+            """, nativeQuery = true)
+    long countCreators();
+
     @Query("SELECT c.slug FROM Course c WHERE c.owner.id = :ownerId AND c.slug LIKE concat(:base, '%')")
     List<String> findSlugsStartingWith(@Param("ownerId") UUID ownerId, @Param("base") String base);
 
@@ -57,7 +74,9 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR c.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR c.is_featured)
-              AND (CAST(:areaId AS uuid) IS NULL OR c.area_id = CAST(:areaId AS uuid))
+              AND (CAST(:areaIds AS text) IS NULL
+                   OR c.area_id::text = ANY(string_to_array(CAST(:areaIds AS text), chr(1))))
+              AND (CAST(:schoolId AS uuid) IS NULL OR c.school_id = CAST(:schoolId AS uuid))
               AND (c.status = 'available' OR c.owner_id = CAST(:viewerId AS uuid))
             ORDER BY
               CASE WHEN CAST(:sort AS text) = 'likes'
@@ -81,7 +100,9 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR c.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR c.is_featured)
-              AND (CAST(:areaId AS uuid) IS NULL OR c.area_id = CAST(:areaId AS uuid))
+              AND (CAST(:areaIds AS text) IS NULL
+                   OR c.area_id::text = ANY(string_to_array(CAST(:areaIds AS text), chr(1))))
+              AND (CAST(:schoolId AS uuid) IS NULL OR c.school_id = CAST(:schoolId AS uuid))
               AND (c.status = 'available' OR c.owner_id = CAST(:viewerId AS uuid))
             """,
             nativeQuery = true)
@@ -90,7 +111,8 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
                         @Param("visibility") String visibility,
                         @Param("categories") String categories,
                         @Param("featuredOnly") Boolean featuredOnly,
-                        @Param("areaId") UUID areaId,
+                        @Param("areaIds") String areaIds,
+                        @Param("schoolId") UUID schoolId,
                         @Param("sort") String sort,
                         @Param("viewerId") UUID viewerId,
                         Pageable pageable);

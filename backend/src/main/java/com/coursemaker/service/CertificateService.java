@@ -15,6 +15,7 @@ import com.coursemaker.repository.TrilhaItemCompletionRepository;
 import com.coursemaker.repository.TrilhaRepository;
 import com.coursemaker.service.CertificateRenderer.CertificateData;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +51,9 @@ public class CertificateService {
     private final TrilhaItemCompletionRepository trilhaItemCompletionRepository;
     private final CertificateRenderer renderer;
 
+    @Value("${app.public-url}")
+    private String publicUrl;
+
     @Transactional(readOnly = true)
     public byte[] generateCourseCertificate(UUID courseId, User user) {
         Course course = courseRepository.findByIdWithOwner(courseId)
@@ -66,7 +70,8 @@ public class CertificateService {
                 "o curso",
                 course.getName(),
                 course.getOwner().getName(),
-                formatDate(completedAt));
+                formatDate(completedAt),
+                contentUrl("courses", course.getOwner().getNickname(), course.getSlug()));
         return renderer.render(data);
     }
 
@@ -86,8 +91,14 @@ public class CertificateService {
                 "a trilha",
                 trilha.getTitle(),
                 trilha.getOwner().getName(),
-                formatDate(completedAt));
+                formatDate(completedAt),
+                contentUrl("trilhas", trilha.getOwner().getNickname(), trilha.getSlug()));
         return renderer.render(data);
+    }
+
+    /** Mirrors `contentLinks.js` on the frontend: /courses|trilhas/:nickname/:slug. */
+    private String contentUrl(String kindSegment, String nickname, String slug) {
+        return "%s/%s/%s/%s".formatted(publicUrl, kindSegment, nickname, slug);
     }
 
     private String formatDate(Instant instant) {

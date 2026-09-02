@@ -25,12 +25,14 @@ import { BlockList } from '@/components/blocks/BlockRenderer'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { CurriculumNav, flattenLessons } from '@/components/course/CurriculumNav'
 import { CertificateButton } from '@/components/shared/CertificateButton'
+import { FeatureToggleButton } from '@/components/shared/FeatureToggleButton'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
 import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { completeLesson, courseKeys, enroll, getCourseBySlug, unenroll } from '@/api/courses'
+import { courseHref } from '@/lib/contentLinks'
 import { errorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
 
@@ -244,6 +246,7 @@ export function Landing({
           status={course.status}
           visibility={course.visibility}
           featured={course.featured}
+          school={course.school}
         />
 
         <h1 className="break-words text-3xl font-bold tracking-tight text-slate-100">{course.name}</h1>
@@ -265,11 +268,14 @@ export function Landing({
 
           <div className="ml-auto flex items-center gap-2">
             <SaveToLibraryButton kind="course" contentId={course.id} saved={course.savedByMe} onChange={onSavedChange} />
+            <FeatureToggleButton
+              kind="course"
+              contentId={course.id}
+              featured={course.featured}
+              onChanged={onSavedChange}
+            />
             {isOwner ? (
-              <Link
-                to={`/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}/edit`}
-                className="btn-secondary"
-              >
+              <Link to={`${courseHref(course)}/edit`} className="btn-secondary">
                 <Pencil size={16} /> Editar curso
               </Link>
             ) : (

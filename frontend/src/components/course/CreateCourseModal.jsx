@@ -6,12 +6,14 @@ import { ConfirmModal, Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
+import { AreaSelect } from '@/components/ui/AreaSelect'
+import { SchoolSelect } from '@/components/ui/SchoolSelect'
 import { useAuth } from '@/context/AuthContext'
-import { useCurrentArea } from '@/context/AreaContext'
 import { useToast } from '@/context/ToastContext'
 import { useDebounce } from '@/hooks/useDebounce'
 import { checkCourseSlug, courseKeys, createCourse } from '@/api/courses'
 import { errorMessage, fieldErrors } from '@/lib/api'
+import { courseHref } from '@/lib/contentLinks'
 import { LIMITS, VISIBILITY } from '@/lib/constants'
 
 const BLANK = {
@@ -24,6 +26,7 @@ const BLANK = {
   categories: [],
   progressEnabled: false,
   areaId: '',
+  schoolId: '',
 }
 
 /**
@@ -33,7 +36,6 @@ const BLANK = {
 export function CreateCourseModal({ open, onClose }) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { area } = useCurrentArea()
   const queryClient = useQueryClient()
   const toast = useToast()
   const [step, setStep] = useState(1)
@@ -62,12 +64,6 @@ export function CreateCourseModal({ open, onClose }) {
       setSlugCheck(null)
     }
   }, [open])
-
-  // A course is always created in the area you're currently browsing, so this stays in sync with
-  // it for as long as the modal is open rather than letting the user pick a different one.
-  useEffect(() => {
-    if (open && area) setForm((current) => ({ ...current, areaId: area.id }))
-  }, [open, area?.id])
 
   useEffect(() => {
     if (!open || !debouncedName.trim()) {
@@ -104,12 +100,13 @@ export function CreateCourseModal({ open, onClose }) {
         categories: form.categories,
         progressEnabled: form.progressEnabled,
         areaId: form.areaId,
+        schoolId: form.schoolId || undefined,
       }),
     onSuccess: (course) => {
       queryClient.invalidateQueries({ queryKey: courseKeys.all })
       toast.success('Curso criado! Agora monte o conteudo.')
       onClose()
-      navigate(`/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}/edit`)
+      navigate(`${courseHref(course)}/edit`)
     },
     onError: (error) => {
       setErrors(fieldErrors(error))
@@ -175,7 +172,7 @@ export function CreateCourseModal({ open, onClose }) {
             <p className="break-all text-xs text-slate-500">
               Ficara em{' '}
               <span className="font-mono text-slate-400">
-                /{area?.slug}/courses/{user.nickname}/{effectiveSlug}
+                /courses/{user.nickname}/{effectiveSlug}
               </span>
               {slugCheck && !slugCheck.available && !form.slug.trim() && (
                 <span className="ml-1 text-amber-400">
@@ -230,11 +227,24 @@ export function CreateCourseModal({ open, onClose }) {
             />
           </Field>
 
-          <Field label="Area" htmlFor="course-area" required hint="O curso nasce na area que voce esta navegando.">
-            <Select id="course-area" value={area?.name ?? ''} disabled>
-              <option>{area?.name ?? 'Carregando...'}</option>
-            </Select>
+          <Field
+            label="Area"
+            htmlFor="course-area"
+            required
+            hint="A prateleira ampla do curso. Use Categorias para o assunto especifico."
+          >
+            <AreaSelect
+              id="course-area"
+              value={form.areaId}
+              onChange={(areaId) => setForm({ ...form, areaId })}
+            />
           </Field>
+
+          <SchoolSelect
+            id="course-school"
+            value={form.schoolId}
+            onChange={(schoolId) => setForm({ ...form, schoolId })}
+          />
 
           <Field label="Visibilidade" htmlFor="course-visibility">
             <Select

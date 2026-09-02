@@ -4,6 +4,7 @@ import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.User;
 import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.course.CourseDtos.CourseSummary;
+import com.coursemaker.dto.school.SchoolDtos.SchoolSummary;
 import com.coursemaker.dto.user.UserSummary;
 import com.coursemaker.repository.CourseLikeRepository;
 import com.coursemaker.repository.EnrollmentRepository;
@@ -88,6 +89,7 @@ public class CourseMapper {
                 course.isFeatured(),
                 course.isProgressEnabled(),
                 AreaSummary.from(course.getArea()),
+                SchoolSummary.from(course.getSchool()),
                 UserSummary.from(course.getOwner()),
                 likeCount,
                 enrollmentCount,

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "Busca unificada")
@@ -29,8 +30,8 @@ public class SearchController {
     @GetMapping
     public SearchResponse search(@RequestParam(required = false) @Size(max = 200) String q,
                                  @RequestParam(defaultValue = "6") int limit,
-                                 @RequestParam(required = false) UUID areaId,
+                                 @RequestParam(name = "area", required = false) List<UUID> areaIds,
                                  @AuthenticationPrincipal AuthenticatedUser principal) {
-        return searchService.search(q, Math.clamp(limit, 1, 24), AuthenticatedUser.userOrNull(principal), areaId);
+        return searchService.search(q, Math.clamp(limit, 1, 24), AuthenticatedUser.userOrNull(principal), areaIds);
     }
 }

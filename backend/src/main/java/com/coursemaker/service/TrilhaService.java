@@ -5,6 +5,7 @@ import com.coursemaker.domain.entity.CompositeIds.CourseTrilhaId;
 import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.CourseTrilhaHighlight;
 import com.coursemaker.domain.entity.Post;
+import com.coursemaker.domain.entity.School;
 import com.coursemaker.domain.entity.Trilha;
 import com.coursemaker.domain.entity.TrilhaItem;
 import com.coursemaker.domain.entity.TrilhaStep;
@@ -58,6 +59,7 @@ public class TrilhaService {
 
     private final TrilhaRepository trilhaRepository;
     private final AreaRepository areaRepository;
+    private final SchoolService schoolService;
     private final TrilhaItemRepository trilhaItemRepository;
     private final TrilhaStepRepository trilhaStepRepository;
     private final CourseTrilhaHighlightRepository highlightRepository;
@@ -72,15 +74,16 @@ public class TrilhaService {
 
     @Transactional(readOnly = true)
     public PageResponse<TrilhaSummary> search(String q, String author, CourseVisibility visibility,
-                                              List<String> categories, Boolean featuredOnly, UUID areaId, String sort,
-                                              int page, int size, User viewer) {
+                                              List<String> categories, Boolean featuredOnly, List<UUID> areaIds,
+                                              UUID schoolId, String sort, int page, int size, User viewer) {
         Page<Trilha> result = trilhaRepository.search(
                 blankToNull(q),
                 blankToNull(author),
                 visibility == null ? null : visibility.getValue(),
                 CourseService.joinCategories(categories),
                 featuredOnly,
-                areaId,
+                CourseService.joinIds(areaIds),
+                schoolId,
                 sort == null ? "recent" : sort,
                 viewer == null ? null : viewer.getId(),
                 PageRequest.of(Math.max(0, page), Math.clamp(size, 1, MAX_PAGE_SIZE)));
@@ -178,10 +181,12 @@ public class TrilhaService {
 
         Area area = areaRepository.findById(request.areaId())
                 .orElseThrow(() -> ResourceNotFoundException.of("Area"));
+        School school = schoolService.requireAllowedSchool(request.schoolId(), owner);
 
         Trilha trilha = Trilha.builder()
                 .owner(owner)
                 .area(area)
+                .school(school)
                 .title(request.title().trim())
                 .slug(slug)
                 .description(request.description())
@@ -220,6 +225,11 @@ public class TrilhaService {
         if (request.areaId() != null) {
             trilha.setArea(areaRepository.findById(request.areaId())
                     .orElseThrow(() -> ResourceNotFoundException.of("Area")));
+        }
+        if (request.removeSchool()) {
+            trilha.setSchool(null);
+        } else if (request.schoolId() != null) {
+            trilha.setSchool(schoolService.requireAllowedSchool(request.schoolId(), viewer));
         }
         return trilhaMapper.toSummary(trilhaRepository.save(trilha), viewer);
     }

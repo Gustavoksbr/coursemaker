@@ -12,7 +12,10 @@ function baselineFrom(course, landingDescription) {
     visibility: course.visibility,
     categories: course.categories ?? [],
     progressEnabled: course.progressEnabled,
-    areaId: course.area.id,
+    // `?? ''` covers a stale backend deploy that predates the areas feature and omits `area`;
+    // AreaSelect auto-picks a real area once the list loads, so this self-heals in the UI.
+    areaId: course.area?.id ?? '',
+    schoolId: course.school?.id ?? '',
   }
 }
 
@@ -57,6 +60,8 @@ export function useCourseSettingsDraft(course, landingDescription, courseQueryKe
         categories: form.categories,
         progressEnabled: form.progressEnabled,
         areaId: form.areaId,
+        schoolId: form.schoolId || undefined,
+        removeSchool: !form.schoolId,
         // Only send a password when one was typed: the API reads null as "keep the current one".
         password: form.password.trim() ? form.password : undefined,
       }),

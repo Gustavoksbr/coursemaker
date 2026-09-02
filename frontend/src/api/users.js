@@ -27,13 +27,15 @@ export async function updateProfile(id, payload) {
   return data
 }
 
-export async function search(q, limit = 6, areaId) {
-  const { data } = await api.get('/search', {
-    params: { ...(q ? { q } : {}), limit, ...(areaId ? { areaId } : {}) },
-  })
+export async function search(q, limit = 6, areaIds = []) {
+  const params = new URLSearchParams()
+  if (q) params.set('q', q)
+  params.set('limit', String(limit))
+  areaIds.forEach((areaId) => params.append('area', areaId))
+  const { data } = await api.get('/search', { params })
   return data
 }
 
 export const searchKeys = {
-  unified: (q, limit, areaId) => ['search', q, limit, areaId],
+  unified: (q, limit, areaIds = []) => ['search', q, limit, areaIds],
 }

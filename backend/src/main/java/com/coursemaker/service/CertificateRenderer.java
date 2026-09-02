@@ -12,12 +12,12 @@ import java.io.InputStream;
 
 /**
  * Renders a completion certificate to PDF from an XHTML template. Fonts are bundled under
- * {@code resources/fonts} (Inter and Playfair Display, both OFL-licensed) since the PDF renderer
- * has no network access at render time and cannot pull them from Google Fonts the way a browser
- * would. Playfair Display ships here as its variable-font file: openhtmltopdf/PDFBox render it
- * using its default (regular-weight) instance regardless of the requested CSS weight, which is why
- * the template leans on size, italics and Inter's real static weights for hierarchy rather than a
- * "bold serif".
+ * {@code resources/fonts} (Inter, Playfair Display and Dancing Script, all OFL-licensed) since the
+ * PDF renderer has no network access at render time and cannot pull them from Google Fonts the way
+ * a browser would. Playfair Display ships here as its variable-font file: openhtmltopdf/PDFBox
+ * render it using its default (regular-weight) instance regardless of the requested CSS weight,
+ * which is why the template leans on size, italics and Inter's real static weights for hierarchy
+ * rather than a "bold serif".
  */
 @Component
 public class CertificateRenderer {
@@ -28,16 +28,22 @@ public class CertificateRenderer {
     private static final String ACCENT = "#0ea5e9";
     private static final String BG = "#fbf7ee";
 
-    private static final String GRADUATION_CAP_SVG = """
-            <svg viewBox="0 0 24 24" fill="none" stroke="%s" stroke-width="1.6" \
-            stroke-linecap="round" stroke-linejoin="round">\
-            <path d="M12 3 1 8l11 5 9-4.09V17h2V8L12 3z"/>\
-            <path d="M5 10.18v4.32c0 1 3.13 3 7 3s7-2 7-3v-4.32"/>\
-            </svg>""".formatted(ACCENT);
+    /** Mirrors {@code frontend/public/favicon.svg} - keep the two in sync if the mark changes. */
+    private static final String FAVICON_SVG = """
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">\
+            <rect width="32" height="32" rx="7" fill="#0ea5e9"/>\
+            <path d="M16 7 4.5 12.5 16 18l11.5-5.5L16 7Z" fill="#fff"/>\
+            <path d="M9 15.6v5.1c0 2.1 3.1 3.8 7 3.8s7-1.7 7-3.8v-5.1l-7 3.4-7-3.4Z" fill="#fff" opacity=".75"/>\
+            </svg>""";
 
-    /** Everything the template needs; `kindArticle` is pre-resolved ("o curso" / "a trilha"). */
+    /**
+     * Everything the template needs; `kindArticle` is pre-resolved ("o curso" / "a trilha").
+     * `contentUrl` is the content's public page - shown small in the footer, and not guaranteed to
+     * resolve yet on a certificate generated against a not-yet-deployed backend.
+     */
     public record CertificateData(
-            String studentName, String kindArticle, String contentName, String ownerName, String completionDate) {
+            String studentName, String kindArticle, String contentName, String ownerName, String completionDate,
+            String contentUrl) {
     }
 
     public byte[] render(CertificateData data) {
@@ -65,6 +71,7 @@ public class CertificateRenderer {
         // in PDFBox than for a plain static font, so these embed in full instead.
         builder.useFont(font("PlayfairDisplay-Regular.ttf"), "Playfair Display", 400, FontStyle.NORMAL, false);
         builder.useFont(font("PlayfairDisplay-Italic.ttf"), "Playfair Display", 400, FontStyle.ITALIC, false);
+        builder.useFont(font("DancingScript-Bold.ttf"), "Dancing Script", 700, FontStyle.NORMAL, false);
     }
 
     private FSSupplier<InputStream> font(String filename) {
@@ -72,7 +79,7 @@ public class CertificateRenderer {
     }
 
     private String buildHtml(CertificateData data) {
-        String cap = GRADUATION_CAP_SVG;
+        String favicon = FAVICON_SVG;
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -103,42 +110,52 @@ public class CertificateRenderer {
                   .corner-br { bottom: 30px; right: 30px; }
                   .content {
                     position: absolute; top: 44px; right: 44px; bottom: 44px; left: 44px;
-                    padding: 56px 96px;
+                    padding: 40px 96px;
                   }
                   .brand { text-align: center; }
-                  .brand-badge {
-                    width: 60px; height: 60px; border-radius: 999px; border: 1.5px solid %s;
-                    margin: 0 auto 10px auto; text-align: center; padding-top: 16px;
-                  }
-                  .brand-badge svg { width: 28px; height: 28px; }
+                  .brand-badge { width: 52px; height: 52px; margin: 0 auto 10px auto; }
+                  .brand-badge svg { width: 52px; height: 52px; }
                   .brand-name {
                     font-family: 'Inter'; font-weight: 600; font-size: 13px; letter-spacing: 4px; color: %s;
                   }
-                  .title-block { text-align: center; margin-top: 46px; }
+                  .title-block { text-align: center; margin-top: 32px; }
                   .eyebrow {
                     font-family: 'Inter'; font-weight: 600; font-size: 13px; letter-spacing: 5px; color: %s;
                     margin-bottom: 14px;
                   }
                   .lead { font-family: 'Inter'; font-size: 15px; letter-spacing: 1.5px; color: %s; }
                   .student-name {
-                    font-family: 'Playfair Display'; font-size: 54px; color: %s; margin-top: 30px;
+                    font-family: 'Playfair Display'; font-size: 48px; color: %s; margin-top: 22px;
                     line-height: 1.15;
                   }
-                  .rule { width: 90px; height: 2px; background: %s; margin: 12px auto 0 auto; }
+                  .rule { width: 90px; height: 2px; background: %s; margin: 10px auto 0 auto; }
                   .sentence {
-                    font-family: 'Inter'; font-size: 18px; line-height: 1.8; color: %s; margin-top: 30px;
+                    font-family: 'Inter'; font-size: 17px; line-height: 1.7; color: %s; margin-top: 22px;
                   }
                   .content-name { font-family: 'Playfair Display'; font-style: italic; color: %s; }
                   .owner-name { font-family: 'Inter'; font-weight: 600; color: %s; }
-                  .footer { position: absolute; left: 96px; right: 96px; bottom: 56px; }
-                  .footer-col-left { position: absolute; left: 0; bottom: 0; width: 220px; }
-                  .footer-col-right { position: absolute; right: 0; bottom: 0; width: 220px; text-align: center; }
+                  .signature { text-align: center; margin-top: 28px; }
+                  .signature-name { font-family: 'Dancing Script'; font-weight: 700; font-size: 38px; color: %s; }
+                  .signature-rule { width: 210px; height: 1px; background: %s; margin: 0 auto 8px auto; }
+                  .signature-role {
+                    font-family: 'Inter'; font-size: 11px; letter-spacing: 2px; color: %s; text-transform: uppercase;
+                  }
+                  .signature-company { font-family: 'Inter'; font-weight: 600; font-size: 14px; color: %s; margin-top: 2px; }
+                  /* A CSS table, not absolute positioning: this engine's support for "position:
+                     absolute; bottom: N" boxes that must grow upward from an unset top is shaky,
+                     and silently produced overlapping text instead of a layout error. A table row
+                     cannot overlap the flow content above it, so it is the safer choice here. */
+                  .footer { display: table; width: 100%%; table-layout: fixed; margin-top: 32px; }
+                  .footer-col-left { display: table-cell; width: 50%%; vertical-align: top; }
+                  .footer-col-right { display: table-cell; width: 50%%; text-align: right; vertical-align: top; }
                   .footer-rule { border-top: 1px solid %s; opacity: 0.5; margin-bottom: 6px; }
                   .footer-label {
                     font-family: 'Inter'; font-size: 11px; letter-spacing: 2px; color: %s; text-transform: uppercase;
                   }
                   .footer-value { font-family: 'Inter'; font-weight: 500; font-size: 15px; color: %s; margin-top: 4px; }
-                  .footer-badge svg { width: 22px; height: 22px; margin-bottom: 6px; }
+                  .footer-url {
+                    font-family: 'Inter'; font-size: 10px; color: %s; margin-top: 4px; word-break: break-all;
+                  }
                 </style>
                 </head>
                 <body>
@@ -162,9 +179,16 @@ public class CertificateRenderer {
                         <div class="student-name">%s</div>
                         <div class="rule"></div>
                         <div class="sentence">
-                          concluiu com exito %s <span class="content-name">%s</span><br/>
+                          concluiu com êxito %s <span class="content-name">%s</span><br/>
                           criado por <span class="owner-name">%s</span>
                         </div>
+                      </div>
+
+                      <div class="signature">
+                        <div class="signature-name">CourseMaker</div>
+                        <div class="signature-rule"></div>
+                        <div class="signature-role">Empresa</div>
+                        <div class="signature-company">CourseMaker</div>
                       </div>
 
                       <div class="footer">
@@ -174,9 +198,9 @@ public class CertificateRenderer {
                           <div class="footer-value">%s</div>
                         </div>
                         <div class="footer-col-right">
-                          <div class="footer-badge">%s</div>
                           <div class="footer-rule"></div>
-                          <div class="footer-label">CourseMaker</div>
+                          <div class="footer-label">Link do conteudo</div>
+                          <div class="footer-url">%s</div>
                         </div>
                       </div>
                     </div>
@@ -185,15 +209,16 @@ public class CertificateRenderer {
                 </html>
                 """.formatted(
                 BG, INK, ACCENT, ACCENT,
-                ACCENT, INK,
+                INK,
                 MUTED, MUTED, INK, ACCENT, BODY, INK, INK,
-                MUTED, MUTED, INK,
-                cap,
+                INK, MUTED, MUTED, INK,
+                MUTED, MUTED, INK, MUTED,
+                favicon,
                 esc(data.studentName()),
                 esc(data.kindArticle()), esc(data.contentName()),
                 esc(data.ownerName()),
                 esc(data.completionDate()),
-                cap);
+                esc(data.contentUrl()));
     }
 
     private static String esc(String value) {

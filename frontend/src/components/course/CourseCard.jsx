@@ -2,29 +2,32 @@ import { Link } from 'react-router-dom'
 import { BookOpen, Users } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
+import { MaybeLink } from '@/components/ui/MaybeLink'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
+import { courseHref } from '@/lib/contentLinks'
 import { plural } from '@/lib/format'
 
 export function CourseCard({ course }) {
-  const href = `/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}`
+  const href = courseHref(course)
 
   return (
     <article className="card group flex flex-col overflow-hidden">
-      <Link to={href} className="block" tabIndex={-1} aria-hidden="true">
+      <MaybeLink to={href} className="block" tabIndex={-1} aria-hidden="true">
         <Thumbnail src={course.thumbnailUrl} alt={course.name} />
-      </Link>
+      </MaybeLink>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
         <ContentBadges
           status={course.status}
           visibility={course.visibility}
           featured={course.featured}
+          school={course.school}
         />
 
         <div className="flex-1">
           <h3 className="line-clamp-2 break-words font-bold leading-snug text-slate-100 group-hover:text-brand-400">
-            <Link to={href}>{course.name}</Link>
+            <MaybeLink to={href}>{course.name}</MaybeLink>
           </h3>
           {course.description && (
             <p className="mt-1.5 line-clamp-2 text-sm text-slate-400">{course.description}</p>

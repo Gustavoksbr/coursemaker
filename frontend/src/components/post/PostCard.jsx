@@ -1,25 +1,32 @@
 import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContentBadges } from '@/components/ui/Badge'
+import { MaybeLink } from '@/components/ui/MaybeLink'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { Thumbnail } from '@/components/ui/Thumbnail'
+import { postHref } from '@/lib/contentLinks'
 import { formatRelative } from '@/lib/format'
 
 export function PostCard({ post }) {
-  const href = `/${post.area.slug}/posts/${post.owner.nickname}/${post.slug}`
+  const href = postHref(post)
 
   return (
     <article className="card group flex flex-col overflow-hidden">
-      <Link to={href} className="block" tabIndex={-1} aria-hidden="true">
+      <MaybeLink to={href} className="block" tabIndex={-1} aria-hidden="true">
         <Thumbnail src={post.thumbnailUrl} alt={post.title} />
-      </Link>
+      </MaybeLink>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <ContentBadges status={post.status} visibility={post.visibility} featured={post.featured} />
+        <ContentBadges
+          status={post.status}
+          visibility={post.visibility}
+          featured={post.featured}
+          school={post.school}
+        />
 
         <div className="flex-1">
           <h3 className="line-clamp-2 break-words font-bold leading-snug text-slate-100 group-hover:text-brand-400">
-            <Link to={href}>{post.title}</Link>
+            <MaybeLink to={href}>{post.title}</MaybeLink>
           </h3>
           {post.description && (
             <p className="mt-1.5 line-clamp-2 text-sm text-slate-400">{post.description}</p>

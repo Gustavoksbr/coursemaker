@@ -2,6 +2,7 @@ package com.coursemaker.service;
 
 import com.coursemaker.domain.entity.Area;
 import com.coursemaker.domain.entity.Post;
+import com.coursemaker.domain.entity.School;
 import com.coursemaker.domain.entity.User;
 import com.coursemaker.domain.enums.CourseStatus;
 import com.coursemaker.domain.enums.CourseVisibility;
@@ -35,6 +36,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final AreaRepository areaRepository;
+    private final SchoolService schoolService;
     private final PostBlockRepository postBlockRepository;
     private final PostAccessService accessService;
     private final PrivatePostAccessService privateAccessService;
@@ -46,15 +48,16 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public PageResponse<PostSummary> search(String q, String author, CourseVisibility visibility,
-                                            List<String> categories, Boolean featuredOnly, UUID areaId, String sort,
-                                            int page, int size, User viewer) {
+                                            List<String> categories, Boolean featuredOnly, List<UUID> areaIds,
+                                            UUID schoolId, String sort, int page, int size, User viewer) {
         Page<Post> result = postRepository.search(
                 blankToNull(q),
                 blankToNull(author),
                 visibility == null ? null : visibility.getValue(),
                 CourseService.joinCategories(categories),
                 featuredOnly,
-                areaId,
+                CourseService.joinIds(areaIds),
+                schoolId,
                 sort == null ? "recent" : sort,
                 viewer == null ? null : viewer.getId(),
                 PageRequest.of(Math.max(0, page), Math.clamp(size, 1, MAX_PAGE_SIZE)));
@@ -118,10 +121,12 @@ public class PostService {
 
         Area area = areaRepository.findById(request.areaId())
                 .orElseThrow(() -> ResourceNotFoundException.of("Area"));
+        School school = schoolService.requireAllowedSchool(request.schoolId(), owner);
 
         Post post = Post.builder()
                 .owner(owner)
                 .area(area)
+                .school(school)
                 .title(request.title().trim())
                 .slug(slug)
                 .description(request.description())
@@ -157,6 +162,11 @@ public class PostService {
         if (request.areaId() != null) {
             post.setArea(areaRepository.findById(request.areaId())
                     .orElseThrow(() -> ResourceNotFoundException.of("Area")));
+        }
+        if (request.removeSchool()) {
+            post.setSchool(null);
+        } else if (request.schoolId() != null) {
+            post.setSchool(schoolService.requireAllowedSchool(request.schoolId(), viewer));
         }
         applyVisibility(post, request);
 

@@ -9,7 +9,10 @@ function baselineFrom(trilha) {
     description: trilha.description ?? '',
     thumbnailUrl: trilha.thumbnailUrl ?? '',
     categories: trilha.categories ?? [],
-    areaId: trilha.area.id,
+    // `?? ''` covers a stale backend deploy that predates the areas feature and omits `area`;
+    // AreaSelect auto-picks a real area once the list loads, so this self-heals in the UI.
+    areaId: trilha.area?.id ?? '',
+    schoolId: trilha.school?.id ?? '',
   }
 }
 
@@ -43,6 +46,8 @@ export function useTrilhaSettingsDraft(trilha, trilhaQueryKey) {
         thumbnailUrl: form.thumbnailUrl,
         categories: form.categories,
         areaId: form.areaId,
+        schoolId: form.schoolId || undefined,
+        removeSchool: !form.schoolId,
       }),
     onSuccess: () => {
       setErrors({})

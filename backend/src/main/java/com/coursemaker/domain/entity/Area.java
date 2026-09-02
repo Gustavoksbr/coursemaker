@@ -38,7 +38,7 @@ public class Area {
     @Column(nullable = false, length = 50)
     private String name;
 
-    /** Immutable once created, so a future area-scoped URL never rots when the name is edited. */
+    /** Regenerated whenever the name changes; only used by the catalogue's {@code ?area=} filter. */
     @Column(nullable = false, unique = true, length = 60)
     private String slug;
 

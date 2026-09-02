@@ -20,9 +20,10 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { useToast } from '@/context/ToastContext'
 import { courseKeys, getCourseBySlug } from '@/api/courses'
 import { errorMessage } from '@/lib/api'
+import { courseHref } from '@/lib/contentLinks'
 
 export default function CourseEditorPage() {
-  const { areaSlug, nickname, slug } = useParams()
+  const { nickname, slug } = useParams()
   const navigate = useNavigate()
 
   const courseQueryKey = courseKeys.bySlug(nickname, slug)
@@ -45,14 +46,14 @@ export default function CourseEditorPage() {
 
   // Only the owner edits. The API enforces it too; this just avoids a wall of 403s.
   if (!detail.isOwner) {
-    return <Navigate to={`/${areaSlug}/courses/${nickname}/${slug}`} replace />
+    return <Navigate to={`/courses/${nickname}/${slug}`} replace />
   }
 
   return (
     <CourseEditorContent
       detail={detail}
       courseQueryKey={courseQueryKey}
-      onDeleted={() => navigate(`/${areaSlug}/pesquisar?tab=cursos`)}
+      onDeleted={() => navigate('/pesquisar?tab=cursos')}
     />
   )
 }
@@ -152,7 +153,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-bold text-slate-100">{course.name}</h1>
             <p className="truncate text-xs text-slate-500">
-              /{course.area.slug}/courses/{course.owner.nickname}/{course.slug}
+              {courseHref(course)}
             </p>
           </div>
 
@@ -160,6 +161,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
             status={course.status}
             visibility={course.visibility}
             featured={course.featured}
+            school={course.school}
           />
 
           <Button
@@ -180,7 +182,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
               destination, not duplicate that confirmation logic. */}
           <button
             type="button"
-            onClick={() => navigate(`/${course.area.slug}/courses/${course.owner.nickname}/${course.slug}`)}
+            onClick={() => navigate(courseHref(course))}
             className="btn-ghost text-xs"
           >
             <X size={14} /> Cancelar alteracoes

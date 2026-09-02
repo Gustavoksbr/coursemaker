@@ -2,7 +2,7 @@ import { Suspense, lazy } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { FullHeightLayout, Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
-import { AreaScopeGuard } from '@/components/layout/AreaScopeGuard'
+import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary'
 import { PageLoader } from '@/components/ui/Feedback'
 import { usePrefetchCatalogs } from '@/hooks/usePrefetchCatalogs'
 import HomePage from '@/pages/HomePage'
@@ -19,7 +19,11 @@ import ConversationListPage from '@/pages/ConversationListPage'
 import MessageThreadPage from '@/pages/MessageThreadPage'
 import ProfilePage from '@/pages/ProfilePage'
 import PublicProfilePage from '@/pages/PublicProfilePage'
+import SchoolPage from '@/pages/SchoolPage'
+import SchoolsListPage from '@/pages/SchoolsListPage'
 import AdminAreasPage from '@/pages/admin/AdminAreasPage'
+import AdminHomePage from '@/pages/admin/AdminHomePage'
+import AdminSchoolsPage from '@/pages/admin/AdminSchoolsPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
 // The editors pull in Tiptap/ProseMirror, which is the single heaviest dependency here and is
@@ -42,39 +46,33 @@ function lazyPage(Page) {
 const router = createBrowserRouter([
   {
     element: <Layout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { path: '/', element: <HomePage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
       { path: '/users/:nickname', element: <PublicProfilePage /> },
+      { path: '/escolas', element: <SchoolsListPage /> },
+      { path: '/escolas/:slug', element: <SchoolPage /> },
+
+      { path: '/pesquisar', element: <SearchPage /> },
+      { path: '/posts/:nickname/:slug', element: <PostViewPage /> },
+      { path: '/trilhas/:nickname/:slug', element: <TrilhaViewPage /> },
 
       {
-        // Everything below lives at /:areaSlug/... - the area a course/post/trilha belongs to is
-        // part of its address. AreaScopeGuard 404s an unknown slug instead of rendering a page
-        // scoped to nothing.
-        path: '/:areaSlug',
-        element: <AreaScopeGuard />,
+        element: <ProtectedRoute />,
         children: [
-          { path: 'pesquisar', element: <SearchPage /> },
-          { path: 'posts/:nickname/:slug', element: <PostViewPage /> },
-          { path: 'trilhas/:nickname/:slug', element: <TrilhaViewPage /> },
-
-          {
-            element: <ProtectedRoute />,
-            children: [
-              { path: 'posts/new', element: lazyPage(PostEditorPage) },
-              { path: 'posts/:id/edit', element: lazyPage(PostEditorPage) },
-              { path: 'trilhas/:nickname/:slug/edit', element: lazyPage(TrilhaEditorPage) },
-            ],
-          },
-
-          {
-            // Your library is just yours to look at, not content you publish, so it does not need
-            // a nickname the way creating a course/post/trilha does.
-            element: <ProtectedRoute requireNickname={false} />,
-            children: [{ path: 'biblioteca/pastas/:folderId', element: <LibraryFolderPage /> }],
-          },
+          { path: '/posts/new', element: lazyPage(PostEditorPage) },
+          { path: '/posts/:id/edit', element: lazyPage(PostEditorPage) },
+          { path: '/trilhas/:nickname/:slug/edit', element: lazyPage(TrilhaEditorPage) },
         ],
+      },
+
+      {
+        // Your library is just yours to look at, not content you publish, so it does not need
+        // a nickname the way creating a course/post/trilha does.
+        element: <ProtectedRoute requireNickname={false} />,
+        children: [{ path: '/biblioteca/pastas/:folderId', element: <LibraryFolderPage /> }],
       },
 
       {
@@ -99,7 +97,11 @@ const router = createBrowserRouter([
 
       {
         element: <ProtectedRoute requireNickname={false} requireAdmin />,
-        children: [{ path: '/admin/areas', element: <AdminAreasPage /> }],
+        children: [
+          { path: '/admin/areas', element: <AdminAreasPage /> },
+          { path: '/admin/schools', element: <AdminSchoolsPage /> },
+          { path: '/admin/home', element: <AdminHomePage /> },
+        ],
       },
 
       { path: '*', element: <NotFoundPage /> },
@@ -107,21 +109,16 @@ const router = createBrowserRouter([
   },
   {
     element: <FullHeightLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
+      { path: '/courses/:nickname/:slug', element: <CourseViewPage /> },
       {
-        path: '/:areaSlug',
-        element: <AreaScopeGuard />,
-        children: [
-          { path: 'courses/:nickname/:slug', element: <CourseViewPage /> },
-          {
-            element: <ProtectedRoute />,
-            children: [{ path: 'courses/:nickname/:slug/edit', element: lazyPage(CourseEditorPage) }],
-          },
-          {
-            element: <ProtectedRoute requireNickname={false} />,
-            children: [{ path: 'biblioteca', element: <LibraryPage /> }],
-          },
-        ],
+        element: <ProtectedRoute />,
+        children: [{ path: '/courses/:nickname/:slug/edit', element: lazyPage(CourseEditorPage) }],
+      },
+      {
+        element: <ProtectedRoute requireNickname={false} />,
+        children: [{ path: '/biblioteca', element: <LibraryPage /> }],
       },
     ],
   },

@@ -6,6 +6,7 @@ import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.course.CourseDtos.ProgressResponse;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
+import com.coursemaker.dto.school.SchoolDtos.SchoolSummary;
 import com.coursemaker.dto.user.UserSummary;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -35,6 +36,7 @@ public final class TrilhaDtos {
             List<String> categories,
             boolean featured,
             AreaSummary area,
+            SchoolSummary school,
             UserSummary owner,
             long itemCount,
             long enrollmentCount,
@@ -92,7 +94,8 @@ public final class TrilhaDtos {
             @Size(max = 2000) String thumbnailUrl,
             CourseVisibility visibility,
             List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
-            @NotNull UUID areaId) {
+            @NotNull UUID areaId,
+            UUID schoolId) {
     }
 
     /** Partial update: null means "leave unchanged". */
@@ -103,7 +106,11 @@ public final class TrilhaDtos {
             CourseVisibility visibility,
             CourseStatus status,
             List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
-            UUID areaId) {
+            UUID areaId,
+            UUID schoolId,
+            // schoolId being null normally means "leave unchanged" - this is the one flag that lets
+            // the settings panel's "Sem escola" option actually clear it back to no attribution.
+            boolean removeSchool) {
     }
 
     /** Exactly one of {@code courseId}/{@code postId} must be set. {@code stepId} is optional. */

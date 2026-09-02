@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+import { areaKeys, listAreas } from '@/api/areas'
+import { listSchools, schoolKeys } from '@/api/schools'
 import { PAGE_SIZE } from '@/lib/constants'
 
 /**
@@ -12,7 +14,18 @@ import { PAGE_SIZE } from '@/lib/constants'
  * debounced search input, used by the three standalone catalogue pages.
  */
 export function useCatalogList({ filters, listFn, queryKeyFn, extraFilters = {} }) {
-  const query = { ...filters, ...extraFilters, size: PAGE_SIZE }
+  // Filters carry area *slugs* (readable URLs); the API takes ids. The area list is tiny and
+  // globally cached, so resolving here costs nothing.
+  const { data: areas } = useQuery({ queryKey: areaKeys.list(), queryFn: listAreas })
+  const areaIds = (filters.areas ?? [])
+    .map((slug) => areas?.find((area) => area.slug === slug)?.id)
+    .filter(Boolean)
+
+  // Schools are just as small and globally cached; resolving the slug here costs nothing either.
+  const { data: schools } = useQuery({ queryKey: schoolKeys.list(), queryFn: listSchools })
+  const schoolId = filters.school ? schools?.find((school) => school.slug === filters.school)?.id : undefined
+
+  const query = { ...filters, areaIds, schoolId, ...extraFilters, size: PAGE_SIZE }
   const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: queryKeyFn(query),
     queryFn: () => listFn(query),
@@ -23,6 +36,8 @@ export function useCatalogList({ filters, listFn, queryKeyFn, extraFilters = {} 
     q: filters.q,
     author: filters.author,
     visibility: filters.visibility,
+    areaIds,
+    schoolId,
     ...extraFilters,
     sort: 'recent',
     page: 0,

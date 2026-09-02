@@ -40,10 +40,12 @@ export default function PublicProfilePage() {
 
   const isMe = user?.id === profile.id
   const allItems = tab === 'courses' ? profile.courses : tab === 'posts' ? profile.posts : profile.trilhas
-  const availableAreas = [...new Map(allItems.map((item) => [item.area.id, item.area])).values()].sort((a, b) =>
-    a.name.localeCompare(b.name, 'pt-BR'),
-  )
-  const items = areaFilter ? allItems.filter((item) => item.area.id === areaFilter) : allItems
+  // `item.area` can be missing if the backend deploy is momentarily behind the frontend's; those
+  // items just don't get an area filter option instead of crashing the page.
+  const availableAreas = [
+    ...new Map(allItems.filter((item) => item.area).map((item) => [item.area.id, item.area])).values(),
+  ].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  const items = areaFilter ? allItems.filter((item) => item.area?.id === areaFilter) : allItems
 
   const changeTab = (nextTab) => {
     setTab(nextTab)

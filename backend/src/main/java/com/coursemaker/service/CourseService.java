@@ -5,6 +5,7 @@ import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.Lesson;
 import com.coursemaker.domain.entity.LessonBlock;
 import com.coursemaker.domain.entity.Module;
+import com.coursemaker.domain.entity.School;
 import com.coursemaker.domain.entity.User;
 import com.coursemaker.domain.enums.BlockType;
 import com.coursemaker.domain.enums.CourseStatus;
@@ -61,6 +62,7 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     private final AreaRepository areaRepository;
+    private final SchoolService schoolService;
     private final ModuleRepository moduleRepository;
     private final LessonRepository lessonRepository;
     private final LessonBlockRepository lessonBlockRepository;
@@ -77,7 +79,7 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public PageResponse<CourseSummary> search(String q, String author, CourseVisibility visibility,
-            List<String> categories, Boolean featuredOnly, UUID areaId, String sort,
+            List<String> categories, Boolean featuredOnly, List<UUID> areaIds, UUID schoolId, String sort,
             int page, int size, User viewer) {
         Page<Course> result = courseRepository.search(
                 blankToNull(q),
@@ -85,7 +87,8 @@ public class CourseService {
                 visibility == null ? null : visibility.getValue(),
                 joinCategories(categories),
                 featuredOnly,
-                areaId,
+                joinIds(areaIds),
+                schoolId,
                 sort == null ? "recent" : sort,
                 viewer == null ? null : viewer.getId(),
                 PageRequest.of(Math.max(0, page), Math.clamp(size, 1, MAX_PAGE_SIZE)));
@@ -161,10 +164,12 @@ public class CourseService {
 
         Area area = areaRepository.findById(request.areaId())
                 .orElseThrow(() -> ResourceNotFoundException.of("Area"));
+        School school = schoolService.requireAllowedSchool(request.schoolId(), owner);
 
         Course course = Course.builder()
                 .owner(owner)
                 .area(area)
+                .school(school)
                 .name(request.name().trim())
                 .slug(slug)
                 .description(request.description())
@@ -233,6 +238,11 @@ public class CourseService {
         if (request.areaId() != null) {
             course.setArea(areaRepository.findById(request.areaId())
                     .orElseThrow(() -> ResourceNotFoundException.of("Area")));
+        }
+        if (request.removeSchool()) {
+            course.setSchool(null);
+        } else if (request.schoolId() != null) {
+            course.setSchool(schoolService.requireAllowedSchool(request.schoolId(), viewer));
         }
         if (request.status() != null) {
             course.setStatus(request.status());
@@ -408,6 +418,22 @@ public class CourseService {
         String joined = categories.stream()
                 .filter(category -> category != null && !category.isBlank())
                 .map(String::trim)
+                .distinct()
+                .collect(Collectors.joining(CATEGORY_DELIMITER));
+        return joined.isEmpty() ? null : joined;
+    }
+
+    /**
+     * Same packing trick as {@link #joinCategories}, for the multi-select area filter: the native
+     * query compares {@code area_id::text} against the unpacked array. Null disables the filter.
+     */
+    static String joinIds(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return null;
+        }
+        String joined = ids.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(UUID::toString)
                 .distinct()
                 .collect(Collectors.joining(CATEGORY_DELIMITER));
         return joined.isEmpty() ? null : joined;

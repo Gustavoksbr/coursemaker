@@ -125,4 +125,19 @@ public final class CompositeIds {
         @Column(name = "trilha_id", nullable = false)
         private UUID trilhaId;
     }
+
+    @Embeddable
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    public static class SchoolUserId implements Serializable {
+
+        @Column(name = "school_id", nullable = false)
+        private UUID schoolId;
+
+        @Column(name = "user_id", nullable = false)
+        private UUID userId;
+    }
 }

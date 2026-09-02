@@ -74,6 +74,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/*/certificate").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/me/following").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/me/completed").authenticated()
+                        // Unpublished drafts too, so this one is admin-only (enforced in HomeService).
+                        .requestMatchers(HttpMethod.GET, "/api/v1/testimonials/all").authenticated()
+                        // Admin-only member list and "where can I publish" - both enforced again in
+                        // SchoolService, but kept out of the broad permitAll blocks below regardless.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/schools/*/members").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/me/schools").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/enrollments/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/enrollments/me/*").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/notifications",
@@ -103,6 +109,10 @@ public class SecurityConfig {
                                 "/api/v1/trilhas/**",
                                 "/api/v1/users/**",
                                 "/api/v1/areas",
+                                "/api/v1/schools/**",
+                                "/api/v1/site-settings",
+                                "/api/v1/stats",
+                                "/api/v1/testimonials",
                                 "/api/v1/search").permitAll()
 
                         .anyRequest().authenticated())

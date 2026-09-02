@@ -48,6 +48,11 @@ public class Trilha {
     @JoinColumn(name = "area_id", nullable = false)
     private Area area;
 
+    /** Provenance, optional. Only settable to a school the owner is a member of - see SchoolService. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "school_id")
+    private School school;
+
     @Column(nullable = false)
     private String title;
 

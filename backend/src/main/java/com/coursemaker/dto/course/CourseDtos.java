@@ -4,6 +4,7 @@ import com.coursemaker.domain.enums.CourseStatus;
 import com.coursemaker.domain.enums.CourseVisibility;
 import com.coursemaker.dto.area.AreaDtos.AreaSummary;
 import com.coursemaker.dto.curriculum.CurriculumDtos.ModuleResponse;
+import com.coursemaker.dto.school.SchoolDtos.SchoolSummary;
 import com.coursemaker.dto.user.UserSummary;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -31,6 +32,7 @@ public final class CourseDtos {
             boolean featured,
             boolean progressEnabled,
             AreaSummary area,
+            SchoolSummary school,
             UserSummary owner,
             long likeCount,
             long enrollmentCount,
@@ -77,7 +79,8 @@ public final class CourseDtos {
             @Size(max = MAX_PASSWORD_LENGTH) String password,
             List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
             Boolean progressEnabled,
-            @NotNull UUID areaId) {
+            @NotNull UUID areaId,
+            UUID schoolId) {
     }
 
     /** Partial update: null means "leave unchanged". */
@@ -91,7 +94,11 @@ public final class CourseDtos {
             @Size(max = MAX_PASSWORD_LENGTH) String password,
             List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
             Boolean progressEnabled,
-            UUID areaId) {
+            UUID areaId,
+            UUID schoolId,
+            // schoolId being null normally means "leave unchanged" - this is the one flag that lets
+            // the settings panel's "Sem escola" option actually clear it back to no attribution.
+            boolean removeSchool) {
     }
 
     /** Response of the slug availability check used by the create-course modal. */

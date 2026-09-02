@@ -12,6 +12,7 @@ import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { BlockList } from '@/components/blocks/BlockRenderer'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
+import { FeatureToggleButton } from '@/components/shared/FeatureToggleButton'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useToast } from '@/context/ToastContext'
 import { getPostBySlug, postKeys } from '@/api/posts'
@@ -53,7 +54,12 @@ export default function PostViewPage() {
     <>
       <article className="mx-auto max-w-3xl space-y-8 px-4 py-8 sm:px-6">
         <header className="space-y-4">
-          <ContentBadges status={post.status} visibility={post.visibility} featured={post.featured} />
+          <ContentBadges
+            status={post.status}
+            visibility={post.visibility}
+            featured={post.featured}
+            school={post.school}
+          />
 
           <h1 className="break-words text-3xl font-bold tracking-tight text-slate-100">{post.title}</h1>
           {post.description && <p className="break-words text-lg text-slate-400">{post.description}</p>}
@@ -74,8 +80,9 @@ export default function PostViewPage() {
 
             <div className="ml-auto flex items-center gap-2">
               <SaveToLibraryButton kind="post" contentId={post.id} saved={post.savedByMe} onChange={invalidate} />
+              <FeatureToggleButton kind="post" contentId={post.id} featured={post.featured} onChanged={invalidate} />
               {detail.isOwner && (
-                <Link to={`/${post.area.slug}/posts/${post.id}/edit`} className="btn-secondary">
+                <Link to={`/posts/${post.id}/edit`} className="btn-secondary">
                   <Pencil size={16} /> Editar
                 </Link>
               )}
@@ -87,7 +94,7 @@ export default function PostViewPage() {
               {post.categories.map((category) => (
                 <Link
                   key={category}
-                  to={`/${post.area.slug}/pesquisar?tab=posts&category=${encodeURIComponent(category)}`}
+                  to={`/pesquisar?tab=posts&category=${encodeURIComponent(category)}`}
                   className="badge bg-slate-700/60 text-slate-300 hover:bg-slate-700"
                 >
                   {category}

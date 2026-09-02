@@ -1,4 +1,5 @@
-import { Lock, Sparkles, FileEdit } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { GraduationCap, Lock, Sparkles, FileEdit } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { STATUS, VISIBILITY } from '@/lib/constants'
 
@@ -18,8 +19,8 @@ export function Badge({ tone = 'neutral', className, children, ...props }) {
   )
 }
 
-/** The draft / private / featured badges a course or post card shows, in a fixed order. */
-export function ContentBadges({ status, visibility, featured, className }) {
+/** The draft / private / featured / school badges a course or post card shows, in a fixed order. */
+export function ContentBadges({ status, visibility, featured, school, className }) {
   const badges = []
   if (status === STATUS.UNAVAILABLE) {
     badges.push(
@@ -40,6 +41,20 @@ export function ContentBadges({ status, visibility, featured, className }) {
       <Badge key="featured" tone="featured">
         <Sparkles size={12} /> Destaque
       </Badge>,
+    )
+  }
+  if (school) {
+    // Provenance, not partnership - the wording and the plain-name pill both say "credit", not
+    // "official Alura course". Links to the school's own page (/escolas/:slug).
+    badges.push(
+      <Link
+        key="school"
+        to={`/escolas/${school.slug}`}
+        title={`Publicado por ${school.name}`}
+        className="badge bg-brand-500/15 text-brand-300 ring-1 ring-inset ring-brand-500/30 hover:bg-brand-500/25"
+      >
+        <GraduationCap size={12} /> {school.name}
+      </Link>,
     )
   }
   if (badges.length === 0) return null

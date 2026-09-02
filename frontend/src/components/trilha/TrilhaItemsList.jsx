@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { CheckCircle2, ChevronDown, Circle, GraduationCap, MessageSquare, Newspaper } from 'lucide-react'
+import { MaybeLink } from '@/components/ui/MaybeLink'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { ProgressBar } from '@/components/ui/ProgressBar'
+import { courseHref, postHref } from '@/lib/contentLinks'
 import { cn } from '@/lib/cn'
 
 /**
@@ -93,9 +94,7 @@ function ItemRows({ items, canTrackProgress, onToggleComplete }) {
 
 function TrilhaItemRow({ item, index, canTrackProgress, onToggleComplete }) {
   const content = item.course ?? item.post
-  const href = item.course
-    ? `/${content.area.slug}/courses/${content.owner.nickname}/${content.slug}`
-    : `/${content.area.slug}/posts/${content.owner.nickname}/${content.slug}`
+  const href = item.course ? courseHref(content) : postHref(content)
 
   return (
     <li className="rounded-xl border border-slate-700 bg-slate-800/40 p-3">
@@ -117,16 +116,16 @@ function TrilhaItemRow({ item, index, canTrackProgress, onToggleComplete }) {
           </button>
         )}
 
-        <Link to={href} className="shrink-0">
+        <MaybeLink to={href} className="shrink-0">
           <Thumbnail src={content.thumbnailUrl} alt={content.name ?? content.title} className="h-14 w-24 rounded-lg" />
-        </Link>
+        </MaybeLink>
 
         <div className="min-w-0 flex-1">
           <span className="inline-flex items-center gap-1 text-xs text-slate-500">
             {item.course ? <GraduationCap size={11} /> : <Newspaper size={11} />}
             {item.course ? 'Curso' : 'Post'}
           </span>
-          <Link
+          <MaybeLink
             to={href}
             className={cn(
               'block truncate font-medium text-slate-100 hover:text-brand-400',
@@ -134,7 +133,7 @@ function TrilhaItemRow({ item, index, canTrackProgress, onToggleComplete }) {
             )}
           >
             {content.name ?? content.title}
-          </Link>
+          </MaybeLink>
           {item.courseProgress && (
             <ProgressBar
               className="mt-1.5 max-w-xs"

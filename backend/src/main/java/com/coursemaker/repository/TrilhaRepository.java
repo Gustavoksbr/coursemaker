@@ -24,6 +24,11 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
 
     boolean existsByAreaId(UUID areaId);
 
+    boolean existsBySchoolId(UUID schoolId);
+
+    @Query(value = "SELECT count(*) FROM trilhas WHERE status = 'available'", nativeQuery = true)
+    long countPublished();
+
     @Query("SELECT t.slug FROM Trilha t WHERE t.owner.id = :ownerId AND t.slug LIKE concat(:base, '%')")
     List<String> findSlugsStartingWith(@Param("ownerId") UUID ownerId, @Param("base") String base);
 
@@ -65,7 +70,9 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR t.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR t.is_featured)
-              AND (CAST(:areaId AS uuid) IS NULL OR t.area_id = CAST(:areaId AS uuid))
+              AND (CAST(:areaIds AS text) IS NULL
+                   OR t.area_id::text = ANY(string_to_array(CAST(:areaIds AS text), chr(1))))
+              AND (CAST(:schoolId AS uuid) IS NULL OR t.school_id = CAST(:schoolId AS uuid))
               AND (t.status = 'available' OR t.owner_id = CAST(:viewerId AS uuid))
             ORDER BY
               CASE WHEN CAST(:sort AS text) = 'name' THEN t.title ELSE '' END ASC,
@@ -86,7 +93,9 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR t.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR t.is_featured)
-              AND (CAST(:areaId AS uuid) IS NULL OR t.area_id = CAST(:areaId AS uuid))
+              AND (CAST(:areaIds AS text) IS NULL
+                   OR t.area_id::text = ANY(string_to_array(CAST(:areaIds AS text), chr(1))))
+              AND (CAST(:schoolId AS uuid) IS NULL OR t.school_id = CAST(:schoolId AS uuid))
               AND (t.status = 'available' OR t.owner_id = CAST(:viewerId AS uuid))
             """,
             nativeQuery = true)
@@ -95,7 +104,8 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
                         @Param("visibility") String visibility,
                         @Param("categories") String categories,
                         @Param("featuredOnly") Boolean featuredOnly,
-                        @Param("areaId") UUID areaId,
+                        @Param("areaIds") String areaIds,
+                        @Param("schoolId") UUID schoolId,
                         @Param("sort") String sort,
                         @Param("viewerId") UUID viewerId,
                         Pageable pageable);

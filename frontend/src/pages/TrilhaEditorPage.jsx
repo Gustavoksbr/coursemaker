@@ -15,9 +15,10 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { useToast } from '@/context/ToastContext'
 import { getTrilhaBySlug, trilhaKeys } from '@/api/trilhas'
 import { errorMessage } from '@/lib/api'
+import { trilhaHref } from '@/lib/contentLinks'
 
 export default function TrilhaEditorPage() {
-  const { areaSlug, nickname, slug } = useParams()
+  const { nickname, slug } = useParams()
   const navigate = useNavigate()
 
   const trilhaQueryKey = trilhaKeys.bySlug(nickname, slug)
@@ -39,14 +40,14 @@ export default function TrilhaEditorPage() {
   }
 
   if (!detail.isOwner) {
-    return <Navigate to={`/${areaSlug}/trilhas/${nickname}/${slug}`} replace />
+    return <Navigate to={`/trilhas/${nickname}/${slug}`} replace />
   }
 
   return (
     <TrilhaEditorContent
       detail={detail}
       trilhaQueryKey={trilhaQueryKey}
-      onDeleted={() => navigate(`/${areaSlug}/pesquisar?tab=trilhas`)}
+      onDeleted={() => navigate('/pesquisar?tab=trilhas')}
     />
   )
 }
@@ -99,11 +100,16 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold text-slate-100">{trilha.title}</h1>
           <p className="truncate text-xs text-slate-500">
-            /{trilha.area.slug}/trilhas/{trilha.owner.nickname}/{trilha.slug}
+            {trilhaHref(trilha)}
           </p>
         </div>
 
-        <ContentBadges status={trilha.status} visibility={trilha.visibility} featured={trilha.featured} />
+        <ContentBadges
+          status={trilha.status}
+          visibility={trilha.visibility}
+          featured={trilha.featured}
+          school={trilha.school}
+        />
 
         <Button
           onClick={handleSave}
@@ -122,7 +128,9 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
             below, which shows the confirm prompt. */}
         <button
           type="button"
-          onClick={() => navigate(`/${trilha.area.slug}/trilhas/${trilha.owner.nickname}/${trilha.slug}`)}
+          onClick={() =>
+            navigate(trilhaHref(trilha))
+          }
           className="btn-ghost text-xs"
         >
           <X size={14} /> Cancelar alteracoes

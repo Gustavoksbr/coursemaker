@@ -24,6 +24,11 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     boolean existsByAreaId(UUID areaId);
 
+    boolean existsBySchoolId(UUID schoolId);
+
+    @Query(value = "SELECT count(*) FROM posts WHERE status = 'available'", nativeQuery = true)
+    long countPublished();
+
     @Query("SELECT p.slug FROM Post p WHERE p.owner.id = :ownerId AND p.slug LIKE concat(:base, '%')")
     List<String> findSlugsStartingWith(@Param("ownerId") UUID ownerId, @Param("base") String base);
 
@@ -46,7 +51,9 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR p.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR p.is_featured)
-              AND (CAST(:areaId AS uuid) IS NULL OR p.area_id = CAST(:areaId AS uuid))
+              AND (CAST(:areaIds AS text) IS NULL
+                   OR p.area_id::text = ANY(string_to_array(CAST(:areaIds AS text), chr(1))))
+              AND (CAST(:schoolId AS uuid) IS NULL OR p.school_id = CAST(:schoolId AS uuid))
               AND (p.status = 'available' OR p.owner_id = CAST(:viewerId AS uuid))
             ORDER BY
               CASE WHEN CAST(:sort AS text) = 'likes'
@@ -70,7 +77,9 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
               AND (CAST(:categories AS text) IS NULL
                    OR p.categories && string_to_array(CAST(:categories AS text), chr(1)))
               AND (CAST(:featuredOnly AS boolean) IS NOT TRUE OR p.is_featured)
-              AND (CAST(:areaId AS uuid) IS NULL OR p.area_id = CAST(:areaId AS uuid))
+              AND (CAST(:areaIds AS text) IS NULL
+                   OR p.area_id::text = ANY(string_to_array(CAST(:areaIds AS text), chr(1))))
+              AND (CAST(:schoolId AS uuid) IS NULL OR p.school_id = CAST(:schoolId AS uuid))
               AND (p.status = 'available' OR p.owner_id = CAST(:viewerId AS uuid))
             """,
             nativeQuery = true)
@@ -79,7 +88,8 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                       @Param("visibility") String visibility,
                       @Param("categories") String categories,
                       @Param("featuredOnly") Boolean featuredOnly,
-                      @Param("areaId") UUID areaId,
+                      @Param("areaIds") String areaIds,
+                      @Param("schoolId") UUID schoolId,
                       @Param("sort") String sort,
                       @Param("viewerId") UUID viewerId,
                       Pageable pageable);

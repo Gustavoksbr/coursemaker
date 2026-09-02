@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
 import { AreaSelect } from '@/components/ui/AreaSelect'
+import { SchoolSelect } from '@/components/ui/SchoolSelect'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { useToast } from '@/context/ToastContext'
@@ -180,6 +181,12 @@ export function CourseSettingsPanel({ course, draft, courseQueryKey, onDeleted, 
               onChange={(areaId) => setField({ areaId })}
             />
           </Field>
+
+          <SchoolSelect
+            id="settings-school"
+            value={form.schoolId}
+            onChange={(schoolId) => setField({ schoolId })}
+          />
 
           <Checkbox
             label="Acompanhamento de progresso"

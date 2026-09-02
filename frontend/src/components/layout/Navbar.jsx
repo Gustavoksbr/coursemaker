@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   Bell,
   Bookmark,
   CheckCheck,
-  ChevronDown,
   GraduationCap,
   LogOut,
   Mail,
@@ -22,7 +21,6 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { useMessaging } from '@/context/MessagingContext'
 import { useNotifications } from '@/context/NotificationContext'
-import { useCurrentArea } from '@/context/AreaContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Feedback'
 import { NicknameGateModal } from '@/components/auth/NicknameGateModal'
@@ -50,27 +48,22 @@ export function Navbar() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth()
   const { notifications, loading: notificationsLoading, unreadCount, markRead, markAllRead } = useNotifications()
   const { unreadCount: messagesUnreadCount } = useMessaging()
-  const { area, areas, setPreferredSlug } = useCurrentArea()
-  const { areaSlug: routeAreaSlug } = useParams()
   const navigate = useNavigate()
-  const location = useLocation()
   const { requireNickname, nicknameModalProps } = useNicknameGate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [areaMenuOpen, setAreaMenuOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [createChoiceOpen, setCreateChoiceOpen] = useState(false)
   const [createCourseOpen, setCreateCourseOpen] = useState(false)
   const [createTrilhaOpen, setCreateTrilhaOpen] = useState(false)
   const menuRef = useRef(null)
   const notificationsRef = useRef(null)
-  const areaMenuRef = useRef(null)
 
   // A link to a page you cannot open (it is behind auth) is just confusing, so Biblioteca only
-  // shows up once there is a library to look at. Both links carry the current area along.
+  // shows up once there is a library to look at.
   const navLinks = [
-    { to: `/${area?.slug}/pesquisar`, label: 'Procurar', icon: Search },
-    ...(isAuthenticated ? [{ to: `/${area?.slug}/biblioteca`, label: 'Biblioteca', icon: Bookmark }] : []),
+    { to: '/pesquisar', label: 'Procurar', icon: Search },
+    ...(isAuthenticated ? [{ to: '/biblioteca', label: 'Biblioteca', icon: Bookmark }] : []),
   ]
 
   useEffect(() => {
@@ -93,15 +86,6 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [notificationsOpen])
 
-  useEffect(() => {
-    if (!areaMenuOpen) return undefined
-    const onClickOutside = (event) => {
-      if (areaMenuRef.current && !areaMenuRef.current.contains(event.target)) setAreaMenuOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [areaMenuOpen])
-
   const handleLogout = () => {
     logout()
     setMenuOpen(false)
@@ -113,20 +97,8 @@ export function Navbar() {
     requireNickname(() => {
       if (type === 'course') setCreateCourseOpen(true)
       else if (type === 'trilha') setCreateTrilhaOpen(true)
-      else navigate(`/${area.slug}/posts/new`)
+      else navigate('/posts/new')
     })
-  }
-
-  // Switching areas keeps you on the same page - just re-pointed at the new area (`:areaSlug` is
-  // literally the first path segment) - rather than jumping to some fixed landing page. Pages with
-  // no area of their own (home, /users, /mensagens...) just get the new preference, no navigation.
-  const switchArea = (nextSlug) => {
-    setAreaMenuOpen(false)
-    setPreferredSlug(nextSlug)
-    if (routeAreaSlug) {
-      const newPath = location.pathname.replace(/^\/[^/]+/, `/${nextSlug}`)
-      navigate({ pathname: newPath, search: location.search })
-    }
   }
 
   const linkClass = ({ isActive }) =>
@@ -144,42 +116,6 @@ export function Navbar() {
           </span>
           <span className="hidden sm:inline">CourseMaker</span>
         </Link>
-
-        {area && (
-          <div className="relative hidden shrink-0 md:block" ref={areaMenuRef}>
-            <button
-              type="button"
-              onClick={() => setAreaMenuOpen((open) => !open)}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-              aria-haspopup="menu"
-              aria-expanded={areaMenuOpen}
-            >
-              {area.name} <ChevronDown size={14} />
-            </button>
-
-            {areaMenuOpen && (
-              <div
-                role="menu"
-                className="absolute left-0 mt-2 w-52 animate-slide-up overflow-hidden rounded-lg border border-slate-700 bg-slate-800 shadow-xl"
-              >
-                {areas?.map((candidate) => (
-                  <button
-                    key={candidate.id}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => switchArea(candidate.slug)}
-                    className={cn(
-                      'block w-full px-4 py-2.5 text-left text-sm hover:bg-slate-700',
-                      candidate.id === area.id ? 'text-brand-400' : 'text-slate-300',
-                    )}
-                  >
-                    {candidate.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="hidden flex-1 items-center gap-1 md:flex">
           {navLinks.map(({ to, label }) => (
@@ -355,6 +291,26 @@ export function Navbar() {
                         <Shield size={15} /> Gerenciar areas
                       </Link>
                     )}
+                    {isAdmin && (
+                      <Link
+                        to="/admin/schools"
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-700"
+                      >
+                        <Shield size={15} /> Gerenciar escolas
+                      </Link>
+                    )}
+                    {isAdmin && (
+                      <Link
+                        to="/admin/home"
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-700"
+                      >
+                        <Shield size={15} /> Personalizar home
+                      </Link>
+                    )}
                     <button
                       type="button"
                       role="menuitem"
@@ -392,25 +348,6 @@ export function Navbar() {
 
       {mobileOpen && (
         <div className="border-t border-slate-800 px-4 py-2 md:hidden">
-          {area && (
-            <label className="flex items-center gap-2 px-3 py-2.5 text-sm text-slate-300">
-              Area:
-              <select
-                value={area.slug}
-                onChange={(event) => {
-                  switchArea(event.target.value)
-                  setMobileOpen(false)
-                }}
-                className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100"
-              >
-                {areas?.map((candidate) => (
-                  <option key={candidate.id} value={candidate.slug}>
-                    {candidate.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           {navLinks.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}

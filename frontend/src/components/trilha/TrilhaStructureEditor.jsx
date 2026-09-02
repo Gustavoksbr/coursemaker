@@ -4,6 +4,7 @@ import { ConfirmModal } from '@/components/ui/Modal'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { PickContentModal } from '@/components/shared/PickContentModal'
 import { useDragReorder } from '@/hooks/useDragReorder'
+import { courseHref, postHref } from '@/lib/contentLinks'
 import { cn } from '@/lib/cn'
 
 /**
@@ -174,9 +175,7 @@ function ItemGroup({ groupKey, title, items, steps, draft, onAddClick }) {
         <ul className="space-y-1.5">
           {items.map((item) => {
             const content = item.course ?? item.post
-            const href = item.course
-              ? `/${content.area.slug}/courses/${content.owner.nickname}/${content.slug}`
-              : `/${content.area.slug}/posts/${content.owner.nickname}/${content.slug}`
+            const href = item.course ? courseHref(content) : postHref(content)
             const isEditingNote = editingNote?.itemId === item.id
 
             return (
@@ -197,14 +196,20 @@ function ItemGroup({ groupKey, title, items, steps, draft, onAddClick }) {
                     className="h-9 w-14 shrink-0 rounded"
                   />
                   <div className="min-w-0 flex-1">
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block truncate text-sm font-medium text-slate-200 hover:text-brand-400"
-                    >
-                      {content.name ?? content.title}
-                    </a>
+                    {href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block truncate text-sm font-medium text-slate-200 hover:text-brand-400"
+                      >
+                        {content.name ?? content.title}
+                      </a>
+                    ) : (
+                      <span className="block truncate text-sm font-medium text-slate-200">
+                        {content.name ?? content.title}
+                      </span>
+                    )}
                     <span className="text-xs text-slate-500">{item.course ? 'Curso' : 'Post'}</span>
                   </div>
                   {steps.length > 0 && (
