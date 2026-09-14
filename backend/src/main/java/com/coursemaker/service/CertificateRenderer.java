@@ -4,8 +4,13 @@ import com.openhtmltopdf.extend.FSSupplier;
 import com.openhtmltopdf.outputdevice.helper.BaseRendererBuilder.FontStyle;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import com.openhtmltopdf.svgsupport.BatikSVGDrawer;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.stereotype.Component;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,6 +64,26 @@ public class CertificateRenderer {
             return out.toByteArray();
         } catch (IOException e) {
             throw new IllegalStateException("Nao foi possivel gerar o certificado", e);
+        }
+    }
+
+    /**
+     * The same certificate as {@link #render}, rasterized to a PNG - lets the library show it
+     * inline before the visitor commits to downloading the PDF. Nothing is cached or persisted:
+     * this re-renders and re-rasterizes on every call, same "always fresh, nothing to keep in sync"
+     * choice as the PDF itself (see CertificateService).
+     */
+    public byte[] renderPreviewPng(CertificateData data) {
+        byte[] pdf = render(data);
+        try (PDDocument document = PDDocument.load(pdf); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            PDFRenderer renderer = new PDFRenderer(document);
+            // 2x the PDF's 96dpi baseline: sharp enough to fill a wide preview card without the
+            // multi-megabyte cost of going much higher for something nobody prints from this view.
+            BufferedImage image = renderer.renderImageWithDPI(0, 192, ImageType.RGB);
+            ImageIO.write(image, "png", out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("Nao foi possivel gerar a previa do certificado", e);
         }
     }
 

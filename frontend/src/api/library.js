@@ -5,6 +5,13 @@ export const libraryKeys = {
   folder: (id, areaId) => ['library', 'folders', 'one', id, areaId],
   folderItems: (id, page, areaId) => ['library', 'folders', 'items', id, page, areaId],
   status: (kind, contentId) => ['library', 'status', kind, contentId],
+  overview: ['library', 'overview'],
+}
+
+/** Every enrolled course + followed trilha, with progress - the "Meus cursos e trilhas" table. */
+export async function getLibraryOverview() {
+  const { data } = await api.get('/library/overview')
+  return data
 }
 
 // ------------------------------------------------------------- save/unsave

@@ -1,30 +1,47 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle2, FolderOpen, GraduationCap, History, Plus, Waypoints } from 'lucide-react'
-import { CourseCard } from '@/components/course/CourseCard'
-import { TrilhaCard } from '@/components/trilha/TrilhaCard'
+import {
+  Award,
+  ArrowRight,
+  CheckCircle2,
+  Circle,
+  Clock,
+  FolderOpen,
+  GraduationCap,
+  History,
+  ListChecks,
+  Plus,
+  Search,
+  Waypoints,
+} from 'lucide-react'
 import { FolderCard } from '@/components/library/FolderCard'
 import { FolderModal } from '@/components/library/FolderModal'
 import { Avatar } from '@/components/ui/Avatar'
-import { ContentBadges } from '@/components/ui/Badge'
+import { Badge, ContentBadges } from '@/components/ui/Badge'
+import { Select } from '@/components/ui/Field'
 import { MaybeLink } from '@/components/ui/MaybeLink'
+import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { EmptyState, Spinner } from '@/components/ui/Feedback'
 import { useLibraryArea } from '@/context/AreaContext'
-import { courseHref } from '@/lib/contentLinks'
+import { courseHref, trilhaHref } from '@/lib/contentLinks'
+import { formatRelative } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { courseKeys, lastAccessedCourse, myCompletedCourses, myInProgressCourses } from '@/api/courses'
-import { myCompletedTrilhas, myFollowedTrilhas, trilhaKeys } from '@/api/trilhas'
-import { libraryKeys, listFolders } from '@/api/library'
+import { courseKeys, lastAccessedCourse } from '@/api/courses'
+import { getLibraryOverview, libraryKeys, listFolders } from '@/api/library'
 
 const SECTIONS = [
   { id: 'continuar', label: 'Continuar assistindo', icon: History },
-  { id: 'em-andamento', label: 'Em andamento', icon: GraduationCap },
-  { id: 'concluidos', label: 'Concluidos', icon: CheckCircle2 },
-  { id: 'trilhas', label: 'Trilhas que sigo', icon: Waypoints },
+  { id: 'meus-cursos', label: 'Meus cursos e trilhas', icon: ListChecks },
   { id: 'pastas', label: 'Pastas', icon: FolderOpen },
 ]
+
+const STATUS_META = {
+  NOT_STARTED: { label: 'Nao iniciado', tone: 'neutral', icon: Circle },
+  IN_PROGRESS: { label: 'Em andamento', tone: 'brand', icon: Clock },
+  COMPLETED: { label: 'Concluido', tone: 'featured', icon: CheckCircle2 },
+}
 
 export default function LibraryPage() {
   const { area, areas, setLibrarySlug } = useLibraryArea()
@@ -36,32 +53,11 @@ export default function LibraryPage() {
     queryKey: courseKeys.lastAccessed(areaId),
     queryFn: () => lastAccessedCourse(areaId),
   })
-  const inProgressQuery = useQuery({
-    queryKey: courseKeys.inProgress(areaId),
-    queryFn: () => myInProgressCourses(areaId),
-  })
-  const completedCoursesQuery = useQuery({
-    queryKey: courseKeys.completed(areaId),
-    queryFn: () => myCompletedCourses(areaId),
-  })
-  const completedTrilhasQuery = useQuery({
-    queryKey: trilhaKeys.completed(areaId),
-    queryFn: () => myCompletedTrilhas(areaId),
-  })
-  const followingQuery = useQuery({
-    queryKey: trilhaKeys.following(areaId),
-    queryFn: () => myFollowedTrilhas(areaId),
-  })
+  const overviewQuery = useQuery({ queryKey: libraryKeys.overview, queryFn: getLibraryOverview })
   const foldersQuery = useQuery({
     queryKey: libraryKeys.folders(areaId),
     queryFn: () => listFolders(areaId),
   })
-
-  const completedLoading = completedCoursesQuery.isPending || completedTrilhasQuery.isPending
-  const completedItems = [
-    ...(completedCoursesQuery.data ?? []).map((course) => ({ kind: 'course', data: course })),
-    ...(completedTrilhasQuery.data ?? []).map((trilha) => ({ kind: 'trilha', data: trilha })),
-  ]
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 gap-8 px-4 py-8 sm:px-6">
@@ -119,72 +115,12 @@ export default function LibraryPage() {
           )}
         </section>
 
-        <section id="em-andamento" className="scroll-mt-20">
-          <SectionTitle icon={GraduationCap} title="Em andamento" count={inProgressQuery.data?.length} />
-          {inProgressQuery.isPending ? (
-            <Loading />
-          ) : inProgressQuery.data.length === 0 ? (
-            <EmptyState
-              icon={GraduationCap}
-              title="Nenhum curso em andamento"
-              message="Cursos em que voce se matricular e ainda nao terminou aparecem aqui."
-            />
-          ) : (
-            <ScrollRow>
-              {inProgressQuery.data.map((course) => (
-                <CardSlot key={course.id}>
-                  <CourseCard course={course} />
-                </CardSlot>
-              ))}
-            </ScrollRow>
-          )}
-        </section>
-
-        <section id="concluidos" className="scroll-mt-20">
-          <SectionTitle icon={CheckCircle2} title="Concluidos" count={completedItems.length} />
-          {completedLoading ? (
-            <Loading />
-          ) : completedItems.length === 0 ? (
-            <EmptyState
-              icon={CheckCircle2}
-              title="Nada concluido ainda"
-              message="Cursos e trilhas que voce terminar aparecem aqui."
-            />
-          ) : (
-            <ScrollRow>
-              {completedItems.map(({ kind, data }) => (
-                <CardSlot key={`${kind}-${data.id}`}>
-                  {kind === 'course' ? <CourseCard course={data} /> : <TrilhaCard trilha={data} />}
-                </CardSlot>
-              ))}
-            </ScrollRow>
-          )}
-        </section>
-
-        <section id="trilhas" className="scroll-mt-20">
-          <SectionTitle icon={Waypoints} title="Trilhas que sigo" count={followingQuery.data?.length} />
-          {followingQuery.isPending ? (
-            <Loading />
-          ) : followingQuery.data.length === 0 ? (
-            <EmptyState
-              icon={Waypoints}
-              title="Voce ainda nao segue nenhuma trilha"
-              message="Trilhas que voce seguir aparecem aqui."
-              action={
-                <Link to="/pesquisar?tab=trilhas" className="btn-secondary">
-                  Explorar trilhas
-                </Link>
-              }
-            />
-          ) : (
-            <ScrollRow>
-              {followingQuery.data.map((trilha) => (
-                <CardSlot key={trilha.id}>
-                  <TrilhaCard trilha={trilha} />
-                </CardSlot>
-              ))}
-            </ScrollRow>
-          )}
+        <section id="meus-cursos" className="scroll-mt-20">
+          <LibraryOverviewTable
+            items={overviewQuery.data ?? []}
+            loading={overviewQuery.isPending}
+            areaId={areaId}
+          />
         </section>
 
         <section id="pastas" className="scroll-mt-20">
@@ -214,6 +150,181 @@ export default function LibraryPage() {
 
       <FolderModal open={createFolderOpen} onClose={() => setCreateFolderOpen(false)} />
     </div>
+  )
+}
+
+/**
+ * Every enrolled course and followed trilha as one filterable, sortable table - replaces the old
+ * separate "Em andamento" / "Concluidos" / "Trilhas que sigo" scroll rows with a single view that
+ * scales past a handful of items and puts the certificate one click away instead of behind a blind
+ * download.
+ */
+function LibraryOverviewTable({ items, loading, areaId }) {
+  const [status, setStatus] = useState('')
+  const [search, setSearch] = useState('')
+  const [sort, setSort] = useState('recent')
+
+  const contentOf = (item) => (item.kind === 'course' ? item.course : item.trilha)
+  const nameOf = (item) => (item.kind === 'course' ? item.course.name : item.trilha.title)
+
+  const visibleItems = useMemo(() => {
+    let rows = items
+    if (areaId) rows = rows.filter((item) => contentOf(item).area?.id === areaId)
+    if (status) rows = rows.filter((item) => item.status === status)
+    const term = search.trim().toLowerCase()
+    if (term) rows = rows.filter((item) => nameOf(item).toLowerCase().includes(term))
+
+    if (sort === 'name') {
+      rows = [...rows].sort((a, b) => nameOf(a).localeCompare(nameOf(b), 'pt-BR'))
+    } else if (sort === 'progress') {
+      rows = [...rows].sort((a, b) => (b.percentage ?? -1) - (a.percentage ?? -1))
+    }
+    // 'recent' needs no re-sort: the API already returns lastInteraction desc.
+    return rows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, areaId, status, search, sort])
+
+  return (
+    <div className="space-y-4">
+      <SectionTitle icon={ListChecks} title="Meus cursos e trilhas" count={items.length} bare />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <Select
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+          aria-label="Filtrar por status"
+          className="w-40"
+        >
+          <option value="">Todos os status</option>
+          <option value="IN_PROGRESS">Em andamento</option>
+          <option value="COMPLETED">Concluido</option>
+          <option value="NOT_STARTED">Nao iniciado</option>
+        </Select>
+
+        <div className="relative flex-1 sm:max-w-xs">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            type="text"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nome..."
+            aria-label="Buscar"
+            className="input pl-9"
+          />
+        </div>
+
+        <Select
+          value={sort}
+          onChange={(event) => setSort(event.target.value)}
+          aria-label="Ordenar"
+          className="ml-auto w-48"
+        >
+          <option value="recent">Ultima interacao</option>
+          <option value="name">Ordem alfabetica</option>
+          <option value="progress">Progresso</option>
+        </Select>
+      </div>
+
+      {loading ? (
+        <Loading />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={ListChecks}
+          title="Nada por aqui ainda"
+          message="Cursos em que voce se matricular e trilhas que seguir aparecem aqui, com o progresso sempre a vista."
+          action={
+            <Link to="/pesquisar" className="btn-secondary">
+              Explorar conteudo
+            </Link>
+          }
+        />
+      ) : visibleItems.length === 0 ? (
+        <EmptyState icon={Search} title="Nada encontrado" message="Ajuste os filtros ou a busca." />
+      ) : (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-700 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-3">Conteudo</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="w-52 px-5 py-3">Progresso</th>
+                  <th className="px-5 py-3">Ultima interacao</th>
+                  <th className="px-5 py-3">Acoes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {visibleItems.map((item) => (
+                  <OverviewRow key={`${item.kind}-${contentOf(item).id}`} item={item} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OverviewRow({ item }) {
+  const content = item.kind === 'course' ? item.course : item.trilha
+  const name = item.kind === 'course' ? content.name : content.title
+  const href = item.kind === 'course' ? courseHref(content) : trilhaHref(content)
+  const meta = STATUS_META[item.status]
+  const StatusIcon = meta.icon
+  const KindIcon = item.kind === 'course' ? GraduationCap : Waypoints
+
+  return (
+    <tr className="transition-colors hover:bg-slate-800/40">
+      <td className="px-5 py-4">
+        <Link to={href} className="flex items-center gap-3 hover:text-brand-400">
+          <span
+            className={cn(
+              'grid h-9 w-9 shrink-0 place-items-center rounded-lg',
+              item.kind === 'course' ? 'bg-brand-500/15 text-brand-400' : 'bg-violet-500/15 text-violet-300',
+            )}
+          >
+            <KindIcon size={17} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-medium text-slate-100">{name}</p>
+            <p className="truncate text-xs text-slate-500">
+              {item.kind === 'course' ? 'Curso' : 'Trilha'}
+              {content.area && ` · ${content.area.name}`}
+            </p>
+          </div>
+        </Link>
+      </td>
+      <td className="px-5 py-4">
+        <Badge tone={meta.tone}>
+          <StatusIcon size={12} /> {meta.label}
+        </Badge>
+      </td>
+      <td className="px-5 py-4">
+        {item.percentage == null ? (
+          <span className="text-xs text-slate-600">—</span>
+        ) : (
+          <div className="flex items-center gap-2">
+            <ProgressBar percentage={item.percentage} showLabel={false} className="flex-1" />
+            <span className="w-9 shrink-0 text-right text-xs tabular-nums text-slate-400">
+              {item.percentage}%
+            </span>
+          </div>
+        )}
+      </td>
+      <td className="px-5 py-4 text-slate-400">{formatRelative(item.lastInteraction)}</td>
+      <td className="px-5 py-4">
+        {item.status === 'COMPLETED' ? (
+          <Link to={`${href}/certificado`} className="inline-flex items-center gap-1.5 font-medium text-brand-400 hover:text-brand-300">
+            <Award size={14} /> Ver certificado
+          </Link>
+        ) : (
+          <Link to={href} className="inline-flex items-center gap-1 font-medium text-brand-400 hover:text-brand-300">
+            {item.status === 'NOT_STARTED' ? 'Comecar' : 'Continuar'} <ArrowRight size={14} />
+          </Link>
+        )}
+      </td>
+    </tr>
   )
 }
 
@@ -260,15 +371,6 @@ function Loading() {
       <Spinner />
     </div>
   )
-}
-
-/** Horizontal, snap-scrolling row -- the responsive answer to "infinitely many saved items". */
-function ScrollRow({ children }) {
-  return <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2">{children}</div>
-}
-
-function CardSlot({ children }) {
-  return <div className="w-72 shrink-0 snap-start">{children}</div>
 }
 
 function ContinueWatchingCard({ course }) {

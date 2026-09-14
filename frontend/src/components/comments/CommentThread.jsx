@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { MessageSquare, Reply, ShieldOff, Trash2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
-import { Textarea } from '@/components/ui/Field'
+import { CharCounter, Textarea } from '@/components/ui/Field'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { EmptyState, Spinner } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
@@ -240,7 +240,8 @@ function CommentForm({ onSubmit, onCancel, submitting, placeholder, autoFocus })
         maxLength={LIMITS.COMMENT}
         aria-label={placeholder}
       />
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
+        <CharCounter value={content} max={LIMITS.COMMENT} className="mr-auto" />
         {onCancel && (
           <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
             Cancelar

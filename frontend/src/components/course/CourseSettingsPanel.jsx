@@ -88,7 +88,13 @@ export function CourseSettingsPanel({ course, draft, courseQueryKey, onDeleted, 
       {expanded && (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nome" htmlFor="settings-name" error={errors.name}>
+            <Field
+              label="Nome"
+              htmlFor="settings-name"
+              error={errors.name}
+              value={form.name}
+              maxLength={LIMITS.NAME}
+            >
               <Input
                 id="settings-name"
                 maxLength={LIMITS.NAME}
@@ -132,7 +138,13 @@ export function CourseSettingsPanel({ course, draft, courseQueryKey, onDeleted, 
             </Field>
           )}
 
-          <Field label="Descricao curta" htmlFor="settings-description" error={errors.description}>
+          <Field
+            label="Descricao curta"
+            htmlFor="settings-description"
+            error={errors.description}
+            value={form.description}
+            maxLength={LIMITS.DESCRIPTION}
+          >
             <Textarea
               id="settings-description"
               rows={2}
@@ -148,6 +160,8 @@ export function CourseSettingsPanel({ course, draft, courseQueryKey, onDeleted, 
             htmlFor="settings-landing"
             error={errors.landingDescription}
             hint="Texto completo mostrado na pagina do curso."
+            value={form.landingDescription}
+            maxLength={LIMITS.LANDING_DESCRIPTION}
           >
             <Textarea
               id="settings-landing"

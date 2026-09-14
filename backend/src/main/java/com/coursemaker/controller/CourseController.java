@@ -127,4 +127,13 @@ public class CourseController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
     }
+
+    @Operation(summary = "Previa do certificado em PNG, para exibir antes de baixar "
+            + "(mesma regra de elegibilidade do download em PDF)")
+    @GetMapping("/{id}/certificate/preview")
+    public ResponseEntity<byte[]> previewCertificate(@PathVariable UUID id,
+                                                      @AuthenticationPrincipal AuthenticatedUser principal) {
+        byte[] png = certificateService.generateCourseCertificatePreview(id, principal.user());
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(png);
+    }
 }

@@ -41,4 +41,24 @@ public final class LibraryDtos {
     /** A null {@code folderId} means "wherever the default goes", i.e. the Favoritos folder. */
     public record MoveLibraryItemRequest(UUID folderId) {
     }
+
+    /**
+     * One row of "Meus cursos e trilhas" - every course the user is enrolled in and every trilha
+     * they follow, unified so the table can sort/filter across both. Exactly one of
+     * {@code course}/{@code trilha} is set, matching {@code kind}.
+     *
+     * <p>{@code percentage} is null when there is no progress signal to show: a course with
+     * progress tracking turned off (see {@code Course.progressEnabled}), or content with zero
+     * lessons/items. {@code status} is always one of {@code NOT_STARTED}, {@code IN_PROGRESS} or
+     * {@code COMPLETED} regardless - a course with tracking off is always {@code IN_PROGRESS},
+     * mirroring the same "no signal to prove it's done" rule the certificate eligibility check uses.
+     */
+    public record LibraryOverviewItem(
+            String kind,
+            CourseSummary course,
+            TrilhaSummary trilha,
+            String status,
+            Integer percentage,
+            Instant lastInteraction) {
+    }
 }

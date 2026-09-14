@@ -131,7 +131,14 @@ export function CreateCourseModal({ open, onClose }) {
     >
       {step === 1 ? (
         <div className="space-y-4">
-          <Field label="Nome do curso" htmlFor="course-name" error={errors.name} required>
+          <Field
+            label="Nome do curso"
+            htmlFor="course-name"
+            error={errors.name}
+            required
+            value={form.name}
+            maxLength={LIMITS.NAME}
+          >
             <Input
               id="course-name"
               autoFocus
@@ -193,7 +200,13 @@ export function CreateCourseModal({ open, onClose }) {
         </div>
       ) : (
         <div className="space-y-4">
-          <Field label="Descricao curta" htmlFor="course-description" error={errors.description}>
+          <Field
+            label="Descricao curta"
+            htmlFor="course-description"
+            error={errors.description}
+            value={form.description}
+            maxLength={LIMITS.DESCRIPTION}
+          >
             <Textarea
               id="course-description"
               rows={3}

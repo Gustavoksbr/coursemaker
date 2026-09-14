@@ -84,7 +84,14 @@ export function CreateTrilhaModal({ open, onClose }) {
   return (
     <Modal open={open} onClose={onClose} title="Criar trilha" size="md">
       <div className="space-y-4">
-        <Field label="Nome da trilha" htmlFor="trilha-title" error={errors.title} required>
+        <Field
+          label="Nome da trilha"
+          htmlFor="trilha-title"
+          error={errors.title}
+          required
+          value={form.title}
+          maxLength={LIMITS.NAME}
+        >
           <Input
             id="trilha-title"
             autoFocus

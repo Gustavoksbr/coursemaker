@@ -70,8 +70,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/courses/*/progress").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/courses/*/students").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/courses/*/certificate").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/courses/*/certificate/preview").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/*/progress").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/*/certificate").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/*/certificate/preview").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/me/following").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/trilhas/me/completed").authenticated()
                         // Unpublished drafts too, so this one is admin-only (enforced in HomeService).

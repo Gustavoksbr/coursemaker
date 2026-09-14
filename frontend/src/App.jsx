@@ -10,6 +10,7 @@ import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import SetupNicknamePage from '@/pages/SetupNicknamePage'
 import SearchPage from '@/pages/SearchPage'
+import CertificateViewPage from '@/pages/CertificateViewPage'
 import CourseViewPage from '@/pages/CourseViewPage'
 import PostViewPage from '@/pages/PostViewPage'
 import TrilhaViewPage from '@/pages/TrilhaViewPage'
@@ -19,6 +20,7 @@ import ConversationListPage from '@/pages/ConversationListPage'
 import MessageThreadPage from '@/pages/MessageThreadPage'
 import ProfilePage from '@/pages/ProfilePage'
 import PublicProfilePage from '@/pages/PublicProfilePage'
+import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage'
 import SchoolPage from '@/pages/SchoolPage'
 import SchoolsListPage from '@/pages/SchoolsListPage'
 import AdminAreasPage from '@/pages/admin/AdminAreasPage'
@@ -51,6 +53,7 @@ const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/privacidade', element: <PrivacyPolicyPage /> },
       { path: '/users/:nickname', element: <PublicProfilePage /> },
       { path: '/escolas', element: <SchoolsListPage /> },
       { path: '/escolas/:slug', element: <SchoolPage /> },
@@ -72,7 +75,11 @@ const router = createBrowserRouter([
         // Your library is just yours to look at, not content you publish, so it does not need
         // a nickname the way creating a course/post/trilha does.
         element: <ProtectedRoute requireNickname={false} />,
-        children: [{ path: '/biblioteca/pastas/:folderId', element: <LibraryFolderPage /> }],
+        children: [
+          { path: '/biblioteca/pastas/:folderId', element: <LibraryFolderPage /> },
+          { path: '/trilhas/:nickname/:slug/certificado', element: <CertificateViewPage kind="trilha" /> },
+          { path: '/courses/:nickname/:slug/certificado', element: <CertificateViewPage kind="course" /> },
+        ],
       },
 
       {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, CalendarDays, GraduationCap, Mail, Waypoints } from 'lucide-react'
+import { BookOpen, CalendarDays, GraduationCap, Mail, UserX, Waypoints } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Select } from '@/components/ui/Field'
 import { CourseCard } from '@/components/course/CourseCard'
@@ -61,6 +61,12 @@ export default function PublicProfilePage() {
           <h1 className="text-2xl font-bold text-slate-100">{profile.name}</h1>
           <p className="text-sm text-brand-400">@{profile.nickname}</p>
 
+          {profile.deleted && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-400">
+              <UserX size={13} /> Esta conta foi excluida pelo proprio usuario
+            </p>
+          )}
+
           {profile.bio && (
             <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm text-slate-300">{profile.bio}</p>
           )}
@@ -84,7 +90,7 @@ export default function PublicProfilePage() {
           <Link to="/profile" className="btn-secondary shrink-0">
             Editar perfil
           </Link>
-        ) : (
+        ) : profile.deleted ? null : (
           <button
             type="button"
             className="btn-secondary shrink-0"

@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
-import { Textarea } from '@/components/ui/Field'
+import { CharCounter, Textarea } from '@/components/ui/Field'
 import { LIMITS } from '@/lib/constants'
 import { makeAlternative, parseQuestionContent, stringifyQuestionContent } from '@/lib/questionBlock'
 
@@ -68,6 +68,9 @@ export function QuestionEditor({ blockId, content, onChange }) {
                 <Trash2 size={15} />
               </button>
             </div>
+            <div className="flex justify-end">
+              <CharCounter value={alternative.text} max={LIMITS.TITLE} />
+            </div>
             <Textarea
               rows={2}
               maxLength={LIMITS.DESCRIPTION}
@@ -77,6 +80,9 @@ export function QuestionEditor({ blockId, content, onChange }) {
               aria-label={`Explicacao da alternativa ${index + 1}`}
               className="text-sm"
             />
+            <div className="flex justify-end">
+              <CharCounter value={alternative.explanation} max={LIMITS.DESCRIPTION} />
+            </div>
           </div>
         ))}
       </div>

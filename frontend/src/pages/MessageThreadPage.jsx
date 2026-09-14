@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CornerUpLeft, Pencil, Trash2, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
-import { Textarea } from '@/components/ui/Field'
+import { CharCounter, Textarea } from '@/components/ui/Field'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
@@ -158,7 +158,8 @@ export default function MessageThreadPage() {
                       onChange={(event) => setEditContent(event.target.value)}
                       maxLength={LIMITS.MESSAGE}
                     />
-                    <div className="flex justify-end gap-2">
+                    <div className="flex items-center justify-end gap-2">
+                      <CharCounter value={editContent} max={LIMITS.MESSAGE} className="mr-auto" />
                       <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
                         Cancelar
                       </Button>
@@ -254,6 +255,9 @@ export default function MessageThreadPage() {
           <Button type="submit" loading={sending} disabled={!content.trim()}>
             Enviar
           </Button>
+        </div>
+        <div className="flex justify-end">
+          <CharCounter value={content} max={LIMITS.MESSAGE} />
         </div>
       </form>
 

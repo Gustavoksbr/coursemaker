@@ -7,6 +7,7 @@ import com.coursemaker.domain.entity.CourseTrilhaHighlight;
 import com.coursemaker.domain.entity.Post;
 import com.coursemaker.domain.entity.School;
 import com.coursemaker.domain.entity.Trilha;
+import com.coursemaker.domain.entity.TrilhaEnrollment;
 import com.coursemaker.domain.entity.TrilhaItem;
 import com.coursemaker.domain.entity.TrilhaStep;
 import com.coursemaker.domain.entity.User;
@@ -14,6 +15,7 @@ import com.coursemaker.domain.enums.CourseStatus;
 import com.coursemaker.domain.enums.CourseVisibility;
 import com.coursemaker.dto.PageResponse;
 import com.coursemaker.dto.course.CourseDtos.SlugAvailability;
+import com.coursemaker.dto.library.LibraryDtos.LibraryOverviewItem;
 import com.coursemaker.dto.trilha.TrilhaDtos.AddTrilhaItemRequest;
 import com.coursemaker.dto.trilha.TrilhaDtos.CreateTrilhaRequest;
 import com.coursemaker.dto.trilha.TrilhaDtos.CreateTrilhaStepRequest;
@@ -45,6 +47,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -118,6 +121,52 @@ public class TrilhaService {
                 .filter(trilha -> areaId == null || trilha.getArea().getId().equals(areaId))
                 .toList();
         return trilhaMapper.toSummaries(trilhas, user);
+    }
+
+    /**
+     * Every followed trilha as one row of "Meus cursos e trilhas", most recently followed first
+     * (trilhas have no "last opened" tracking the way courses do - see {@code Enrollment
+     * .lastAccessedAt} - so the follow date is the fallback "last interaction" whenever nothing has
+     * been completed yet).
+     */
+    @Transactional(readOnly = true)
+    public List<LibraryOverviewItem> myLibraryOverview(User user) {
+        List<TrilhaEnrollment> follows = trilhaEnrollmentRepository.findAllByUser(user.getId());
+        if (follows.isEmpty()) {
+            return List.of();
+        }
+        return follows.stream()
+                .map(follow -> toOverviewItem(follow, user))
+                .flatMap(java.util.Optional::stream)
+                .toList();
+    }
+
+    private java.util.Optional<LibraryOverviewItem> toOverviewItem(TrilhaEnrollment follow, User user) {
+        UUID trilhaId = follow.getId().getTrilhaId();
+        Trilha trilha = trilhaRepository.findByIdWithOwner(trilhaId).orElse(null);
+        if (trilha == null || !canView(trilha, user)) {
+            return java.util.Optional.empty();
+        }
+
+        long total = trilhaItemRepository.countByTrilhaId(trilhaId);
+        long completed = trilhaItemCompletionRepository.findCompletedItemIds(user.getId(), trilhaId).size();
+        String status;
+        Integer percentage;
+        if (total == 0) {
+            status = "NOT_STARTED";
+            percentage = null;
+        } else {
+            percentage = (int) Math.round(completed * 100.0 / total);
+            status = completed == 0 ? "NOT_STARTED" : completed >= total ? "COMPLETED" : "IN_PROGRESS";
+        }
+
+        Instant lastInteraction = trilhaItemCompletionRepository.findLatestCompletionAt(user.getId(), trilhaId);
+        if (lastInteraction == null) {
+            lastInteraction = follow.getCreatedAt();
+        }
+
+        return java.util.Optional.of(new LibraryOverviewItem(
+                "trilha", null, trilhaMapper.toSummary(trilha, user), status, percentage, lastInteraction));
     }
 
     /** Followed trilhas the user has finished every item of, for the library's "concluidos". */

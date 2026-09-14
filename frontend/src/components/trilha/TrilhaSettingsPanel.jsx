@@ -56,7 +56,13 @@ export function TrilhaSettingsPanel({ trilha, draft, trilhaQueryKey, onDeleted }
 
   return (
     <section className="space-y-4 rounded-xl border border-slate-700 bg-slate-800/40 p-5">
-      <Field label="Nome" htmlFor="trilha-settings-title" error={errors.title}>
+      <Field
+        label="Nome"
+        htmlFor="trilha-settings-title"
+        error={errors.title}
+        value={form.title}
+        maxLength={LIMITS.NAME}
+      >
         <Input
           id="trilha-settings-title"
           maxLength={LIMITS.NAME}
@@ -66,7 +72,13 @@ export function TrilhaSettingsPanel({ trilha, draft, trilhaQueryKey, onDeleted }
         />
       </Field>
 
-      <Field label="Descricao" htmlFor="trilha-settings-description" error={errors.description}>
+      <Field
+        label="Descricao"
+        htmlFor="trilha-settings-description"
+        error={errors.description}
+        value={form.description}
+        maxLength={LIMITS.DESCRIPTION}
+      >
         <Textarea
           id="trilha-settings-description"
           rows={3}

@@ -322,7 +322,7 @@ export function Landing({
             percentage={detail.progress.percentage}
             ariaLabel="Progresso no curso"
           />
-          {detail.progress.percentage >= 100 && <CertificateButton kind="course" contentId={course.id} />}
+          {detail.progress.percentage >= 100 && <CertificateButton kind="course" content={course} />}
         </div>
       )}
 

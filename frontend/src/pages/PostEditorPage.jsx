@@ -246,7 +246,14 @@ export default function PostEditorPage() {
       </header>
 
       <section className="space-y-4 rounded-xl border border-slate-700 bg-slate-800/40 p-5">
-        <Field label="Titulo" htmlFor="post-title" error={errors.title} required>
+        <Field
+          label="Titulo"
+          htmlFor="post-title"
+          error={errors.title}
+          required
+          value={form.title}
+          maxLength={LIMITS.TITLE}
+        >
           <Input
             id="post-title"
             autoFocus={isNew}
@@ -258,7 +265,13 @@ export default function PostEditorPage() {
           />
         </Field>
 
-        <Field label="Descricao" htmlFor="post-description" error={errors.description}>
+        <Field
+          label="Descricao"
+          htmlFor="post-description"
+          error={errors.description}
+          value={form.description}
+          maxLength={LIMITS.DESCRIPTION}
+        >
           <Textarea
             id="post-description"
             rows={3}

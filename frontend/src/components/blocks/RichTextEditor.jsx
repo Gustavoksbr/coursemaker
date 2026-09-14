@@ -18,6 +18,8 @@ import {
   Undo2,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { CharCounter } from '@/components/ui/Field'
+import { LIMITS } from '@/lib/constants'
 
 /** WYSIWYG editor for `text` blocks. Emits HTML, which the backend sanitises before storing. */
 export function RichTextEditor({ value, onChange, placeholder = 'Escreva aqui...' }) {
@@ -144,6 +146,10 @@ export function RichTextEditor({ value, onChange, placeholder = 'Escreva aqui...
       </div>
 
       <EditorContent editor={editor} />
+
+      <div className="flex justify-end border-t border-slate-700 bg-slate-800/60 px-3 py-1">
+        <CharCounter value={editor.getHTML()} max={LIMITS.BLOCK_CONTENT} />
+      </div>
     </div>
   )
 }

@@ -58,6 +58,12 @@ export async function downloadTrilhaCertificate(id) {
   return data
 }
 
+/** The same certificate as a PNG, to show before committing to the PDF download. */
+export async function previewTrilhaCertificate(id) {
+  const { data } = await api.get(`/trilhas/${id}/certificate/preview`, { responseType: 'blob' })
+  return data
+}
+
 // -------------------------------------------------------------------- items
 //
 // The full item tree (steps + ungrouped items) travels inside the trilha detail payload

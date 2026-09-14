@@ -9,6 +9,7 @@ import com.coursemaker.domain.enums.NotificationType;
 import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.course.CourseDtos.StudentResponse;
 import com.coursemaker.dto.enrollment.EnrollmentDtos.EnrollmentStatusResponse;
+import com.coursemaker.dto.library.LibraryDtos.LibraryOverviewItem;
 import com.coursemaker.dto.user.UserSummary;
 import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.repository.CourseRepository;
@@ -19,6 +20,7 @@ import com.coursemaker.repository.PrivateCourseAccessRepository;
 import com.coursemaker.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -173,6 +175,53 @@ public class EnrollmentService {
     @Transactional(readOnly = true)
     public boolean isCourseCompletedByUser(Course course, User user) {
         return isFinished(course, user);
+    }
+
+    /**
+     * Every enrolled course as one row of "Meus cursos e trilhas", most recently opened first (see
+     * {@code Enrollment.lastAccessedAt}). See {@link LibraryOverviewItem} for the status/percentage
+     * rules.
+     */
+    @Transactional(readOnly = true)
+    public List<LibraryOverviewItem> myLibraryOverview(User user) {
+        List<Enrollment> enrollments = enrollmentRepository.findMostRecentlyAccessed(user.getId(), Pageable.unpaged());
+        if (enrollments.isEmpty()) {
+            return List.of();
+        }
+        return enrollments.stream()
+                .map(enrollment -> toOverviewItem(enrollment, user))
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
+    private Optional<LibraryOverviewItem> toOverviewItem(Enrollment enrollment, User user) {
+        UUID courseId = enrollment.getId().getCourseId();
+        Course course = courseRepository.findByIdWithOwner(courseId).orElse(null);
+        if (course == null || !accessService.canView(course, user)) {
+            return Optional.empty();
+        }
+
+        String status;
+        Integer percentage;
+        if (!course.isProgressEnabled()) {
+            // No per-lesson signal to tell "not started" from "in progress" apart - see isFinished.
+            status = "IN_PROGRESS";
+            percentage = null;
+        } else {
+            long total = lessonRepository.countByCourseId(courseId);
+            long completed = lessonCompletionRepository.findCompletedLessonIds(user.getId(), courseId).size();
+            if (total == 0) {
+                status = "NOT_STARTED";
+                percentage = null;
+            } else {
+                percentage = (int) Math.round(completed * 100.0 / total);
+                status = completed == 0 ? "NOT_STARTED" : completed >= total ? "COMPLETED" : "IN_PROGRESS";
+            }
+        }
+
+        return Optional.of(new LibraryOverviewItem(
+                "course", courseMapper.toSummary(course, user), null, status, percentage,
+                enrollment.getLastAccessedAt()));
     }
 
     @Transactional(readOnly = true)

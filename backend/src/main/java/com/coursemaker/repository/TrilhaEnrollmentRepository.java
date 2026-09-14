@@ -20,4 +20,8 @@ public interface TrilhaEnrollmentRepository extends JpaRepository<TrilhaEnrollme
 
     @Query("SELECT e.id.trilhaId FROM TrilhaEnrollment e WHERE e.id.userId = :userId")
     List<UUID> findAllTrilhaIdsByUser(@Param("userId") UUID userId);
+
+    /** Full rows (not just ids), for when the follow date itself is needed - see LibraryService. */
+    @Query("SELECT e FROM TrilhaEnrollment e WHERE e.id.userId = :userId ORDER BY e.createdAt DESC")
+    List<TrilhaEnrollment> findAllByUser(@Param("userId") UUID userId);
 }

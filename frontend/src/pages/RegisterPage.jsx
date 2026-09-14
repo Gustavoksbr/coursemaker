@@ -157,6 +157,14 @@ export default function RegisterPage() {
         <Button type="submit" loading={submitting} className="w-full">
           Criar conta
         </Button>
+
+        <p className="text-center text-xs text-slate-500">
+          Ao criar sua conta, voce concorda com nossa{' '}
+          <Link to="/privacidade" className="text-brand-400 hover:text-brand-300">
+            Politica de Privacidade
+          </Link>
+          .
+        </p>
       </form>
 
       {googleLoginEnabled && (

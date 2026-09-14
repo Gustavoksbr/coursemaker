@@ -23,11 +23,11 @@ export function PreviewOverlay({ onClose, children }) {
 
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950">
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-violet-500/30 bg-violet-500/10 px-4 py-3 backdrop-blur">
-        <Eye size={16} className="shrink-0 text-violet-400" />
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-brand-500/30 bg-brand-500/10 px-4 py-3 backdrop-blur">
+        <Eye size={16} className="shrink-0 text-brand-400" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-violet-200">Pre-visualizacao</p>
-          <p className="truncate text-xs text-violet-300/70">
+          <p className="text-sm font-semibold text-brand-200">Pre-visualizacao</p>
+          <p className="truncate text-xs text-brand-300/70">
             Mostra o que voce esta editando agora, nao a versao publicada.
           </p>
         </div>

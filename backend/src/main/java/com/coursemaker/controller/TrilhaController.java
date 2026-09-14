@@ -267,6 +267,15 @@ public class TrilhaController {
                 .body(pdf);
     }
 
+    @Operation(summary = "Previa do certificado em PNG, para exibir antes de baixar "
+            + "(mesma regra de elegibilidade do download em PDF)")
+    @GetMapping("/api/v1/trilhas/{id}/certificate/preview")
+    public ResponseEntity<byte[]> previewCertificate(@PathVariable UUID id,
+                                                      @AuthenticationPrincipal AuthenticatedUser principal) {
+        byte[] png = certificateService.generateTrilhaCertificatePreview(id, principal.user());
+        return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(png);
+    }
+
     // ---------------------------------------------------------- course side
 
     @Operation(summary = "Todas as trilhas que contem este curso, paginado (botao \"ver mais\")")

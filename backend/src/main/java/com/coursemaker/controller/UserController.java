@@ -5,6 +5,7 @@ import com.coursemaker.dto.PageResponse;
 import com.coursemaker.dto.auth.AuthDtos.AuthResponse;
 import com.coursemaker.dto.user.PersonSummary;
 import com.coursemaker.dto.school.SchoolDtos.SchoolSummary;
+import com.coursemaker.dto.user.DeleteAccountRequest;
 import com.coursemaker.dto.user.PublicProfileResponse;
 import com.coursemaker.dto.user.UpdateUserRequest;
 import com.coursemaker.service.SchoolService;
@@ -15,8 +16,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -73,5 +76,13 @@ public class UserController {
     public AuthResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request,
                                @AuthenticationPrincipal AuthenticatedUser principal) {
         return userService.updateProfile(id, request, principal.user());
+    }
+
+    @Operation(summary = "Exclui (anonimiza) a propria conta. Irreversivel - exige digitar o nickname")
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteAccount(@Valid @RequestBody DeleteAccountRequest request,
+                                              @AuthenticationPrincipal AuthenticatedUser principal) {
+        userService.deleteAccount(principal.user(), request);
+        return ResponseEntity.noContent().build();
     }
 }

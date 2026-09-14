@@ -27,6 +27,11 @@ export async function updateProfile(id, payload) {
   return data
 }
 
+/** Anonymizes the account - irreversible, requires typing the nickname back to confirm. */
+export async function deleteAccount(confirmNickname) {
+  await api.delete('/users/me', { data: { confirmNickname } })
+}
+
 export async function search(q, limit = 6, areaIds = []) {
   const params = new URLSearchParams()
   if (q) params.set('q', q)

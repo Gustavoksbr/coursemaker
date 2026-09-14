@@ -173,6 +173,10 @@ public class AiChatService {
                 conteudo, diga que essa informacao nao esta disponivel neste %s em vez de inventar.
                 Responda sempre em portugues do Brasil, de forma clara e objetiva.
 
+                Formate a resposta em Markdown simples quando ajudar a leitura: paragrafos curtos,
+                **negrito** para destacar termos, listas com "-" e blocos de codigo com ``` quando
+                mostrar codigo. Nao use tabelas nem HTML.
+
                 ===== CONTEUDO =====
                 %s
                 ===== FIM DO CONTEUDO =====

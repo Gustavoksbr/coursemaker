@@ -56,6 +56,27 @@ public class CertificateService {
 
     @Transactional(readOnly = true)
     public byte[] generateCourseCertificate(UUID courseId, User user) {
+        return renderer.render(courseCertificateData(courseId, user));
+    }
+
+    /** Same eligibility rule and data as {@link #generateCourseCertificate}, rasterized to PNG. */
+    @Transactional(readOnly = true)
+    public byte[] generateCourseCertificatePreview(UUID courseId, User user) {
+        return renderer.renderPreviewPng(courseCertificateData(courseId, user));
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] generateTrilhaCertificate(UUID trilhaId, User user) {
+        return renderer.render(trilhaCertificateData(trilhaId, user));
+    }
+
+    /** Same eligibility rule and data as {@link #generateTrilhaCertificate}, rasterized to PNG. */
+    @Transactional(readOnly = true)
+    public byte[] generateTrilhaCertificatePreview(UUID trilhaId, User user) {
+        return renderer.renderPreviewPng(trilhaCertificateData(trilhaId, user));
+    }
+
+    private CertificateData courseCertificateData(UUID courseId, User user) {
         Course course = courseRepository.findByIdWithOwner(courseId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Curso"));
 
@@ -65,18 +86,16 @@ public class CertificateService {
         }
 
         Instant completedAt = lessonCompletionRepository.findLatestCompletionAt(user.getId(), courseId);
-        CertificateData data = new CertificateData(
+        return new CertificateData(
                 user.getName(),
                 "o curso",
                 course.getName(),
                 course.getOwner().getName(),
                 formatDate(completedAt),
                 contentUrl("courses", course.getOwner().getNickname(), course.getSlug()));
-        return renderer.render(data);
     }
 
-    @Transactional(readOnly = true)
-    public byte[] generateTrilhaCertificate(UUID trilhaId, User user) {
+    private CertificateData trilhaCertificateData(UUID trilhaId, User user) {
         Trilha trilha = trilhaRepository.findByIdWithOwner(trilhaId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Trilha"));
 
@@ -86,14 +105,13 @@ public class CertificateService {
         }
 
         Instant completedAt = trilhaItemCompletionRepository.findLatestCompletionAt(user.getId(), trilhaId);
-        CertificateData data = new CertificateData(
+        return new CertificateData(
                 user.getName(),
                 "a trilha",
                 trilha.getTitle(),
                 trilha.getOwner().getName(),
                 formatDate(completedAt),
                 contentUrl("trilhas", trilha.getOwner().getNickname(), trilha.getSlug()));
-        return renderer.render(data);
     }
 
     /** Mirrors `contentLinks.js` on the frontend: /courses|trilhas/:nickname/:slug. */

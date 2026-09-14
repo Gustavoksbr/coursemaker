@@ -81,7 +81,20 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /**
+     * Set once, on account deletion, alongside scrubbing email/bio/image/stacks/password (see
+     * {@code UserService.deleteAccount}). The nickname is deliberately left alone - it is the one
+     * field content URLs depend on, and freeing it for reuse would let a stranger's new account
+     * take over old links to this person's published courses/posts/trilhas.
+     */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     public boolean isAdmin() {
         return role == UserRole.ADMIN;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 }

@@ -5,6 +5,7 @@ import com.coursemaker.dto.PageResponse;
 import com.coursemaker.dto.library.LibraryDtos.CreateLibraryFolderRequest;
 import com.coursemaker.dto.library.LibraryDtos.LibraryFolderResponse;
 import com.coursemaker.dto.library.LibraryDtos.LibraryItemResponse;
+import com.coursemaker.dto.library.LibraryDtos.LibraryOverviewItem;
 import com.coursemaker.dto.library.LibraryDtos.LibraryStatusResponse;
 import com.coursemaker.dto.library.LibraryDtos.MoveLibraryItemRequest;
 import com.coursemaker.dto.library.LibraryDtos.UpdateLibraryFolderRequest;
@@ -42,6 +43,13 @@ import java.util.UUID;
 public class LibraryController {
 
     private final LibraryService libraryService;
+
+    @Operation(summary = "Todos os cursos matriculados e trilhas seguidas, com progresso - "
+            + "a tabela 'Meus cursos e trilhas'")
+    @GetMapping("/overview")
+    public List<LibraryOverviewItem> overview(@AuthenticationPrincipal AuthenticatedUser principal) {
+        return libraryService.myOverview(principal.user());
+    }
 
     // ------------------------------------------------------ status/save/unsave
 

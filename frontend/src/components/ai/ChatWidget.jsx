@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import DOMPurify from 'dompurify'
 import { Bot, Loader2, MessageCircle, Send, Sparkles, X } from 'lucide-react'
 import { chatAboutCourse, chatAboutPost } from '@/api/ai'
 import { useAuth } from '@/context/AuthContext'
 import { errorMessage, statusOf } from '@/lib/api'
 import { cn } from '@/lib/cn'
+import { renderMarkdown } from '@/lib/markdown'
 
 const SUGGESTIONS = {
   course: ['Resuma este curso', 'Quais sao os principais topicos?', 'Por onde eu comeco?'],
@@ -168,18 +170,30 @@ export function ChatWidget({ kind, contentId }) {
 
 function Bubble({ role, content }) {
   const isUser = role === 'user'
+
+  // Only the assistant's replies go through Markdown - the model is the one prompted to format
+  // (see AiChatService.systemPrompt); the user's own typed message is shown verbatim.
+  const html = useMemo(
+    () => (isUser ? null : DOMPurify.sanitize(renderMarkdown(content), { USE_PROFILES: { html: true } })),
+    [isUser, content],
+  )
+
   return (
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
-      <p
+      <div
         className={cn(
-          'max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm',
+          'max-w-[85%] break-words rounded-2xl px-3.5 py-2',
           isUser
-            ? 'rounded-br-sm bg-brand-500 text-white'
-            : 'rounded-bl-sm border border-slate-700 bg-slate-800 text-slate-100',
+            ? 'rounded-br-sm bg-brand-500 text-sm text-white'
+            : 'rounded-bl-sm border border-slate-700 bg-slate-800',
         )}
       >
-        {content}
-      </p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap">{content}</p>
+        ) : (
+          <div className="chat-markdown" dangerouslySetInnerHTML={{ __html: html }} />
+        )}
+      </div>
     </div>
   )
 }

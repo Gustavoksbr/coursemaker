@@ -1,29 +1,54 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { Lock, Save } from 'lucide-react'
+import { AlertTriangle, Lock, Save } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
+import { Modal } from '@/components/ui/Modal'
+import { UnsavedChangesPrompt } from '@/components/ui/UnsavedChangesPrompt'
 import { ImageUploadField } from '@/components/blocks/ImageUploadField'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
-import { updateProfile } from '@/api/users'
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
+import { deleteAccount, updateProfile } from '@/api/users'
 import { errorMessage, fieldErrors } from '@/lib/api'
 import { LIMITS } from '@/lib/constants'
+import { cn } from '@/lib/cn'
+
+function baselineFrom(user) {
+  return {
+    name: user.name ?? '',
+    bio: user.bio ?? '',
+    image: user.image ?? '',
+    stacks: user.stacks ?? [],
+  }
+}
+
+function sameStacks(a, b) {
+  return a.length === b.length && a.every((value, index) => value === b[index])
+}
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth()
   const toast = useToast()
   const [errors, setErrors] = useState({})
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
-  const [form, setForm] = useState({
-    name: user.name ?? '',
-    bio: user.bio ?? '',
-    image: user.image ?? '',
-    stacks: user.stacks ?? [],
-  })
+  const [form, setForm] = useState(() => baselineFrom(user))
+
+  // A real diff against the last-saved values, not a "was anything typed" flag - typing
+  // something and then undoing it back to the original goes dirty then clean again. Mirrors
+  // useCourseSettingsDraft's isDirty, which drives the same gray/blue save button there.
+  const baseline = baselineFrom(user)
+  const isDirty =
+    form.name !== baseline.name ||
+    form.bio !== baseline.bio ||
+    form.image !== baseline.image ||
+    !sameStacks(form.stacks, baseline.stacks)
+
+  const blocker = useUnsavedChangesGuard(isDirty)
 
   const { mutate: save, isPending } = useMutation({
     mutationFn: () =>
@@ -85,7 +110,14 @@ export default function ProfilePage() {
           <Input value={user.email} disabled className="text-sm" />
         </Field>
 
-        <Field label="Nome" htmlFor="profile-name" error={errors.name} required>
+        <Field
+          label="Nome"
+          htmlFor="profile-name"
+          error={errors.name}
+          required
+          value={form.name}
+          maxLength={LIMITS.NAME}
+        >
           <Input
             id="profile-name"
             maxLength={LIMITS.NAME}
@@ -95,7 +127,13 @@ export default function ProfilePage() {
           />
         </Field>
 
-        <Field label="Bio" htmlFor="profile-bio" error={errors.bio}>
+        <Field
+          label="Bio"
+          htmlFor="profile-bio"
+          error={errors.bio}
+          value={form.bio}
+          maxLength={LIMITS.BIO}
+        >
           <Textarea
             id="profile-bio"
             rows={4}
@@ -119,11 +157,94 @@ export default function ProfilePage() {
         </Field>
 
         <div className="flex justify-end">
-          <Button type="submit" loading={isPending} disabled={!form.name.trim()}>
+          <Button
+            type="submit"
+            loading={isPending}
+            disabled={!isDirty || !form.name.trim()}
+            title={isDirty ? undefined : 'Faca uma alteracao para poder salvar'}
+            className={cn(!isDirty && 'bg-slate-700 text-slate-400 hover:bg-slate-700')}
+          >
             <Save size={16} /> Salvar perfil
           </Button>
         </div>
       </form>
+
+      <UnsavedChangesPrompt blocker={blocker} />
+
+      <section className="space-y-3 rounded-xl border border-red-500/30 bg-red-500/5 p-5">
+        <div className="flex items-center gap-2 text-red-400">
+          <AlertTriangle size={18} />
+          <h2 className="font-semibold">Zona de risco</h2>
+        </div>
+        <p className="text-sm text-slate-400">
+          Excluir sua conta remove seu email, foto, bio e stacks permanentemente. Cursos, posts e
+          trilhas que voce publicou continuam no ar (para nao afetar quem ja estuda por eles), mas
+          aparecem como de um "Usuario excluido". Isso nao pode ser desfeito.
+        </p>
+        <Button variant="danger" onClick={() => setDeleteOpen(true)}>
+          Excluir minha conta
+        </Button>
+      </section>
+
+      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} nickname={user.nickname} />
     </div>
+  )
+}
+
+function DeleteAccountModal({ open, onClose, nickname }) {
+  const navigate = useNavigate()
+  const { logout } = useAuth()
+  const toast = useToast()
+  const [confirmText, setConfirmText] = useState('')
+
+  const { mutate: remove, isPending } = useMutation({
+    mutationFn: () => deleteAccount(confirmText.trim()),
+    onSuccess: () => {
+      logout()
+      toast.success('Conta excluida.')
+      navigate('/', { replace: true })
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel excluir a conta.')),
+  })
+
+  const handleClose = () => {
+    setConfirmText('')
+    onClose()
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title="Excluir sua conta"
+      description="Essa acao e permanente e nao pode ser desfeita."
+      size="sm"
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-slate-300">
+          Para confirmar, digite seu nickname{' '}
+          <span className="font-mono font-semibold text-slate-100">{nickname}</span> abaixo.
+        </p>
+        <Input
+          value={confirmText}
+          onChange={(event) => setConfirmText(event.target.value)}
+          placeholder={nickname}
+          autoFocus
+        />
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={handleClose}>
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            loading={isPending}
+            disabled={confirmText.trim().toLowerCase() !== nickname?.toLowerCase()}
+            onClick={() => remove()}
+          >
+            Excluir permanentemente
+          </Button>
+        </div>
+      </div>
+    </Modal>
   )
 }

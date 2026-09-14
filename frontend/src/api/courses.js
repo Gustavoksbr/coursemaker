@@ -58,6 +58,12 @@ export async function downloadCourseCertificate(id) {
   return data
 }
 
+/** The same certificate as a PNG, to show before committing to the PDF download. */
+export async function previewCourseCertificate(id) {
+  const { data } = await api.get(`/courses/${id}/certificate/preview`, { responseType: 'blob' })
+  return data
+}
+
 // ------------------------------------------------------------------ curriculum
 
 export async function listModules(courseId) {

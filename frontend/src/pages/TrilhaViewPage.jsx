@@ -215,7 +215,7 @@ export default function TrilhaViewPage() {
             unit={{ singular: 'item', plural: 'itens' }}
             ariaLabel="Progresso na trilha"
           />
-          {detail.progress.percentage >= 100 && <CertificateButton kind="trilha" contentId={trilha.id} />}
+          {detail.progress.percentage >= 100 && <CertificateButton kind="trilha" content={trilha} />}
         </div>
       )}
 

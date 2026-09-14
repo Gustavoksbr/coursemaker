@@ -90,6 +90,8 @@ export function NicknameForm({ onSuccess, submitLabel = 'Continuar' }) {
         error={errors.nickname}
         hint="Letras minusculas, numeros e hifens. Ex.: ana-dev"
         required
+        value={nickname}
+        maxLength={LIMITS.NICKNAME}
       >
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">

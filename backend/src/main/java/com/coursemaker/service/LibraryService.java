@@ -11,6 +11,7 @@ import com.coursemaker.dto.course.CourseDtos.CourseSummary;
 import com.coursemaker.dto.library.LibraryDtos.CreateLibraryFolderRequest;
 import com.coursemaker.dto.library.LibraryDtos.LibraryFolderResponse;
 import com.coursemaker.dto.library.LibraryDtos.LibraryItemResponse;
+import com.coursemaker.dto.library.LibraryDtos.LibraryOverviewItem;
 import com.coursemaker.dto.library.LibraryDtos.LibraryStatusResponse;
 import com.coursemaker.dto.library.LibraryDtos.UpdateLibraryFolderRequest;
 import com.coursemaker.dto.post.PostDtos.PostSummary;
@@ -50,9 +51,22 @@ public class LibraryService {
     private final CourseService courseService;
     private final PostService postService;
     private final TrilhaService trilhaService;
+    private final EnrollmentService enrollmentService;
     private final CourseMapper courseMapper;
     private final PostMapper postMapper;
     private final TrilhaMapper trilhaMapper;
+
+    /**
+     * "Meus cursos e trilhas": every enrolled course plus every followed trilha, one row each,
+     * newest interaction first. Backs the table view - see {@link LibraryOverviewItem}.
+     */
+    @Transactional(readOnly = true)
+    public List<LibraryOverviewItem> myOverview(User user) {
+        List<LibraryOverviewItem> items = new java.util.ArrayList<>(enrollmentService.myLibraryOverview(user));
+        items.addAll(trilhaService.myLibraryOverview(user));
+        items.sort(java.util.Comparator.comparing(LibraryOverviewItem::lastInteraction).reversed());
+        return items;
+    }
 
     // ---------------------------------------------------------- save/unsave
 

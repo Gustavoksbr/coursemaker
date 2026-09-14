@@ -4,10 +4,12 @@ import com.coursemaker.config.JwtService;
 import com.coursemaker.domain.entity.User;
 import com.coursemaker.dto.PageResponse;
 import com.coursemaker.dto.auth.AuthDtos.AuthResponse;
+import com.coursemaker.dto.user.DeleteAccountRequest;
 import com.coursemaker.dto.user.PersonSummary;
 import com.coursemaker.dto.user.PublicProfileResponse;
 import com.coursemaker.dto.user.UpdateUserRequest;
 import com.coursemaker.dto.user.UserResponse;
+import com.coursemaker.exception.ApiExceptions.BadRequestException;
 import com.coursemaker.exception.ApiExceptions.ConflictException;
 import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
@@ -18,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -47,9 +50,46 @@ public class UserService {
                 user.getBio(),
                 user.getStacks(),
                 user.getCreatedAt(),
+                user.isDeleted(),
                 courseService.listByOwner(user.getId(), viewer),
                 postService.listByOwner(user.getId(), viewer),
                 trilhaService.listByOwner(user.getId(), viewer));
+    }
+
+    /**
+     * Anonymizes the account instead of removing the row: email/bio/image/stacks/password are
+     * scrubbed and {@code deletedAt} is stamped, but the nickname and every course/post/trilha the
+     * person published stay exactly where they are - other users' enrollments, progress and
+     * certificates over that content are not this person's data to take down with them. Requires
+     * typing the account's own nickname back, since a Google-only account has no password to
+     * confirm with.
+     *
+     * <p>Irreversible on purpose: there is no "restore" flow, matching how most large platforms
+     * treat a confirmed self-deletion.
+     */
+    @Transactional
+    public void deleteAccount(User currentUser, DeleteAccountRequest request) {
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> ResourceNotFoundException.of("Usuario"));
+        if (user.isDeleted()) {
+            throw new BadRequestException("Esta conta ja foi excluida");
+        }
+        String typed = request.confirmNickname().trim();
+        if (user.getNickname() == null || !user.getNickname().equalsIgnoreCase(typed)) {
+            throw new BadRequestException("O nickname digitado nao confere");
+        }
+
+        user.setDeletedAt(Instant.now());
+        user.setName("Usuario excluido");
+        // Keeps the unique constraint happy with a value nobody can ever log in with or collide on.
+        user.setEmail("deleted-" + user.getId() + "@removido.invalid");
+        user.setPasswordHash(null);
+        user.setEmailVerified(null);
+        user.setBio(null);
+        user.setImage(null);
+        user.setStacks(new ArrayList<>());
+        // nickname intentionally untouched - see the class-level note on User.deletedAt.
+        userRepository.save(user);
     }
 
     /**
