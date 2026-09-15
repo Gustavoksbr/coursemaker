@@ -31,6 +31,7 @@ class PlaylistInfo:
     id: str
     title: str
     description: str
+    thumbnail_url: str
     channel: ChannelInfo
     videos: list[PlaylistVideo]
 
@@ -56,13 +57,31 @@ def fetch_playlist(api_key: str, url_or_id: str) -> PlaylistInfo:
     channel = _fetch_channel(api_key, snippet["channelId"])
     videos = _fetch_all_videos(api_key, playlist_id)
 
+    # A playlist's own thumbnail is usually just whatever its first video's thumbnail is anyway,
+    # but it's occasionally missing/generic (older playlists) - falling back to the first video's
+    # own thumbnail, built without another API call since YouTube's thumbnail URLs are
+    # deterministic from the video id. hqdefault always exists; maxresdefault does not (only for
+    # videos uploaded in HD), so hqdefault is the safe default-quality choice.
+    thumbnail_url = _best_thumbnail(snippet.get("thumbnails") or {})
+    if not thumbnail_url and videos:
+        thumbnail_url = f"https://i.ytimg.com/vi/{videos[0].video_id}/hqdefault.jpg"
+
     return PlaylistInfo(
         id=playlist_id,
         title=snippet["title"],
         description=snippet.get("description", ""),
+        thumbnail_url=thumbnail_url,
         channel=channel,
         videos=videos,
     )
+
+
+def _best_thumbnail(thumbnails: dict) -> str:
+    for size in ("maxres", "high", "medium", "default"):
+        url = thumbnails.get(size, {}).get("url")
+        if url:
+            return url
+    return ""
 
 
 def _fetch_channel(api_key: str, channel_id: str) -> ChannelInfo:

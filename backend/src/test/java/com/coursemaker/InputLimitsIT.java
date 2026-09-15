@@ -48,7 +48,7 @@ class InputLimitsIT extends IntegrationTest {
     @Test
     @DisplayName("senha de login alem de 72 caracteres e rejeitada com 400, nao processada")
     void loginPasswordPast72CharsIsRejected() throws Exception {
-        post("/api/v1/auth/login", Map.of("email", "ana@example.com", "password", chars(200)),
+        post("/api/v1/auth/login", Map.of("identifier", "ana@example.com", "password", chars(200)),
                 Caller.ANONYMOUS)
                 .andExpect(status().isBadRequest());
     }
@@ -83,8 +83,8 @@ class InputLimitsIT extends IntegrationTest {
     void categoryAt50CharsSucceeds() throws Exception {
         TestUser owner = fixtures.user("ana");
 
-        post("/api/v1/courses", Map.of("name", "Curso", "categories", List.of(chars(50))),
-                owner.caller())
+        post("/api/v1/courses", Map.of("name", "Curso", "categories", List.of(chars(50)),
+                "areaId", fixtures.defaultAreaId()), owner.caller())
                 .andExpect(status().isCreated());
     }
 

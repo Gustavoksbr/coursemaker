@@ -8,6 +8,8 @@ import { usePrefetchCatalogs } from '@/hooks/usePrefetchCatalogs'
 import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import SetupNicknamePage from '@/pages/SetupNicknamePage'
 import SearchPage from '@/pages/SearchPage'
 import CertificateViewPage from '@/pages/CertificateViewPage'
@@ -53,6 +55,8 @@ const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/esqueci-senha', element: <ForgotPasswordPage /> },
+      { path: '/redefinir-senha', element: <ResetPasswordPage /> },
       { path: '/privacidade', element: <PrivacyPolicyPage /> },
       { path: '/users/:nickname', element: <PublicProfilePage /> },
       { path: '/escolas', element: <SchoolsListPage /> },

@@ -2,11 +2,14 @@ package com.coursemaker.controller;
 
 import com.coursemaker.config.AuthenticatedUser;
 import com.coursemaker.dto.auth.AuthDtos.AuthResponse;
+import com.coursemaker.dto.auth.AuthDtos.ConfirmPasswordResetRequest;
 import com.coursemaker.dto.auth.AuthDtos.GoogleLoginRequest;
 import com.coursemaker.dto.auth.AuthDtos.LoginRequest;
 import com.coursemaker.dto.auth.AuthDtos.RegisterRequest;
+import com.coursemaker.dto.auth.AuthDtos.RequestPasswordResetRequest;
 import com.coursemaker.dto.user.UserResponse;
 import com.coursemaker.service.AuthService;
+import com.coursemaker.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     @Operation(summary = "Cria uma conta e devolve o JWT")
     @PostMapping("/register")
@@ -34,7 +38,7 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
-    @Operation(summary = "Autentica com email e senha. Bloqueia por 15min apos 5 falhas")
+    @Operation(summary = "Autentica com email ou nickname e senha. Bloqueia por 15min apos 5 falhas")
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
@@ -50,5 +54,18 @@ public class AuthController {
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal AuthenticatedUser principal) {
         return authService.me(principal.id());
+    }
+
+    @Operation(summary = "Envia um email de redefinicao de senha, se o email existir")
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody RequestPasswordResetRequest request) {
+        passwordResetService.requestReset(request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Redefine a senha a partir do token recebido por email e devolve o JWT")
+    @PostMapping("/password-reset/confirm")
+    public AuthResponse confirmPasswordReset(@Valid @RequestBody ConfirmPasswordResetRequest request) {
+        return passwordResetService.confirmReset(request.token(), request.newPassword());
     }
 }

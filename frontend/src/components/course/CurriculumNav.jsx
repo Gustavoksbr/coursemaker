@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { CheckCircle2, ChevronDown, Circle, PlayCircle } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Circle } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 /**
  * Read-only curriculum navigation for the course viewer: modules collapse, the active lesson is
- * highlighted, and completed lessons get a green check when progress tracking is on.
+ * highlighted, and completed lessons get a green check.
  */
-export function CurriculumNav({ modules, activeLessonId, onSelectLesson, progressEnabled }) {
+export function CurriculumNav({ modules, activeLessonId, onSelectLesson }) {
   // Everything starts expanded; the module holding the active lesson must never be hidden.
   const [collapsed, setCollapsed] = useState(() => new Set())
 
@@ -46,9 +46,7 @@ export function CurriculumNav({ modules, activeLessonId, onSelectLesson, progres
                   {moduleIndex + 1}. {module.title}
                 </span>
                 <span className="text-xs text-slate-500">
-                  {progressEnabled
-                    ? `${completedCount}/${module.lessons.length} concluida(s)`
-                    : `${module.lessons.length} licao(oes)`}
+                  {completedCount}/{module.lessons.length} concluida(s)
                 </span>
               </span>
             </button>
@@ -70,17 +68,10 @@ export function CurriculumNav({ modules, activeLessonId, onSelectLesson, progres
                             : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200',
                         )}
                       >
-                        {progressEnabled ? (
-                          lesson.completed ? (
-                            <CheckCircle2 size={15} className="shrink-0 text-green-400" />
-                          ) : (
-                            <Circle size={15} className="shrink-0 text-slate-600" />
-                          )
+                        {lesson.completed ? (
+                          <CheckCircle2 size={15} className="shrink-0 text-green-400" />
                         ) : (
-                          <PlayCircle
-                            size={15}
-                            className={cn('shrink-0', active ? 'text-brand-400' : 'text-slate-600')}
-                          />
+                          <Circle size={15} className="shrink-0 text-slate-600" />
                         )}
                         <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
                       </button>

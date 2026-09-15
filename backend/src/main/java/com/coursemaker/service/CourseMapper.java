@@ -87,7 +87,6 @@ public class CourseMapper {
                 course.getStatus(),
                 course.getCategories(),
                 course.isFeatured(),
-                course.isProgressEnabled(),
                 AreaSummary.from(course.getArea()),
                 SchoolSummary.from(course.getSchool()),
                 UserSummary.from(course.getOwner()),

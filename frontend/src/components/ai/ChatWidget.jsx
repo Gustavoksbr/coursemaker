@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
-import { Bot, Loader2, MessageCircle, Send, Sparkles, X } from 'lucide-react'
+import { Bot, GripHorizontal, Loader2, MessageCircle, Send, Sparkles, X } from 'lucide-react'
 import { chatAboutCourse, chatAboutPost } from '@/api/ai'
 import { useAuth } from '@/context/AuthContext'
+import { useDraggableWidget } from '@/hooks/useDraggableWidget'
 import { errorMessage, statusOf } from '@/lib/api'
 import { cn } from '@/lib/cn'
 import { renderMarkdown } from '@/lib/markdown'
+
+const BUBBLE_SIZE = 56
+const PANEL_GAP = 16
+const DEFAULT_BOTTOM = 24
+// Clears the fixed "Proxima aula" bar in CourseViewPage's lesson view, which the bubble would
+// otherwise sit on top of the very first time it renders - dragging it away is still possible
+// afterwards, but a new visitor shouldn't have to know that just to reach the button underneath.
+const RAISED_DEFAULT_BOTTOM = 104
 
 const SUGGESTIONS = {
   course: ['Resuma este curso', 'Quais sao os principais topicos?', 'Por onde eu comeco?'],
@@ -27,8 +36,12 @@ const COPY = {
   },
 }
 
-/** Floating chat bubble that answers questions grounded in a course's or post's own content. */
-export function ChatWidget({ kind, contentId }) {
+/**
+ * Floating chat bubble that answers questions grounded in a course's or post's own content.
+ * Fully draggable (mouse or touch) so it can never get stuck on top of other controls - see
+ * useDraggableWidget. `raised` only affects where it starts out before the user ever drags it.
+ */
+export function ChatWidget({ kind, contentId, raised = false }) {
   const { isAuthenticated } = useAuth()
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([])
@@ -36,6 +49,13 @@ export function ChatWidget({ kind, contentId }) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const scrollRef = useRef(null)
+  const bubbleRef = useRef(null)
+  const panelRef = useRef(null)
+  const defaultBottom = raised ? RAISED_DEFAULT_BOTTOM : DEFAULT_BOTTOM
+  const { position, makeHandle } = useDraggableWidget('coursemaker:chat-widget-position', {
+    bottom: defaultBottom,
+    right: 24,
+  })
 
   const copy = COPY[kind]
   const sendFn = kind === 'course' ? chatAboutCourse : chatAboutPost
@@ -77,17 +97,27 @@ export function ChatWidget({ kind, contentId }) {
   return (
     <>
       <button
+        ref={bubbleRef}
         type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-lg shadow-brand-900/40 transition-transform hover:scale-105 hover:bg-brand-600"
+        {...makeHandle(bubbleRef, () => setOpen((value) => !value))}
+        style={{ bottom: position.bottom, right: position.right }}
+        className="fixed z-40 flex h-14 w-14 cursor-grab touch-none items-center justify-center rounded-full bg-brand-500 text-white shadow-lg shadow-brand-900/40 transition-transform hover:scale-105 hover:bg-brand-600 active:cursor-grabbing"
         aria-label={open ? 'Fechar assistente' : 'Abrir assistente'}
       >
         {open ? <X size={24} /> : <MessageCircle size={24} />}
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-6 z-40 flex h-[32rem] max-h-[70vh] w-96 max-w-[calc(100vw-2rem)] animate-slide-up flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
-          <header className="flex items-center gap-3 border-b border-slate-700 bg-slate-800/80 px-4 py-3">
+        <div
+          ref={panelRef}
+          style={{ bottom: position.bottom + BUBBLE_SIZE + PANEL_GAP, right: position.right }}
+          className="fixed z-40 flex h-[32rem] max-h-[70vh] w-96 max-w-[calc(100vw-2rem)] animate-slide-up flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl"
+        >
+          <header
+            {...makeHandle(panelRef, undefined)}
+            className="flex cursor-grab touch-none items-center gap-3 border-b border-slate-700 bg-slate-800/80 px-4 py-3 active:cursor-grabbing"
+          >
+            <GripHorizontal size={16} className="shrink-0 text-slate-600" aria-hidden="true" />
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-400">
               <Bot size={18} />
             </div>

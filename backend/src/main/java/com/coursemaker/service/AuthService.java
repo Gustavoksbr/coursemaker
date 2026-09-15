@@ -53,17 +53,21 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        String email = request.email().trim().toLowerCase();
-        String rateLimitKey = RateLimitService.loginKey(email);
+        String identifier = request.identifier().trim().toLowerCase();
+        String rateLimitKey = RateLimitService.loginKey(identifier);
         rateLimitService.assertNotBlocked(rateLimitKey);
 
-        User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
-        // Same failure path whether the email is unknown or the password is wrong, so the response
-        // cannot be used to enumerate accounts.
+        // Nicknames are restricted to "^[a-z0-9][a-z0-9-]*$" (see UpdateUserRequest), so they can
+        // never contain "@" - that's what tells the two apart in a single input field.
+        User user = identifier.contains("@")
+                ? userRepository.findByEmailIgnoreCase(identifier).orElse(null)
+                : userRepository.findByNicknameIgnoreCase(identifier).orElse(null);
+        // Same failure path whether the identifier is unknown or the password is wrong, so the
+        // response cannot be used to enumerate accounts.
         if (user == null || user.getPasswordHash() == null
                 || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             rateLimitService.recordFailure(rateLimitKey);
-            throw new UnauthorizedException("Email ou senha invalidos");
+            throw new UnauthorizedException("Credenciais invalidas");
         }
 
         rateLimitService.recordSuccess(rateLimitKey);
@@ -103,6 +107,11 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Usuario"));
         return UserResponse.from(user);
+    }
+
+    /** Issues a fresh session after a password reset, so the user lands back in signed in. */
+    public AuthResponse afterPasswordReset(User user) {
+        return toAuthResponse(user);
     }
 
     private AuthResponse toAuthResponse(User user) {

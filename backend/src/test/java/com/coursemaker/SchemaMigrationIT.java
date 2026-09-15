@@ -68,9 +68,14 @@ class SchemaMigrationIT extends IntegrationTest {
 
     private String insertCourse(String ownerId, String slug) {
         return jdbc.queryForObject(
-                "INSERT INTO courses (id, owner_id, name, slug) "
-                        + "VALUES (gen_random_uuid(), ?::uuid, ?, ?) RETURNING id::text",
-                String.class, ownerId, slug, slug);
+                "INSERT INTO courses (id, owner_id, name, slug, area_id) "
+                        + "VALUES (gen_random_uuid(), ?::uuid, ?, ?, ?::uuid) RETURNING id::text",
+                String.class, ownerId, slug, slug, defaultAreaId());
+    }
+
+    /** The "Programação" area seeded once by migration V19 - every course needs one. */
+    private String defaultAreaId() {
+        return jdbc.queryForObject("SELECT id::text FROM areas WHERE slug = 'programacao'", String.class);
     }
 
     private String insertModule(String courseId) {

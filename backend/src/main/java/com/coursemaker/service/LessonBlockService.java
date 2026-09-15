@@ -1,18 +1,27 @@
 package com.coursemaker.service;
 
+import com.coursemaker.domain.entity.CompositeIds.UserBlockId;
 import com.coursemaker.domain.entity.Lesson;
 import com.coursemaker.domain.entity.LessonBlock;
+import com.coursemaker.domain.entity.QuestionAnswer;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.domain.enums.BlockType;
+import com.coursemaker.dto.curriculum.CurriculumDtos.AnswerBlockRequest;
+import com.coursemaker.dto.curriculum.CurriculumDtos.AnswerBlockResponse;
 import com.coursemaker.dto.curriculum.CurriculumDtos.BlockResponse;
 import com.coursemaker.dto.curriculum.CurriculumDtos.CreateBlockRequest;
 import com.coursemaker.dto.curriculum.CurriculumDtos.UpdateBlockRequest;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import com.coursemaker.repository.LessonBlockRepository;
+import com.coursemaker.repository.QuestionAnswerRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,9 +32,11 @@ import java.util.stream.Collectors;
 public class LessonBlockService {
 
     private final LessonBlockRepository blockRepository;
+    private final QuestionAnswerRepository questionAnswerRepository;
     private final LessonService lessonService;
     private final CourseAccessService accessService;
     private final HtmlSanitizer htmlSanitizer;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public List<BlockResponse> list(UUID lessonId, User viewer) {
@@ -93,5 +104,48 @@ public class LessonBlockService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Bloco"));
         accessService.requireOwner(block.getLesson().getModule().getCourse(), viewer);
         return block;
+    }
+
+    /**
+     * Records whether {@code viewer} picked the correct alternative of a QUESTION block. Re-answering
+     * overwrites the previous attempt - there is no limit on tries, matching the QuestionBlock UI,
+     * which lets a student keep guessing after a wrong pick. See ProgressService#markComplete for
+     * where this gates lesson completion.
+     */
+    @Transactional
+    public AnswerBlockResponse answer(UUID blockId, AnswerBlockRequest request, User viewer) {
+        LessonBlock block = blockRepository.findByIdWithCourse(blockId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Bloco"));
+        accessService.requireContentAccess(block.getLesson().getModule().getCourse(), viewer);
+
+        if (block.getType() != BlockType.QUESTION) {
+            throw new BadRequestException("Este bloco nao e uma questao");
+        }
+
+        boolean correct = isCorrectAlternative(block.getContent(), request.alternativeId());
+
+        UserBlockId id = new UserBlockId(viewer.getId(), blockId);
+        QuestionAnswer answer = questionAnswerRepository.findById(id)
+                .orElseGet(() -> QuestionAnswer.of(viewer.getId(), blockId));
+        answer.setCorrect(correct);
+        answer.setAnsweredAt(Instant.now());
+        questionAnswerRepository.save(answer);
+
+        return new AnswerBlockResponse(blockId, correct);
+    }
+
+    private boolean isCorrectAlternative(String content, String alternativeId) {
+        JsonNode root;
+        try {
+            root = objectMapper.readTree(content);
+        } catch (Exception e) {
+            throw new BadRequestException("Questao malformada");
+        }
+        for (JsonNode alternative : root.path("alternatives")) {
+            if (alternative.path("id").asText("").equals(alternativeId)) {
+                return alternative.path("correct").asBoolean(false);
+            }
+        }
+        throw new BadRequestException("Alternativa invalida");
     }
 }

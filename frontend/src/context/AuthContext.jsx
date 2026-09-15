@@ -58,8 +58,8 @@ export function AuthProvider({ children }) {
   )
 
   const login = useCallback(
-    async (email, password) => {
-      const { data } = await api.post('/auth/login', { email, password })
+    async (identifier, password) => {
+      const { data } = await api.post('/auth/login', { identifier, password })
       return authenticate(data)
     },
     [authenticate],
@@ -76,6 +76,19 @@ export function AuthProvider({ children }) {
   const loginWithGoogle = useCallback(
     async (idToken) => {
       const { data } = await api.post('/auth/google', { idToken })
+      return authenticate(data)
+    },
+    [authenticate],
+  )
+
+  /** Always resolves, whether or not the email is registered - see PasswordResetService. */
+  const requestPasswordReset = useCallback(async (email) => {
+    await api.post('/auth/password-reset/request', { email })
+  }, [])
+
+  const confirmPasswordReset = useCallback(
+    async (token, newPassword) => {
+      const { data } = await api.post('/auth/password-reset/confirm', { token, newPassword })
       return authenticate(data)
     },
     [authenticate],
@@ -101,10 +114,22 @@ export function AuthProvider({ children }) {
       login,
       register,
       loginWithGoogle,
+      requestPasswordReset,
+      confirmPasswordReset,
       logout,
       refreshUser,
     }),
-    [user, loading, login, register, loginWithGoogle, logout, refreshUser],
+    [
+      user,
+      loading,
+      login,
+      register,
+      loginWithGoogle,
+      requestPasswordReset,
+      confirmPasswordReset,
+      logout,
+      refreshUser,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

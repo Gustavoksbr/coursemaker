@@ -122,10 +122,7 @@ public class EnrollmentService {
                 .orElse(null);
     }
 
-    /**
-     * Enrolled courses the user has not finished: no progress tracking means there is no signal to
-     * prove it is done, so those always count as "em andamento" too.
-     */
+    /** Enrolled courses the user has not finished yet - see {@link #isFinished}. */
     @Transactional(readOnly = true)
     public List<CourseSummary> myInProgressCourses(User user, UUID areaId) {
         List<UUID> courseIds = enrollmentRepository.findAllCourseIdsByUser(user.getId());
@@ -160,9 +157,6 @@ public class EnrollmentService {
     }
 
     private boolean isFinished(Course course, User user) {
-        if (!course.isProgressEnabled()) {
-            return false;
-        }
         long total = lessonRepository.countByCourseId(course.getId());
         if (total == 0) {
             return false;
@@ -203,20 +197,14 @@ public class EnrollmentService {
 
         String status;
         Integer percentage;
-        if (!course.isProgressEnabled()) {
-            // No per-lesson signal to tell "not started" from "in progress" apart - see isFinished.
-            status = "IN_PROGRESS";
+        long total = lessonRepository.countByCourseId(courseId);
+        long completed = lessonCompletionRepository.findCompletedLessonIds(user.getId(), courseId).size();
+        if (total == 0) {
+            status = "NOT_STARTED";
             percentage = null;
         } else {
-            long total = lessonRepository.countByCourseId(courseId);
-            long completed = lessonCompletionRepository.findCompletedLessonIds(user.getId(), courseId).size();
-            if (total == 0) {
-                status = "NOT_STARTED";
-                percentage = null;
-            } else {
-                percentage = (int) Math.round(completed * 100.0 / total);
-                status = completed == 0 ? "NOT_STARTED" : completed >= total ? "COMPLETED" : "IN_PROGRESS";
-            }
+            percentage = (int) Math.round(completed * 100.0 / total);
+            status = completed == 0 ? "NOT_STARTED" : completed >= total ? "COMPLETED" : "IN_PROGRESS";
         }
 
         return Optional.of(new LibraryOverviewItem(

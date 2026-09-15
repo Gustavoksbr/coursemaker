@@ -76,7 +76,7 @@ public class Fixtures {
         // role is a JWT claim too, so the token from user() still asserts the old role; log back in
         // to get one that reflects the promotion, same as a real admin would after a fresh login.
         JsonNode auth = request("POST", "/api/v1/auth/login", null,
-                Map.of("email", user.email(), "password", DEFAULT_PASSWORD));
+                Map.of("identifier", user.email(), "password", DEFAULT_PASSWORD));
         return new TestUser(user.id(), user.email(), user.nickname(), auth.get("token").asText());
     }
 
@@ -90,29 +90,41 @@ public class Fixtures {
     }
 
     public UUID draftCourse(TestUser owner, String name) {
-        JsonNode course = request("POST", "/api/v1/courses", owner.token(),
-                Map.of("name", name, "description", "Descricao de " + name));
-        return UUID.fromString(course.get("id").asText());
+        return createCourse(owner, Map.of("name", name, "description", "Descricao de " + name));
     }
 
     /** Creates a published, password-protected course. */
     public UUID privateCourse(TestUser owner, String name, String password) {
-        JsonNode course = request("POST", "/api/v1/courses", owner.token(), Map.of(
+        UUID courseId = createCourse(owner, Map.of(
                 "name", name,
                 "description", "Curso privado",
                 "visibility", "private",
                 "password", password));
-        UUID courseId = UUID.fromString(course.get("id").asText());
         publish(owner, courseId);
+        return courseId;
+    }
+
+    /**
+     * Every new course starts with one module/lesson/block already in place (see
+     * CourseService#seedDefaultCurriculum) - deleted here so a fixture-built course really has
+     * just the modules/lessons a test goes on to add, not one extra it never asked for.
+     */
+    private UUID createCourse(TestUser owner, Map<String, Object> fields) {
+        Map<String, Object> body = new java.util.HashMap<>(fields);
+        body.put("areaId", defaultAreaId());
+        JsonNode course = request("POST", "/api/v1/courses", owner.token(), body);
+        UUID courseId = UUID.fromString(course.get("id").asText());
+
+        UUID seededModuleId = jdbc.queryForObject(
+                "SELECT id FROM modules WHERE course_id = ? ORDER BY order_index ASC LIMIT 1",
+                UUID.class, courseId);
+        request("DELETE", "/api/v1/modules/" + seededModuleId, owner.token(), null);
+
         return courseId;
     }
 
     public void publish(TestUser owner, UUID courseId) {
         request("PATCH", "/api/v1/courses/" + courseId, owner.token(), Map.of("status", "available"));
-    }
-
-    public void enableProgress(TestUser owner, UUID courseId) {
-        request("PATCH", "/api/v1/courses/" + courseId, owner.token(), Map.of("progressEnabled", true));
     }
 
     // ------------------------------------------------------------- curriculum
@@ -135,6 +147,24 @@ public class Fixtures {
         return UUID.fromString(block.get("id").asText());
     }
 
+    /** A QUESTION block; each alternative is {@code {"id", "text", "correct", "explanation"}}. */
+    public UUID questionBlock(TestUser owner, UUID lessonId, List<Map<String, Object>> alternatives) {
+        try {
+            String content = json.writeValueAsString(Map.of("alternatives", alternatives));
+            JsonNode block = request("POST", "/api/v1/lessons/" + lessonId + "/blocks", owner.token(),
+                    Map.of("type", "question", "content", content));
+            return UUID.fromString(block.get("id").asText());
+        } catch (Exception e) {
+            throw new IllegalStateException("Fixture setup failed for question block", e);
+        }
+    }
+
+    /** Submits an alternative for a QUESTION block; the response never errors, win or lose. */
+    public JsonNode answerBlock(TestUser user, UUID blockId, String alternativeId) {
+        return request("POST", "/api/v1/blocks/" + blockId + "/answer", user.token(),
+                Map.of("alternativeId", alternativeId));
+    }
+
     /** A course with one module and {@code lessonCount} lessons, published and ready to browse. */
     public Curriculum courseWithLessons(TestUser owner, String name, int lessonCount) {
         UUID courseId = draftCourse(owner, name);
@@ -153,7 +183,7 @@ public class Fixtures {
 
     public UUID publishedPost(TestUser owner, String title) {
         JsonNode post = request("POST", "/api/v1/posts", owner.token(),
-                Map.of("title", title, "description", "Sobre " + title));
+                Map.of("title", title, "description", "Sobre " + title, "areaId", defaultAreaId()));
         UUID postId = UUID.fromString(post.get("id").asText());
         request("PATCH", "/api/v1/posts/" + postId, owner.token(), Map.of("status", "available"));
         return postId;
@@ -165,7 +195,8 @@ public class Fixtures {
                 "title", title,
                 "description", "Post privado",
                 "visibility", "private",
-                "password", password));
+                "password", password,
+                "areaId", defaultAreaId()));
         UUID postId = UUID.fromString(post.get("id").asText());
         request("PATCH", "/api/v1/posts/" + postId, owner.token(), Map.of("status", "available"));
         return postId;
@@ -180,7 +211,8 @@ public class Fixtures {
     // ----------------------------------------------------------------- trilhas
 
     public UUID trilha(TestUser owner, String title) {
-        JsonNode trilha = request("POST", "/api/v1/trilhas", owner.token(), Map.of("title", title));
+        JsonNode trilha = request("POST", "/api/v1/trilhas", owner.token(),
+                Map.of("title", title, "areaId", defaultAreaId()));
         return UUID.fromString(trilha.get("id").asText());
     }
 
@@ -202,12 +234,26 @@ public class Fixtures {
 
     // ---------------------------------------------------------------- plumbing
 
+    private UUID cachedAreaId;
+
+    /** The "Programação" area every course/post/trilha needs - seeded once by V19, never by tests.
+     *  Public so a test building its own request body (instead of going through a Fixtures helper
+     *  like {@link #draftCourse}) can still supply a valid one. */
+    public UUID defaultAreaId() {
+        if (cachedAreaId == null) {
+            cachedAreaId = jdbc.queryForObject(
+                    "SELECT id FROM areas WHERE slug = 'programacao'", UUID.class);
+        }
+        return cachedAreaId;
+    }
+
     private JsonNode request(String method, String path, String token, Object body) {
         try {
             var builder = switch (method) {
                 case "POST" -> MockMvcRequestBuilders.post(path);
                 case "PATCH" -> MockMvcRequestBuilders.patch(path);
                 case "PUT" -> MockMvcRequestBuilders.put(path);
+                case "DELETE" -> MockMvcRequestBuilders.delete(path);
                 default -> throw new IllegalArgumentException("Unsupported method " + method);
             };
             if (token != null) {

@@ -26,7 +26,8 @@ class PostAndSearchIT extends IntegrationTest {
         JsonNode post = postOk("/api/v1/posts", Map.of(
                 "title", "Como funciona o Garbage Collector",
                 "description", "Um mergulho na JVM",
-                "categories", List.of("java", "jvm")), owner.caller());
+                "categories", List.of("java", "jvm"),
+                "areaId", fixtures.defaultAreaId()), owner.caller());
 
         assertThat(post.get("slug").asText()).isEqualTo("como-funciona-o-garbage-collector");
         assertThat(post.get("status").asText()).isEqualTo("unavailable");
@@ -216,7 +217,7 @@ class PostAndSearchIT extends IntegrationTest {
     private void publishedPostWithCategories(TestUser owner, String title, List<String> categories)
             throws Exception {
         JsonNode post = postOk("/api/v1/posts",
-                Map.of("title", title, "categories", categories), owner.caller());
+                Map.of("title", title, "categories", categories, "areaId", fixtures.defaultAreaId()), owner.caller());
         patchOk("/api/v1/posts/" + post.get("id").asText(),
                 Map.of("status", "available"), owner.caller());
     }

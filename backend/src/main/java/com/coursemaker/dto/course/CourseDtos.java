@@ -30,7 +30,6 @@ public final class CourseDtos {
             CourseStatus status,
             List<String> categories,
             boolean featured,
-            boolean progressEnabled,
             AreaSummary area,
             SchoolSummary school,
             UserSummary owner,
@@ -58,7 +57,8 @@ public final class CourseDtos {
             boolean canViewContent,
             boolean requiresPassword,
             boolean hasPassword,
-            ProgressResponse progress) {
+            ProgressResponse progress,
+            List<UUID> answeredQuestionBlockIds) {
     }
 
     public record ProgressResponse(long completedLessons, long totalLessons, int percentage,
@@ -78,7 +78,6 @@ public final class CourseDtos {
             CourseVisibility visibility,
             @Size(max = MAX_PASSWORD_LENGTH) String password,
             List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
-            Boolean progressEnabled,
             @NotNull UUID areaId,
             UUID schoolId) {
     }
@@ -93,7 +92,6 @@ public final class CourseDtos {
             CourseStatus status,
             @Size(max = MAX_PASSWORD_LENGTH) String password,
             List<@Size(max = MAX_CATEGORY_LENGTH) String> categories,
-            Boolean progressEnabled,
             UUID areaId,
             UUID schoolId,
             // schoolId being null normally means "leave unchanged" - this is the one flag that lets

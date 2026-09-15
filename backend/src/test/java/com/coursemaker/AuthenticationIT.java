@@ -58,7 +58,7 @@ class AuthenticationIT extends IntegrationTest {
     void loginReturnsATokenForValidCredentials() throws Exception {
         register();
 
-        JsonNode auth = body(post("/api/v1/auth/login", Map.of("email", EMAIL, "password", PASSWORD),
+        JsonNode auth = body(post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", PASSWORD),
                 Caller.ANONYMOUS).andExpect(status().isOk()));
 
         assertThat(auth.get("token").asText()).isNotBlank();
@@ -70,11 +70,11 @@ class AuthenticationIT extends IntegrationTest {
         register();
 
         String wrongPassword = body(post("/api/v1/auth/login",
-                Map.of("email", EMAIL, "password", "senha-errada-mesmo"), Caller.ANONYMOUS)
+                Map.of("identifier", EMAIL, "password", "senha-errada-mesmo"), Caller.ANONYMOUS)
                 .andExpect(status().isUnauthorized())).get("message").asText();
 
         String unknownEmail = body(post("/api/v1/auth/login",
-                Map.of("email", "ninguem@example.com", "password", PASSWORD), Caller.ANONYMOUS)
+                Map.of("identifier", "ninguem@example.com", "password", PASSWORD), Caller.ANONYMOUS)
                 .andExpect(status().isUnauthorized())).get("message").asText();
 
         // Identical wording, so the endpoint cannot be used to enumerate registered emails.
@@ -87,17 +87,17 @@ class AuthenticationIT extends IntegrationTest {
         register();
 
         for (int attempt = 1; attempt <= 5; attempt++) {
-            post("/api/v1/auth/login", Map.of("email", EMAIL, "password", "errada"), Caller.ANONYMOUS)
+            post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", "errada"), Caller.ANONYMOUS)
                     .andExpect(status().isUnauthorized());
         }
 
         // The sixth attempt is refused before the password is even checked...
-        post("/api/v1/auth/login", Map.of("email", EMAIL, "password", "errada"), Caller.ANONYMOUS)
+        post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", "errada"), Caller.ANONYMOUS)
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"));
 
         // ...and the block holds even for the correct password.
-        post("/api/v1/auth/login", Map.of("email", EMAIL, "password", PASSWORD), Caller.ANONYMOUS)
+        post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", PASSWORD), Caller.ANONYMOUS)
                 .andExpect(status().isTooManyRequests());
 
         Integer blocked = jdbc.queryForObject(
@@ -110,10 +110,10 @@ class AuthenticationIT extends IntegrationTest {
         register();
 
         for (int attempt = 1; attempt <= 4; attempt++) {
-            post("/api/v1/auth/login", Map.of("email", EMAIL, "password", "errada"), Caller.ANONYMOUS)
+            post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", "errada"), Caller.ANONYMOUS)
                     .andExpect(status().isUnauthorized());
         }
-        post("/api/v1/auth/login", Map.of("email", EMAIL, "password", PASSWORD), Caller.ANONYMOUS)
+        post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", PASSWORD), Caller.ANONYMOUS)
                 .andExpect(status().isOk());
 
         Integer remaining = jdbc.queryForObject("SELECT count(*) FROM login_attempts", Integer.class);
@@ -121,7 +121,7 @@ class AuthenticationIT extends IntegrationTest {
 
         // The counter really is back to zero: four more failures still do not block.
         for (int attempt = 1; attempt <= 4; attempt++) {
-            post("/api/v1/auth/login", Map.of("email", EMAIL, "password", "errada"), Caller.ANONYMOUS)
+            post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", "errada"), Caller.ANONYMOUS)
                     .andExpect(status().isUnauthorized());
         }
     }

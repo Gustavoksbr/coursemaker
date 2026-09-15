@@ -66,6 +66,25 @@ def chunk(items: list, size: int) -> list[list]:
     return [items[i:i + size] for i in range(0, len(items), size)]
 
 
+# Preferred names for "the" tech/programming area, in order - different deployments were seeded
+# differently (local's Flyway migration only ever creates "Programação"; production had areas set
+# up by hand via the admin panel and got "Tecnologia" instead, with no "Programação" at all). Tried
+# with and without diacritics since typing them wrong here previously made the match silently fail
+# and fall through to whatever area happened to be first (e.g. "Ciências Humanas" in production).
+_TECH_AREA_NAMES = {"programação", "programacao", "tecnologia"}
+
+
+def pick_tech_area(areas: list[dict]) -> dict:
+    match = next((a for a in areas if a["name"].strip().lower() in _TECH_AREA_NAMES), None)
+    if match:
+        return match
+    print(
+        f"[area] nenhuma area de tecnologia/programacao encontrada entre {[a['name'] for a in areas]} "
+        f"- usando \"{areas[0]['name']}\" por ser a primeira da lista."
+    )
+    return areas[0]
+
+
 def build_attribution_html(channel_title: str, channel_url: str, playlist_url: str) -> str:
     return (
         "<p><strong>Este curso não foi criado pelo Coursemaker.</strong></p>"
@@ -84,8 +103,11 @@ def run_playlist_flow(
     max_videos: int | None = None,
     course_name: str | None = None,
     exclude: str | None = None,
-) -> None:
-    """The reusable core of this script - builds one course from a YouTube playlist.
+    categories: list[str] | None = None,
+) -> dict:
+    """The reusable core of this script - builds one course from a YouTube playlist. Returns the
+    created course (dict, as the API returned it) so a caller can do something with it afterwards
+    (e.g. `seed_production.py` groups several of these into a Trilha).
 
     Extracted out of `main()` so `main.py`'s interactive menu can call this same flow (with
     defaults) after the user chooses "colar uma playlist", without duplicating any of this logic.
@@ -137,7 +159,7 @@ def run_playlist_flow(
     areas = http.get("/areas", auth=False)
     if not areas:
         raise RuntimeError("Nenhuma area cadastrada no backend (GET /areas vazio). Crie uma antes de continuar.")
-    area = next((a for a in areas if a["name"] == "Programacao"), areas[0])
+    area = pick_tech_area(areas)
 
     resolved_course_name = (course_name or playlist.title).strip()[:255]
     print(f"[curso] criando \"{resolved_course_name}\"...")
@@ -145,8 +167,9 @@ def run_playlist_flow(
         "name": resolved_course_name,
         "description": f"Curso baseado na playlist \"{playlist.title}\", do canal {playlist.channel.title}.",
         "landingDescription": (playlist.description or playlist.channel.description or course_name)[:2000],
+        "thumbnailUrl": playlist.thumbnail_url or None,
         "visibility": "public",
-        "categories": [],
+        "categories": categories or [],
         "areaId": area["id"],
         "schoolId": school["id"],
     })
@@ -183,6 +206,7 @@ def run_playlist_flow(
         http.patch(f"/courses/{course['id']}", {"status": "available"})
 
     print(f"\nConcluido: /courses/{curator_user.get('nickname', config.curator.nickname)}/{course['slug']}")
+    return course
 
 
 def main() -> None:

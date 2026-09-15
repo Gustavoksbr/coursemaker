@@ -25,13 +25,12 @@ class CourseFlowIT extends IntegrationTest {
                 "name", "Introdução à Programação",
                 "description", "Do zero ao primeiro programa",
                 "categories", List.of("java", "iniciante"),
-                "progressEnabled", true), owner.caller());
+                "areaId", fixtures.defaultAreaId()), owner.caller());
 
         // pt-BR aware slugify: accents are stripped rather than percent-encoded.
         assertThat(course.get("slug").asText()).isEqualTo("introducao-a-programacao");
         assertThat(course.get("status").asText()).isEqualTo("unavailable");
         assertThat(course.get("visibility").asText()).isEqualTo("public");
-        assertThat(course.get("progressEnabled").asBoolean()).isTrue();
         assertThat(course.get("owner").get("nickname").asText()).isEqualTo("ana");
         assertThat(course.get("categories")).hasSize(2);
     }
@@ -42,9 +41,12 @@ class CourseFlowIT extends IntegrationTest {
         TestUser ana = fixtures.user("ana");
         TestUser bruno = fixtures.user("bruno");
 
-        JsonNode first = postOk("/api/v1/courses", Map.of("name", "Curso de Java"), ana.caller());
-        JsonNode second = postOk("/api/v1/courses", Map.of("name", "Curso de Java"), ana.caller());
-        JsonNode other = postOk("/api/v1/courses", Map.of("name", "Curso de Java"), bruno.caller());
+        JsonNode first = postOk("/api/v1/courses",
+                Map.of("name", "Curso de Java", "areaId", fixtures.defaultAreaId()), ana.caller());
+        JsonNode second = postOk("/api/v1/courses",
+                Map.of("name", "Curso de Java", "areaId", fixtures.defaultAreaId()), ana.caller());
+        JsonNode other = postOk("/api/v1/courses",
+                Map.of("name", "Curso de Java", "areaId", fixtures.defaultAreaId()), bruno.caller());
 
         assertThat(first.get("slug").asText()).isEqualTo("curso-de-java");
         assertThat(second.get("slug").asText()).isEqualTo("curso-de-java-2");
@@ -56,7 +58,7 @@ class CourseFlowIT extends IntegrationTest {
     @DisplayName("slug-check informa disponibilidade e sugere alternativa")
     void slugCheckSuggestsAlternative() throws Exception {
         TestUser owner = fixtures.user("ana");
-        postOk("/api/v1/courses", Map.of("name", "Curso de Java"), owner.caller());
+        postOk("/api/v1/courses", Map.of("name", "Curso de Java", "areaId", fixtures.defaultAreaId()), owner.caller());
 
         JsonNode free = getOk("/api/v1/courses/slug-check?name=Outro Curso", owner.caller());
         assertThat(free.get("available").asBoolean()).isTrue();
@@ -275,7 +277,7 @@ class CourseFlowIT extends IntegrationTest {
 
     private void createPublished(TestUser owner, String name, List<String> categories) throws Exception {
         JsonNode course = postOk("/api/v1/courses",
-                Map.of("name", name, "categories", categories), owner.caller());
+                Map.of("name", name, "categories", categories, "areaId", fixtures.defaultAreaId()), owner.caller());
         fixtures.publish(owner, UUID.fromString(course.get("id").asText()));
     }
 

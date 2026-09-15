@@ -26,9 +26,11 @@ public final class AuthDtos {
             String name) {
     }
 
+    /** {@code identifier} accepts either an email (contains "@") or a nickname (never does, per
+     * the {@code ^[a-z0-9][a-z0-9-]*$} nickname pattern), so the two never collide. */
     public record LoginRequest(
-            @NotBlank @Email @Size(max = 255)
-            String email,
+            @NotBlank @Size(max = 255)
+            String identifier,
 
             @NotBlank @Size(max = MAX_PASSWORD_LENGTH)
             String password) {
@@ -41,5 +43,18 @@ public final class AuthDtos {
     }
 
     public record AuthResponse(String token, long expiresIn, UserResponse user) {
+    }
+
+    public record RequestPasswordResetRequest(
+            @NotBlank @Email @Size(max = 255)
+            String email) {
+    }
+
+    public record ConfirmPasswordResetRequest(
+            @NotBlank @Size(max = 255)
+            String token,
+
+            @NotBlank @Size(min = 8, max = MAX_PASSWORD_LENGTH, message = "a senha deve ter entre 8 e 72 caracteres")
+            String newPassword) {
     }
 }

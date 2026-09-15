@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from 'lucide-react'
 import { ConfirmModal, Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/Field'
+import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
 import { AreaSelect } from '@/components/ui/AreaSelect'
 import { SchoolSelect } from '@/components/ui/SchoolSelect'
@@ -24,7 +24,6 @@ const BLANK = {
   visibility: VISIBILITY.PUBLIC,
   password: '',
   categories: [],
-  progressEnabled: false,
   areaId: '',
   schoolId: '',
 }
@@ -98,7 +97,6 @@ export function CreateCourseModal({ open, onClose }) {
         visibility: form.visibility,
         password: form.visibility === VISIBILITY.PRIVATE ? form.password : undefined,
         categories: form.categories,
-        progressEnabled: form.progressEnabled,
         areaId: form.areaId,
         schoolId: form.schoolId || undefined,
       }),
@@ -288,13 +286,6 @@ export function CreateCourseModal({ open, onClose }) {
               />
             </Field>
           )}
-
-          <Checkbox
-            label="Habilitar acompanhamento de progresso"
-            description="Alunos podem marcar licoes como concluidas."
-            checked={form.progressEnabled}
-            onChange={(event) => setForm({ ...form, progressEnabled: event.target.checked })}
-          />
 
           <div className="flex items-center justify-between gap-2 pt-2">
             <Button variant="ghost" onClick={() => setStep(1)}>

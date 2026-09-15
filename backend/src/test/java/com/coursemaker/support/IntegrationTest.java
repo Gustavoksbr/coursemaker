@@ -57,12 +57,17 @@ public abstract class IntegrationTest {
         fixtures = new Fixtures(mvc, json, jdbc);
     }
 
+    /**
+     * {@code areas} is reference data seeded once by migration V19 (every course/post/trilha
+     * requires one), not per-test content - wiping it here would leave every test needing a fresh
+     * one of its own instead of the one migrations already provide.
+     */
     private void truncateAllTables() {
         List<String> tables = jdbc.queryForList("""
                 SELECT tablename
                 FROM pg_tables
                 WHERE schemaname = 'public'
-                  AND tablename <> 'flyway_schema_history'
+                  AND tablename NOT IN ('flyway_schema_history', 'areas')
                 """, String.class);
         if (!tables.isEmpty()) {
             jdbc.execute("TRUNCATE TABLE " + String.join(", ", tables) + " RESTART IDENTITY CASCADE");

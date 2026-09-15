@@ -10,8 +10,12 @@ import { cn } from '@/lib/cn'
 /**
  * Renders one content block, exactly as the public view shows it — the editor's preview mode reuses
  * this component so what you see really is what gets published.
+ *
+ * `answeredQuestionBlockIds`/`onAnswerQuestion` are only meaningful for a QUESTION block viewed in
+ * a gradable lesson (see CourseViewPage); every other caller (post view, editor preview) omits them
+ * and QuestionBlock falls back to its plain, ungraded quiz behaviour.
  */
-export function BlockRenderer({ block }) {
+export function BlockRenderer({ block, answeredQuestionBlockIds, onAnswerQuestion }) {
   switch (block.type) {
     case BLOCK_TYPE.TEXT:
       return <TextBlock html={block.content} />
@@ -22,7 +26,13 @@ export function BlockRenderer({ block }) {
     case BLOCK_TYPE.VIDEO:
       return <VideoBlock url={block.content} />
     case BLOCK_TYPE.QUESTION:
-      return <QuestionBlock content={block.content} />
+      return (
+        <QuestionBlock
+          content={block.content}
+          answeredCorrectly={answeredQuestionBlockIds?.has(block.id) ?? false}
+          onAnswered={onAnswerQuestion ? (alternativeId) => onAnswerQuestion(block.id, alternativeId) : undefined}
+        />
+      )
     default:
       return (
         <p className="flex items-center gap-2 text-sm text-slate-500">
@@ -73,7 +83,13 @@ function VideoBlock({ url }) {
 }
 
 /** The full list of blocks, in order. */
-export function BlockList({ blocks, className, emptyMessage = 'Esta licao ainda nao tem conteudo.' }) {
+export function BlockList({
+  blocks,
+  className,
+  emptyMessage = 'Esta licao ainda nao tem conteudo.',
+  answeredQuestionBlockIds,
+  onAnswerQuestion,
+}) {
   if (!blocks?.length) {
     return <p className={cn('text-sm text-slate-500', className)}>{emptyMessage}</p>
   }
@@ -81,7 +97,13 @@ export function BlockList({ blocks, className, emptyMessage = 'Esta licao ainda 
   return (
     <div className={cn('space-y-6', className)}>
       {blocks.map((block) => (
-        <BlockRenderer key={block.id ?? block.tempId} block={block} />
+        <div key={block.id ?? block.tempId} id={block.id ? `block-${block.id}` : undefined}>
+          <BlockRenderer
+            block={block}
+            answeredQuestionBlockIds={answeredQuestionBlockIds}
+            onAnswerQuestion={onAnswerQuestion}
+          />
+        </div>
       ))}
     </div>
   )

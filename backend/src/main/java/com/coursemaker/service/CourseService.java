@@ -29,6 +29,7 @@ import com.coursemaker.repository.LessonBlockRepository;
 import com.coursemaker.repository.LessonCompletionRepository;
 import com.coursemaker.repository.LessonRepository;
 import com.coursemaker.repository.ModuleRepository;
+import com.coursemaker.repository.QuestionAnswerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -67,6 +68,7 @@ public class CourseService {
     private final LessonRepository lessonRepository;
     private final LessonBlockRepository lessonBlockRepository;
     private final LessonCompletionRepository lessonCompletionRepository;
+    private final QuestionAnswerRepository questionAnswerRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final CourseAccessService accessService;
     private final CourseMapper courseMapper;
@@ -179,7 +181,6 @@ public class CourseService {
                 .status(CourseStatus.UNAVAILABLE)
                 .passwordHash(passwordHash)
                 .categories(normalizeCategories(request.categories()))
-                .progressEnabled(Boolean.TRUE.equals(request.progressEnabled()))
                 .build();
 
         Course saved = courseRepository.save(course);
@@ -231,9 +232,6 @@ public class CourseService {
         }
         if (request.categories() != null) {
             course.setCategories(normalizeCategories(request.categories()));
-        }
-        if (request.progressEnabled() != null) {
-            course.setProgressEnabled(request.progressEnabled());
         }
         if (request.areaId() != null) {
             course.setArea(areaRepository.findById(request.areaId())
@@ -302,11 +300,14 @@ public class CourseService {
         List<ModuleResponse> modules = canViewContent ? buildCurriculum(course, viewer) : List.of();
 
         ProgressResponse progress = null;
-        if (course.isProgressEnabled() && viewer != null && canViewContent) {
+        List<UUID> answeredQuestionBlockIds = List.of();
+        if (viewer != null && canViewContent) {
             List<UUID> completed = lessonCompletionRepository.findCompletedLessonIds(viewer.getId(), course.getId());
             long total = lessonRepository.countByCourseId(course.getId());
             int percentage = total == 0 ? 0 : (int) Math.round(completed.size() * 100.0 / total);
             progress = new ProgressResponse(completed.size(), total, percentage, completed);
+            answeredQuestionBlockIds =
+                    questionAnswerRepository.findCorrectlyAnsweredBlockIdsForCourse(viewer.getId(), course.getId());
         }
 
         return new CourseDetail(
@@ -317,7 +318,8 @@ public class CourseService {
                 canViewContent,
                 course.isPrivate() && !canViewContent,
                 course.getPasswordHash() != null,
-                progress);
+                progress,
+                answeredQuestionBlockIds);
     }
 
     private List<ModuleResponse> buildCurriculum(Course course, User viewer) {
@@ -337,7 +339,7 @@ public class CourseService {
                 : lessonBlockRepository.findAllByLessonIdIn(lessonIds).stream()
                         .collect(Collectors.groupingBy(block -> block.getLesson().getId()));
 
-        Set<UUID> completed = (course.isProgressEnabled() && viewer != null)
+        Set<UUID> completed = viewer != null
                 ? new HashSet<>(lessonCompletionRepository.findCompletedLessonIds(viewer.getId(), course.getId()))
                 : Set.of();
 

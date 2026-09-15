@@ -36,6 +36,10 @@ public class RateLimitService {
         return "login:" + email.toLowerCase();
     }
 
+    public static String passwordResetKey(String email) {
+        return "password-reset:" + email.toLowerCase();
+    }
+
     public static String privateCourseKey(UUID courseId, UUID userId) {
         return "private-course:" + courseId + ":" + userId;
     }

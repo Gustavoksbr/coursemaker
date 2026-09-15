@@ -10,14 +10,24 @@ const LETTERS = 'ABCDEFGHIJ'
  * clicks one: a wrong click reveals only that alternative (red, with its own explanation) so they
  * can keep guessing; the correct click reveals everything at once (its green explanation, plus
  * every other alternative's red explanation), since the answer is settled at that point.
+ *
+ * `onAnswered` (blockId omitted - the caller already knows which block this is) fires once, the
+ * moment the correct alternative is clicked, so the lesson view can persist it and re-check
+ * whether the lesson is now completable. `answeredCorrectly` seeds the reveal-everything state on
+ * mount, so a block already resolved in an earlier visit shows resolved again instead of asking
+ * the student to click through it a second time just to unlock "Concluir aula".
  */
-export function QuestionBlock({ content }) {
+export function QuestionBlock({ content, answeredCorrectly = false, onAnswered }) {
   const { alternatives } = parseQuestionContent(content)
-  const [revealedIds, setRevealedIds] = useState(() => new Set())
+  const [revealedIds, setRevealedIds] = useState(() =>
+    answeredCorrectly ? new Set(alternatives.map((item) => item.id)) : new Set(),
+  )
+  const resolved = alternatives.some((alternative) => alternative.correct && revealedIds.has(alternative.id))
 
   const reveal = (alternative) => {
     if (alternative.correct) {
       setRevealedIds(new Set(alternatives.map((item) => item.id)))
+      if (!resolved) onAnswered?.(alternative.id)
     } else {
       setRevealedIds((current) => new Set(current).add(alternative.id))
     }
@@ -29,15 +39,22 @@ export function QuestionBlock({ content }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-slate-400">Selecione uma alternativa:</p>
-        {revealedIds.size > 0 && (
-          <button
-            type="button"
-            onClick={clear}
-            className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200"
-          >
-            <RotateCcw size={13} /> Limpar
-          </button>
-        )}
+        <div className="flex shrink-0 items-center gap-3">
+          {onAnswered && !resolved && (
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300">
+              Pendente
+            </span>
+          )}
+          {revealedIds.size > 0 && (
+            <button
+              type="button"
+              onClick={clear}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200"
+            >
+              <RotateCcw size={13} /> Limpar
+            </button>
+          )}
+        </div>
       </div>
 
       <ul className="space-y-2">

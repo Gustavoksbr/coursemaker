@@ -9,6 +9,7 @@ import uuid
 from .config import Config
 from .content_generator import generate_course_skeleton, generate_module_content_and_quiz
 from .http_client import HttpClient
+from .thumbnail import placeholder_thumbnail
 
 # A short pause between Groq calls spreads out token usage instead of bursting it, which
 # measurably cuts how often the free-tier TPM rate limit gets hit (see groq_client.py - it now
@@ -51,6 +52,7 @@ def _build_one_course(http: HttpClient, config: Config, areas: list[dict], index
         "name": skeleton["name"],
         "description": skeleton["description"],
         "landingDescription": skeleton["landingDescription"],
+        "thumbnailUrl": placeholder_thumbnail(skeleton["name"]),
         "visibility": "public",
         "categories": skeleton["categories"],
         "areaId": random.choice(areas)["id"],

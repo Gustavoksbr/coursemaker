@@ -13,7 +13,7 @@ export default function LoginPage() {
   const { login, loginWithGoogle, isAuthenticated, loading: bootstrapping } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ identifier: '', password: '' })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -36,7 +36,7 @@ export default function LoginPage() {
     setErrors({})
     setFormError('')
     try {
-      afterAuth(await login(form.email.trim(), form.password))
+      afterAuth(await login(form.identifier.trim(), form.password))
     } catch (error) {
       setErrors(fieldErrors(error))
       setFormError(errorMessage(error, 'Nao foi possivel entrar.'))
@@ -78,18 +78,18 @@ export default function LoginPage() {
           </div>
         )}
 
-        <Field label="Email" htmlFor="email" error={errors.email} required>
+        <Field label="Email ou usuario" htmlFor="identifier" error={errors.identifier} required>
           <Input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
+            id="identifier"
+            name="identifier"
+            type="text"
+            autoComplete="username"
             required
             maxLength={LIMITS.EMAIL}
-            invalid={Boolean(errors.email)}
-            value={form.email}
-            onChange={(event) => setForm({ ...form, email: event.target.value })}
-            placeholder="voce@exemplo.com"
+            invalid={Boolean(errors.identifier)}
+            value={form.identifier}
+            onChange={(event) => setForm({ ...form, identifier: event.target.value })}
+            placeholder="voce@exemplo.com ou seu-usuario"
           />
         </Field>
 
@@ -107,6 +107,12 @@ export default function LoginPage() {
             placeholder="••••••••"
           />
         </Field>
+
+        <div className="text-right">
+          <Link to="/esqueci-senha" className="text-xs font-medium text-brand-400 hover:text-brand-300">
+            Esqueci minha senha
+          </Link>
+        </div>
 
         <Button type="submit" loading={submitting} className="w-full">
           Entrar

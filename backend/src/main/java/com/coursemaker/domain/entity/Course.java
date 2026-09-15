@@ -89,10 +89,6 @@ public class Course {
     @Builder.Default
     private boolean featured = false;
 
-    @Column(name = "progress_enabled", nullable = false)
-    @Builder.Default
-    private boolean progressEnabled = false;
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

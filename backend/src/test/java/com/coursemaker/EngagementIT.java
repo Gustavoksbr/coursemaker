@@ -71,7 +71,6 @@ class EngagementIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 4);
-        fixtures.enableProgress(owner, curriculum.courseId());
 
         JsonNode afterOne = postOk("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete",
                 null, student.caller());
@@ -95,7 +94,6 @@ class EngagementIT extends IntegrationTest {
         TestUser bruno = fixtures.user("bruno");
         TestUser carla = fixtures.user("carla");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 2);
-        fixtures.enableProgress(owner, curriculum.courseId());
 
         postOk("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete", null, bruno.caller());
 
@@ -111,7 +109,6 @@ class EngagementIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 2);
-        fixtures.enableProgress(owner, curriculum.courseId());
         postOk("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete", null, student.caller());
 
         JsonNode lessons = getOk("/api/v1/courses/" + curriculum.courseId(), student.caller())
@@ -122,14 +119,16 @@ class EngagementIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("nao registra progresso quando o curso nao habilitou")
-    void rejectsProgressWhenDisabled() throws Exception {
+    @DisplayName("todo curso acompanha progresso, sem precisar habilitar nada")
+    void tracksProgressByDefault() throws Exception {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
 
-        post("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete", null, student.caller())
-                .andExpect(status().isBadRequest());
+        JsonNode progress = postOk("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete",
+                null, student.caller());
+        assertThat(progress.get("completedLessons").asLong()).isEqualTo(1);
+        assertThat(progress.get("percentage").asInt()).isEqualTo(100);
     }
 
     // --------------------------------------------------------------- comments

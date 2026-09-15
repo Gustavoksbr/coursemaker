@@ -3,12 +3,16 @@ package com.coursemaker.service;
 import com.coursemaker.domain.entity.CompositeIds.UserLessonId;
 import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.Lesson;
+import com.coursemaker.domain.entity.LessonBlock;
 import com.coursemaker.domain.entity.LessonCompletion;
 import com.coursemaker.domain.entity.User;
+import com.coursemaker.domain.enums.BlockType;
 import com.coursemaker.dto.course.CourseDtos.ProgressResponse;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
+import com.coursemaker.repository.LessonBlockRepository;
 import com.coursemaker.repository.LessonCompletionRepository;
 import com.coursemaker.repository.LessonRepository;
+import com.coursemaker.repository.QuestionAnswerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,13 +20,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-/** Lesson completion tracking, only available when the course opts in via {@code progressEnabled}. */
+/** Lesson completion tracking - every course has it, gated only by whether it has lessons at all
+ * (see EnrollmentService#isFinished). */
 @Service
 @RequiredArgsConstructor
 public class ProgressService {
 
     private final LessonCompletionRepository completionRepository;
     private final LessonRepository lessonRepository;
+    private final LessonBlockRepository lessonBlockRepository;
+    private final QuestionAnswerRepository questionAnswerRepository;
     private final LessonService lessonService;
     private final CourseService courseService;
 
@@ -30,7 +37,7 @@ public class ProgressService {
     public ProgressResponse markComplete(UUID lessonId, User user) {
         Lesson lesson = lessonService.loadVisible(lessonId, user);
         Course course = lesson.getModule().getCourse();
-        requireProgressEnabled(course);
+        requireQuestionsAnswered(lessonId, user);
 
         UserLessonId key = new UserLessonId(user.getId(), lessonId);
         if (!completionRepository.existsById(key)) {
@@ -43,7 +50,6 @@ public class ProgressService {
     public ProgressResponse markIncomplete(UUID lessonId, User user) {
         Lesson lesson = lessonService.loadVisible(lessonId, user);
         Course course = lesson.getModule().getCourse();
-        requireProgressEnabled(course);
 
         completionRepository.deleteById(new UserLessonId(user.getId(), lessonId));
         return progressOf(course, user);
@@ -62,9 +68,24 @@ public class ProgressService {
         return new ProgressResponse(completed.size(), total, percentage, completed);
     }
 
-    private void requireProgressEnabled(Course course) {
-        if (!course.isProgressEnabled()) {
-            throw new BadRequestException("Este curso nao acompanha progresso de licoes");
+    /**
+     * A lesson with QUESTION blocks cannot be marked complete until every one of them has a correct
+     * answer on record - no more finishing a lesson by simply clicking through it. See
+     * LessonBlockService#answer for where that record is written.
+     */
+    private void requireQuestionsAnswered(UUID lessonId, User user) {
+        List<UUID> questionBlockIds = lessonBlockRepository.findByLessonOrdered(lessonId).stream()
+                .filter(block -> block.getType() == BlockType.QUESTION)
+                .map(LessonBlock::getId)
+                .toList();
+        if (questionBlockIds.isEmpty()) {
+            return;
+        }
+        List<UUID> answeredCorrectly =
+                questionAnswerRepository.findCorrectlyAnsweredBlockIds(user.getId(), questionBlockIds);
+        if (answeredCorrectly.size() < questionBlockIds.size()) {
+            throw new BadRequestException(
+                    "Responda corretamente todas as questoes desta licao antes de concluir");
         }
     }
 }

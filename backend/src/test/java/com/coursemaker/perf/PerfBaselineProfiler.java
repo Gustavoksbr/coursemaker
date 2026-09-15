@@ -235,14 +235,13 @@ class PerfBaselineProfiler extends IntegrationTest {
         List<Fixtures.TestUser> others = List.of(
                 fixtures.user("autora"), fixtures.user("autorb"), fixtures.user("autorc"));
 
-        // 30 published courses, round-robin across four authors, half of them progress-tracked.
+        // 30 published courses, round-robin across four authors.
         List<UUID> courses = new ArrayList<>();
         for (int i = 0; i < 30; i++) {
             Fixtures.TestUser author = i % 4 == 0 ? owner : others.get(i % 3);
             UUID id = fixtures.draftCourse(author, courseName(i));
             call("PATCH", "/api/v1/courses/" + id, Map.of(
                     "status", "available",
-                    "progressEnabled", i % 2 == 0,
                     "categories", List.of(i % 3 == 0 ? "java" : "web", "backend")), author.token());
             courses.add(id);
         }

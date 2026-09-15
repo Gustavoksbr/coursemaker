@@ -31,7 +31,7 @@ import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
-import { completeLesson, courseKeys, enroll, getCourseBySlug, unenroll } from '@/api/courses'
+import { answerQuestionBlock, completeLesson, courseKeys, enroll, getCourseBySlug, unenroll } from '@/api/courses'
 import { courseHref } from '@/lib/contentLinks'
 import { errorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -65,6 +65,17 @@ function patchLessonCompleted(queryClient, queryKey, lessonId, completed) {
   })
 }
 
+/** Adds a correctly-answered QUESTION block id to the cached course detail, idempotently. */
+function patchQuestionAnswered(queryClient, queryKey, blockId) {
+  queryClient.setQueryData(queryKey, (current) => {
+    if (!current || current.answeredQuestionBlockIds?.includes(blockId)) return current
+    return {
+      ...current,
+      answeredQuestionBlockIds: [...(current.answeredQuestionBlockIds ?? []), blockId],
+    }
+  })
+}
+
 export default function CourseViewPage() {
   const { nickname, slug } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -84,6 +95,10 @@ export default function CourseViewPage() {
   const detail = courseQuery.data
   const course = detail?.summary
   const lessons = useMemo(() => flattenLessons(detail?.modules), [detail?.modules])
+  const answeredQuestionBlockIds = useMemo(
+    () => new Set(detail?.answeredQuestionBlockIds ?? []),
+    [detail?.answeredQuestionBlockIds],
+  )
 
   const activeLessonId = searchParams.get('lesson')
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) ?? null
@@ -126,6 +141,18 @@ export default function CourseViewPage() {
     })
   }
 
+  /** Persists a correct answer as soon as it happens - independent of "Concluir aula", which only
+   *  re-checks that this is already done instead of triggering it. A wrong pick is never sent. */
+  const answerQuestion = (blockId, alternativeId) => {
+    answerQuestionBlock(blockId, alternativeId)
+      .then((result) => {
+        if (result.correct) {
+          patchQuestionAnswered(queryClient, courseKeys.bySlug(nickname, slug), blockId)
+        }
+      })
+      .catch((error) => toast.error(errorMessage(error, 'Nao foi possivel registrar a resposta.')))
+  }
+
   if (courseQuery.isPending) return <CourseLandingSkeleton />
 
   if (courseQuery.isError) {
@@ -156,7 +183,7 @@ export default function CourseViewPage() {
         {detail.canViewContent && detail.modules.length > 0 && sidebarOpen && (
           <aside className="hidden w-72 shrink-0 border-r border-slate-800 lg:block">
             <div className="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto p-3">
-              {!detail.isOwner && course.progressEnabled && detail.progress && (
+              {!detail.isOwner && detail.progress && (
                 <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/60 p-3">
                   <ProgressBar
                     completed={detail.progress.completedLessons}
@@ -170,7 +197,6 @@ export default function CourseViewPage() {
                 modules={detail.modules}
                 activeLessonId={activeLessonId}
                 onSelectLesson={selectLesson}
-                progressEnabled={course.progressEnabled}
               />
             </div>
           </aside>
@@ -188,7 +214,9 @@ export default function CourseViewPage() {
               sidebarOpen={sidebarOpen}
               onToggleSidebar={() => setSidebarOpen((open) => !open)}
               onCompleteLesson={markLessonComplete}
-              canTrackProgress={course.progressEnabled && isAuthenticated && !detail.isOwner}
+              canTrackProgress={isAuthenticated && !detail.isOwner}
+              answeredQuestionBlockIds={answeredQuestionBlockIds}
+              onAnswerQuestion={answerQuestion}
             />
           ) : (
             <Landing
@@ -208,7 +236,9 @@ export default function CourseViewPage() {
         </div>
       </div>
 
-      {detail.canViewContent && <ChatWidget kind="course" contentId={course.id} />}
+      {detail.canViewContent && (
+        <ChatWidget kind="course" contentId={course.id} raised={Boolean(activeLesson)} />
+      )}
 
       <PrivatePasswordModal
         open={passwordOpen}
@@ -314,7 +344,7 @@ export function Landing({
         )}
       </div>
 
-      {!isOwner && course.progressEnabled && detail.progress && (
+      {!isOwner && detail.progress && (
         <div className="space-y-3">
           <ProgressBar
             completed={detail.progress.completedLessons}
@@ -363,7 +393,6 @@ export function Landing({
               modules={detail.modules}
               activeLessonId={null}
               onSelectLesson={onSelectLesson}
-              progressEnabled={course.progressEnabled}
             />
           </div>
         )}
@@ -398,6 +427,8 @@ export function LessonView({
   onToggleSidebar,
   onCompleteLesson,
   canTrackProgress,
+  answeredQuestionBlockIds,
+  onAnswerQuestion,
 }) {
   // Blocks are now loaded with the course - no additional API call needed!
   const blocks = lesson.blocks || []
@@ -405,8 +436,24 @@ export function LessonView({
   const previous = activeIndex > 0 ? lessons[activeIndex - 1] : null
   const next = activeIndex < lessons.length - 1 ? lessons[activeIndex + 1] : null
 
+  // A lesson with QUESTION blocks cannot be completed until every one of them has been answered
+  // correctly - the backend enforces this too (see ProgressService#markComplete), this is just
+  // what keeps the button itself from ever attempting a completion that would be rejected.
+  const pendingQuestionBlockIds = canTrackProgress
+    ? blocks
+        .filter((block) => block.type === 'question' && !answeredQuestionBlockIds?.has(block.id))
+        .map((block) => block.id)
+    : []
+  const hasPendingQuestions = pendingQuestionBlockIds.length > 0
+
+  const scrollToFirstPending = () => {
+    document.getElementById(`block-${pendingQuestionBlockIds[0]}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   // Advancing always navigates immediately; marking the lesson complete (if this course tracks
-  // progress) happens in the background and never blocks that navigation.
+  // progress) happens in the background and never blocks that navigation. Pending questions are
+  // the one thing that does block it: advance() simply isn't wired to the button in that case.
   const advance = () => {
     if (canTrackProgress && !lesson.completed) onCompleteLesson(lesson.id)
     if (next) onSelectLesson(next.id)
@@ -446,13 +493,28 @@ export function LessonView({
             Esta licao ainda nao tem conteudo.
           </p>
         ) : (
-          <BlockList blocks={blocks} />
+          <BlockList
+            blocks={blocks}
+            answeredQuestionBlockIds={answeredQuestionBlockIds}
+            onAnswerQuestion={onAnswerQuestion}
+          />
         )}
       </article>
 
       {/* Fixed to the viewport (not just the end of the article) so advancing never requires
         scrolling down to find it. */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
+        {hasPendingQuestions && (
+          <button
+            type="button"
+            onClick={scrollToFirstPending}
+            className="block w-full border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-xs font-medium text-amber-300 underline-offset-2 hover:underline sm:px-6"
+          >
+            {pendingQuestionBlockIds.length === 1
+              ? 'Responda a questao pendente desta aula para continuar'
+              : `Responda as ${pendingQuestionBlockIds.length} questoes pendentes desta aula para continuar`}
+          </button>
+        )}
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <button
             type="button"
@@ -463,7 +525,7 @@ export function LessonView({
             <ChevronLeft size={16} />
             <span className="min-w-0 truncate">{previous?.title}</span>
           </button>
-          <Button onClick={advance} className="min-w-0">
+          <Button onClick={advance} className="min-w-0" disabled={hasPendingQuestions}>
             <span className="min-w-0 truncate">{next ? 'Proxima aula' : 'Concluir curso'}</span>
             {next ? <ChevronRight size={16} /> : <CheckCircle2 size={16} />}
           </Button>

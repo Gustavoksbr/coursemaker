@@ -140,4 +140,19 @@ public final class CompositeIds {
         @Column(name = "user_id", nullable = false)
         private UUID userId;
     }
+
+    @Embeddable
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    public static class UserBlockId implements Serializable {
+
+        @Column(name = "user_id", nullable = false)
+        private UUID userId;
+
+        @Column(name = "block_id", nullable = false)
+        private UUID blockId;
+    }
 }

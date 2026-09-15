@@ -135,6 +135,12 @@ export async function reorderLessonBlocks(lessonId, ids) {
   return data
 }
 
+/** Submits the chosen alternative for a QUESTION block; never rejects on a wrong pick. */
+export async function answerQuestionBlock(blockId, alternativeId) {
+  const { data } = await api.post(`/blocks/${blockId}/answer`, { alternativeId })
+  return data
+}
+
 // ----------------------------------------------------- enrollment and progress
 
 export async function enroll(courseId, password) {

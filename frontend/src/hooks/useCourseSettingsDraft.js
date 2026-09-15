@@ -11,7 +11,6 @@ function baselineFrom(course, landingDescription) {
     thumbnailUrl: course.thumbnailUrl ?? '',
     visibility: course.visibility,
     categories: course.categories ?? [],
-    progressEnabled: course.progressEnabled,
     // `?? ''` covers a stale backend deploy that predates the areas feature and omits `area`;
     // AreaSelect auto-picks a real area once the list loads, so this self-heals in the UI.
     areaId: course.area?.id ?? '',
@@ -58,7 +57,6 @@ export function useCourseSettingsDraft(course, landingDescription, courseQueryKe
         thumbnailUrl: form.thumbnailUrl,
         visibility: form.visibility,
         categories: form.categories,
-        progressEnabled: form.progressEnabled,
         areaId: form.areaId,
         schoolId: form.schoolId || undefined,
         removeSchool: !form.schoolId,

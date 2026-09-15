@@ -111,7 +111,7 @@ export function CourseLandingSkeleton() {
                 <Skeleton className="h-6 w-full" />
 
                 {/* Author and actions */}
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Skeleton className="h-10 w-10 rounded-full" />
                         <div className="space-y-1">
@@ -131,7 +131,7 @@ export function CourseLandingSkeleton() {
 
             {/* Stats */}
             <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-5 py-4">
-                <div className="flex gap-6">
+                <div className="flex flex-wrap gap-6">
                     <Skeleton className="h-12 w-24" />
                     <Skeleton className="h-12 w-24" />
                     <Skeleton className="h-12 w-40" />

@@ -185,8 +185,7 @@ public class TrilhaMapper {
     }
 
     /**
-     * Batch-loads course progress for all courses that have progress tracking
-     * enabled.
+     * Batch-loads course progress for every course in the trilha.
      * Makes 2 queries total instead of 2*N queries.
      */
     private Map<UUID, ProgressResponse> buildCourseProgressBatch(List<Course> courses, User viewer) {
@@ -194,15 +193,7 @@ public class TrilhaMapper {
             return Map.of();
         }
 
-        List<Course> trackableCourses = courses.stream()
-                .filter(Course::isProgressEnabled)
-                .toList();
-
-        if (trackableCourses.isEmpty()) {
-            return Map.of();
-        }
-
-        List<UUID> courseIds = trackableCourses.stream().map(Course::getId).toList();
+        List<UUID> courseIds = courses.stream().map(Course::getId).toList();
 
         // Batch: Load lesson counts for all courses
         Map<UUID, Long> lessonCounts = new HashMap<>();
@@ -220,7 +211,7 @@ public class TrilhaMapper {
 
         // Build progress map
         Map<UUID, ProgressResponse> result = new HashMap<>();
-        for (Course course : trackableCourses) {
+        for (Course course : courses) {
             List<UUID> completed = completionsByCourse.getOrDefault(course.getId(), List.of());
             long total = lessonCounts.getOrDefault(course.getId(), 0L);
             int percentage = total == 0 ? 0 : (int) Math.round(completed.size() * 100.0 / total);
@@ -260,7 +251,7 @@ public class TrilhaMapper {
     private TrilhaItemResponse toItemResponseLegacy(TrilhaItem item, User viewer, Set<UUID> completed) {
         Course course = item.getCourse();
         ProgressResponse courseProgress = null;
-        if (course != null && course.isProgressEnabled() && viewer != null) {
+        if (course != null && viewer != null) {
             List<UUID> completedLessons = lessonCompletionRepository.findCompletedLessonIds(viewer.getId(),
                     course.getId());
             long total = lessonRepository.countByCourseId(course.getId());

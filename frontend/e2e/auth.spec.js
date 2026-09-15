@@ -52,7 +52,7 @@ test.describe('autenticacao', () => {
     const { email } = await createTestUser(api)
 
     await page.goto('/login')
-    await page.locator('#email').fill(email)
+    await page.locator('#identifier').fill(email)
     await page.locator('#password').fill('senha-completamente-errada')
     await page.getByRole('button', { name: 'Entrar' }).click()
 
@@ -65,7 +65,7 @@ test.describe('autenticacao', () => {
 
     await page.goto('/login')
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      await page.locator('#email').fill(email)
+      await page.locator('#identifier').fill(email)
       await page.locator('#password').fill('senha-errada-' + attempt)
       await page.getByRole('button', { name: 'Entrar' }).click()
       // Wait for this attempt's request to resolve before firing the next one.
@@ -73,7 +73,7 @@ test.describe('autenticacao', () => {
       await expect(page.getByRole('button', { name: 'Entrar' })).toBeEnabled()
     }
 
-    await page.locator('#email').fill(email)
+    await page.locator('#identifier').fill(email)
     await page.locator('#password').fill('mais-uma-tentativa')
     await page.getByRole('button', { name: 'Entrar' }).click()
 

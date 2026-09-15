@@ -144,4 +144,12 @@ public final class CurriculumDtos {
          */
         public record ReorderRequest(@NotEmpty List<UUID> ids) {
         }
+
+        // ------------------------------------------------------------ question answers
+
+        public record AnswerBlockRequest(@NotBlank @Size(max = 100) String alternativeId) {
+        }
+
+        public record AnswerBlockResponse(UUID blockId, boolean correct) {
+        }
 }

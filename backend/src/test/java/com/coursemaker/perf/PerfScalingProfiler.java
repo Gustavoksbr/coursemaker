@@ -281,15 +281,16 @@ class PerfScalingProfiler extends IntegrationTest {
     // ------------------------------------------------------------------ bulk seeding
 
     private List<UUID> bulkCourses(UUID ownerId) {
+        UUID areaId = defaultAreaId();
         List<UUID> ids = new ArrayList<>();
         List<Object[]> batch = new ArrayList<>();
         for (int i = 0; i < COURSES; i++) {
             UUID id = UUID.randomUUID();
             ids.add(id);
             batch.add(new Object[] { id, ownerId, "Curso java " + i, "curso-" + i,
-                    "Descricao do curso " + i, i % 2 == 0 });
+                    "Descricao do curso " + i, areaId });
         }
-        jdbc.batchUpdate("INSERT INTO courses (id, owner_id, name, slug, description, progress_enabled, "
+        jdbc.batchUpdate("INSERT INTO courses (id, owner_id, name, slug, description, area_id, "
                 + "status, visibility, categories) VALUES (?, ?, ?, ?, ?, ?, 'available', 'public', "
                 + "'{java,backend}'::text[])", batch);
         // Every course gets one module + two lessons, so lesson counts are never trivially zero.
@@ -300,16 +301,23 @@ class PerfScalingProfiler extends IntegrationTest {
     }
 
     private List<UUID> bulkTrilhas(UUID ownerId) {
+        UUID areaId = defaultAreaId();
         List<UUID> ids = new ArrayList<>();
         List<Object[]> batch = new ArrayList<>();
         for (int i = 0; i < 60; i++) {
             UUID id = UUID.randomUUID();
             ids.add(id);
-            batch.add(new Object[] { id, ownerId, "Trilha java " + i, "trilha-" + i, "Descricao " + i });
+            batch.add(new Object[] { id, ownerId, "Trilha java " + i, "trilha-" + i, "Descricao " + i, areaId });
         }
-        jdbc.batchUpdate("INSERT INTO trilhas (id, owner_id, title, slug, description, status, visibility, "
-                + "categories) VALUES (?, ?, ?, ?, ?, 'available', 'public', '{java}'::text[])", batch);
+        jdbc.batchUpdate("INSERT INTO trilhas (id, owner_id, title, slug, description, area_id, status, "
+                + "visibility, categories) VALUES (?, ?, ?, ?, ?, ?, 'available', 'public', '{java}'::text[])",
+                batch);
         return ids;
+    }
+
+    /** The "Programação" area seeded once by migration V19 - every course/trilha needs one. */
+    private UUID defaultAreaId() {
+        return jdbc.queryForObject("SELECT id FROM areas WHERE slug = 'programacao'", UUID.class);
     }
 
     private void curriculum(UUID courseId, int modules, int lessonsPerModule, int blocksPerLesson) {

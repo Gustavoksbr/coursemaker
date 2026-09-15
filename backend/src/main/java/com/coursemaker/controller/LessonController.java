@@ -1,6 +1,8 @@
 package com.coursemaker.controller;
 
 import com.coursemaker.config.AuthenticatedUser;
+import com.coursemaker.dto.curriculum.CurriculumDtos.AnswerBlockRequest;
+import com.coursemaker.dto.curriculum.CurriculumDtos.AnswerBlockResponse;
 import com.coursemaker.dto.curriculum.CurriculumDtos.BlockResponse;
 import com.coursemaker.dto.curriculum.CurriculumDtos.CreateBlockRequest;
 import com.coursemaker.dto.curriculum.CurriculumDtos.CreateLessonRequest;
@@ -119,5 +121,13 @@ public class LessonController {
                                              @Valid @RequestBody ReorderRequest request,
                                              @AuthenticationPrincipal AuthenticatedUser principal) {
         return blockService.reorder(lessonId, request.ids(), principal.user());
+    }
+
+    @Operation(summary = "Registra a alternativa escolhida em um bloco de questao")
+    @PostMapping("/api/v1/blocks/{id}/answer")
+    public AnswerBlockResponse answer(@PathVariable UUID id,
+                                      @Valid @RequestBody AnswerBlockRequest request,
+                                      @AuthenticationPrincipal AuthenticatedUser principal) {
+        return blockService.answer(id, request, principal.user());
     }
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Checkbox, Field, Input, Select, Textarea } from '@/components/ui/Field'
+import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
 import { AreaSelect } from '@/components/ui/AreaSelect'
 import { SchoolSelect } from '@/components/ui/SchoolSelect'
@@ -202,12 +202,6 @@ export function CourseSettingsPanel({ course, draft, courseQueryKey, onDeleted, 
             onChange={(schoolId) => setField({ schoolId })}
           />
 
-          <Checkbox
-            label="Acompanhamento de progresso"
-            description="Alunos podem marcar licoes como concluidas."
-            checked={form.progressEnabled}
-            onChange={(event) => setField({ progressEnabled: event.target.checked })}
-          />
         </div>
       )}
 
