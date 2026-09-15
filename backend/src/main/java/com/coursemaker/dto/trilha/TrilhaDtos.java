@@ -35,6 +35,7 @@ public final class TrilhaDtos {
             CourseStatus status,
             List<String> categories,
             boolean featured,
+            boolean blockedByAdmin,
             AreaSummary area,
             SchoolSummary school,
             UserSummary owner,

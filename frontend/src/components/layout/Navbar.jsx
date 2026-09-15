@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
+  Ban,
   Bell,
   Bookmark,
+  Check,
   CheckCheck,
   GraduationCap,
   LogOut,
@@ -35,12 +37,16 @@ const NOTIFICATION_ICON = {
   enrollment: UserPlus,
   trilha_follow: Waypoints,
   comment: MessageSquare,
+  admin_blocked: Ban,
+  admin_unblocked: Check,
 }
 
 const NOTIFICATION_TEXT = {
   enrollment: 'se matriculou em',
   trilha_follow: 'comecou a seguir',
   comment: 'comentou em',
+  admin_blocked: 'bloqueou',
+  admin_unblocked: 'desbloqueou',
 }
 
 

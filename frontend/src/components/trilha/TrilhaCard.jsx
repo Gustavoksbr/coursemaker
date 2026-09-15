@@ -22,6 +22,7 @@ export function TrilhaCard({ trilha }) {
           status={trilha.status}
           visibility={trilha.visibility}
           featured={trilha.featured}
+          blockedByAdmin={trilha.blockedByAdmin}
           school={trilha.school}
         />
 

@@ -72,6 +72,7 @@ public class TrilhaService {
     private final PostRepository postRepository;
     private final TrilhaMapper trilhaMapper;
     private final SlugGeneratorService slugGenerator;
+    private final NotificationService notificationService;
 
     // ------------------------------------------------------------------ reads
 
@@ -299,6 +300,28 @@ public class TrilhaService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Trilha"));
         trilha.setFeatured(!trilha.isFeatured());
         return trilhaMapper.toSummary(trilhaRepository.save(trilha), admin);
+    }
+
+    @Transactional
+    public TrilhaSummary toggleBlock(UUID id, User admin) {
+        if (!admin.isAdmin()) {
+            throw new ForbiddenException("Apenas administradores podem bloquear trilhas");
+        }
+        Trilha trilha = trilhaRepository.findByIdWithOwner(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("Trilha"));
+        
+        boolean wasBlocked = trilha.isBlockedByAdmin();
+        trilha.setBlockedByAdmin(!wasBlocked);
+        Trilha saved = trilhaRepository.save(trilha);
+        
+        // Notify owner
+        if (!wasBlocked) {
+            notificationService.notifyTrilhaBlocked(saved, admin);
+        } else {
+            notificationService.notifyTrilhaUnblocked(saved, admin);
+        }
+        
+        return trilhaMapper.toSummary(saved, admin);
     }
 
     // ------------------------------------------------------------------ items

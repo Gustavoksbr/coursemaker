@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Lock, Pencil } from 'lucide-react'
+import { Lock, Mail, Pencil } from 'lucide-react'
 import { ChatWidget } from '@/components/ai/ChatWidget'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -13,6 +13,7 @@ import { BlockList } from '@/components/blocks/BlockRenderer'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
 import { FeatureToggleButton } from '@/components/shared/FeatureToggleButton'
+import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useToast } from '@/context/ToastContext'
 import { getPostBySlug, postKeys } from '@/api/posts'
@@ -81,6 +82,7 @@ export default function PostViewPage() {
             <div className="ml-auto flex items-center gap-2">
               <SaveToLibraryButton kind="post" contentId={post.id} saved={post.savedByMe} onChange={invalidate} />
               <FeatureToggleButton kind="post" contentId={post.id} featured={post.featured} onChanged={invalidate} />
+              <BlockToggleButton kind="post" item={post} onSuccess={invalidate} />
               {detail.isOwner && (
                 <Link to={`/posts/${post.id}/edit`} className="btn-secondary">
                   <Pencil size={16} /> Editar
@@ -100,6 +102,28 @@ export default function PostViewPage() {
                   {category}
                 </Link>
               ))}
+            </div>
+          )}
+
+          {/* Blocked warning for owner */}
+          {detail.isOwner && post.blockedByAdmin && (
+            <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-red-400">Conteúdo bloqueado por administrador</h4>
+                  <p className="mt-1 text-sm text-slate-300">
+                    Este post foi bloqueado por um administrador e não está visível ao público. Entre em contato com a
+                    equipe para mais informações.
+                  </p>
+                </div>
+                <Link
+                  to="/mensagens/admin"
+                  className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm"
+                >
+                  <Mail size={16} />
+                  Falar com admin
+                </Link>
+              </div>
             </div>
           )}
 

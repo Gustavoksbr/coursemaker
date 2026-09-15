@@ -66,7 +66,8 @@ public class CourseMapper {
                         lessonCounts.getOrDefault(course.getId(), 0L),
                         liked.contains(course.getId()),
                         enrolled.contains(course.getId()),
-                        saved.contains(course.getId())))
+                        saved.contains(course.getId()),
+                        viewer))
                 .toList();
     }
 
@@ -76,7 +77,11 @@ public class CourseMapper {
     }
 
     private CourseSummary toSummary(Course course, long likeCount, long enrollmentCount, long lessonCount,
-                                    boolean likedByMe, boolean enrolledByMe, boolean savedByMe) {
+                                    boolean likedByMe, boolean enrolledByMe, boolean savedByMe, User viewer) {
+        // Only show blockedByAdmin to the owner and admins
+        boolean showBlockedStatus = viewer != null && 
+                (course.getOwner().getId().equals(viewer.getId()) || viewer.isAdmin());
+        
         return new CourseSummary(
                 course.getId(),
                 course.getName(),
@@ -87,6 +92,7 @@ public class CourseMapper {
                 course.getStatus(),
                 course.getCategories(),
                 course.isFeatured(),
+                showBlockedStatus && course.isBlockedByAdmin(),
                 AreaSummary.from(course.getArea()),
                 SchoolSummary.from(course.getSchool()),
                 UserSummary.from(course.getOwner()),

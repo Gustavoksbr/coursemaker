@@ -53,6 +53,11 @@ export async function toggleTrilhaFeatured(id) {
   return data
 }
 
+export async function toggleTrilhaBlock(id) {
+  const { data } = await api.post(`/trilhas/${id}/toggle-block`)
+  return data
+}
+
 export async function downloadTrilhaCertificate(id) {
   const { data } = await api.get(`/trilhas/${id}/certificate`, { responseType: 'blob' })
   return data

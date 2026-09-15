@@ -21,6 +21,7 @@ export function PostCard({ post }) {
           status={post.status}
           visibility={post.visibility}
           featured={post.featured}
+          blockedByAdmin={post.blockedByAdmin}
           school={post.school}
         />
 

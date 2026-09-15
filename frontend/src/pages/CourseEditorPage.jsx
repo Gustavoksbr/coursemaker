@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Pencil, Save, X } from 'lucide-react'
+import { Eye, Mail, Pencil, Save, X } from 'lucide-react'
 import { CoursePreview } from '@/components/course/CoursePreview'
 import { CourseSettingsPanel } from '@/components/course/CourseSettingsPanel'
 import { CurriculumEditor } from '@/components/course/CurriculumEditor'
@@ -161,6 +161,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
             status={course.status}
             visibility={course.visibility}
             featured={course.featured}
+            blockedByAdmin={course.blockedByAdmin}
             school={course.school}
           />
 
@@ -188,6 +189,25 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
             <X size={14} /> Cancelar alteracoes
           </button>
         </header>
+
+        {/* Blocked warning */}
+        {course.blockedByAdmin && (
+          <div className="mb-6 rounded-lg border border-red-500/50 bg-red-500/10 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                <h4 className="font-semibold text-red-400">⚠️ Conteúdo bloqueado por administrador</h4>
+                <p className="mt-1 text-sm text-slate-300">
+                  Este curso foi bloqueado e não está visível ao público. Entre em contato com a equipe para mais
+                  informações.
+                </p>
+              </div>
+              <Link to="/mensagens/admin" className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm">
+                <Mail size={16} />
+                Falar com admin
+              </Link>
+            </div>
+          </div>
+        )}
 
         <CourseSettingsPanel
           course={course}

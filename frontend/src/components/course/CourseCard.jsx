@@ -22,6 +22,7 @@ export function CourseCard({ course }) {
           status={course.status}
           visibility={course.visibility}
           featured={course.featured}
+          blockedByAdmin={course.blockedByAdmin}
           school={course.school}
         />
 

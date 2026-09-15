@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Save, X } from 'lucide-react'
+import { Eye, Mail, Save, X } from 'lucide-react'
 import { TrilhaPreview } from '@/components/trilha/TrilhaPreview'
 import { TrilhaSettingsPanel } from '@/components/trilha/TrilhaSettingsPanel'
 import { TrilhaStructureEditor } from '@/components/trilha/TrilhaStructureEditor'
@@ -108,6 +108,7 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
           status={trilha.status}
           visibility={trilha.visibility}
           featured={trilha.featured}
+          blockedByAdmin={trilha.blockedByAdmin}
           school={trilha.school}
         />
 
@@ -136,6 +137,25 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
           <X size={14} /> Cancelar alteracoes
         </button>
       </header>
+
+      {/* Blocked warning */}
+      {trilha.blockedByAdmin && (
+        <div className="mb-6 rounded-lg border border-red-500/50 bg-red-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <h4 className="font-semibold text-red-400">⚠️ Conteúdo bloqueado por administrador</h4>
+              <p className="mt-1 text-sm text-slate-300">
+                Esta trilha foi bloqueada e não está visível ao público. Entre em contato com a equipe para mais
+                informações.
+              </p>
+            </div>
+            <Link to="/mensagens/admin" className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm">
+              <Mail size={16} />
+              Falar com admin
+            </Link>
+          </div>
+        </div>
+      )}
 
       <TrilhaSettingsPanel
         trilha={trilha}

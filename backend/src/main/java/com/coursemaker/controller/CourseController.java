@@ -116,6 +116,13 @@ public class CourseController {
         return courseService.toggleFeatured(id, principal.user());
     }
 
+    @Operation(summary = "Bloqueia ou desbloqueia o curso (apenas admin)")
+    @PostMapping("/{id}/toggle-block")
+    public CourseSummary toggleBlock(@PathVariable UUID id,
+                                     @AuthenticationPrincipal AuthenticatedUser principal) {
+        return courseService.toggleBlock(id, principal.user());
+    }
+
     @Operation(summary = "Baixa o certificado de conclusao do curso em PDF "
             + "(apenas para quem ja concluiu todas as licoes)")
     @GetMapping("/{id}/certificate")

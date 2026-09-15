@@ -43,6 +43,7 @@ public class PostService {
     private final PostMapper postMapper;
     private final SlugGeneratorService slugGenerator;
     private final PasswordHasher passwordHasher;
+    private final NotificationService notificationService;
 
     // ------------------------------------------------------------------ reads
 
@@ -187,6 +188,28 @@ public class PostService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Post"));
         post.setFeatured(!post.isFeatured());
         return postMapper.toSummary(postRepository.save(post), admin);
+    }
+
+    @Transactional
+    public PostSummary toggleBlock(UUID id, User admin) {
+        if (!admin.isAdmin()) {
+            throw new ForbiddenException("Apenas administradores podem bloquear posts");
+        }
+        Post post = postRepository.findByIdWithOwner(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("Post"));
+        
+        boolean wasBlocked = post.isBlockedByAdmin();
+        post.setBlockedByAdmin(!wasBlocked);
+        Post saved = postRepository.save(post);
+        
+        // Notify owner
+        if (!wasBlocked) {
+            notificationService.notifyPostBlocked(saved, admin);
+        } else {
+            notificationService.notifyPostUnblocked(saved, admin);
+        }
+        
+        return postMapper.toSummary(saved, admin);
     }
 
     // ---------------------------------------------------------------- helpers

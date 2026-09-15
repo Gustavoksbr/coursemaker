@@ -44,24 +44,31 @@ public class PostMapper {
                 : new HashSet<>(libraryItemRepository.findSavedPostIds(viewer.getId(), ids));
 
         return posts.stream()
-                .map(post -> new PostSummary(
-                        post.getId(),
-                        post.getTitle(),
-                        post.getSlug(),
-                        post.getDescription(),
-                        post.getThumbnailUrl(),
-                        post.getVisibility(),
-                        post.getStatus(),
-                        post.getCategories(),
-                        post.isFeatured(),
-                        AreaSummary.from(post.getArea()),
-                        SchoolSummary.from(post.getSchool()),
-                        UserSummary.from(post.getOwner()),
-                        likeCounts.getOrDefault(post.getId(), 0L),
-                        liked.contains(post.getId()),
-                        saved.contains(post.getId()),
-                        post.getCreatedAt(),
-                        post.getUpdatedAt()))
+                .map(post -> {
+                    // Only show blockedByAdmin to the owner and admins
+                    boolean showBlockedStatus = viewer != null && 
+                            (post.getOwner().getId().equals(viewer.getId()) || viewer.isAdmin());
+                    
+                    return new PostSummary(
+                            post.getId(),
+                            post.getTitle(),
+                            post.getSlug(),
+                            post.getDescription(),
+                            post.getThumbnailUrl(),
+                            post.getVisibility(),
+                            post.getStatus(),
+                            post.getCategories(),
+                            post.isFeatured(),
+                            showBlockedStatus && post.isBlockedByAdmin(),
+                            AreaSummary.from(post.getArea()),
+                            SchoolSummary.from(post.getSchool()),
+                            UserSummary.from(post.getOwner()),
+                            likeCounts.getOrDefault(post.getId(), 0L),
+                            liked.contains(post.getId()),
+                            saved.contains(post.getId()),
+                            post.getCreatedAt(),
+                            post.getUpdatedAt());
+                })
                 .toList();
     }
 

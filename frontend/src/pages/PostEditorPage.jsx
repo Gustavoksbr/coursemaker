@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff, Save, Trash2, X } from 'lucide-react'
+import { Eye, EyeOff, Mail, Save, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
@@ -216,6 +216,7 @@ export default function PostEditorPage() {
               status={post.status}
               visibility={post.visibility}
               featured={post.featured}
+              blockedByAdmin={post.blockedByAdmin}
               school={post.school}
             />
             <Button
@@ -244,6 +245,25 @@ export default function PostEditorPage() {
           </>
         )}
       </header>
+
+      {/* Blocked warning */}
+      {post?.blockedByAdmin && (
+        <div className="mb-6 rounded-lg border border-red-500/50 bg-red-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <h4 className="font-semibold text-red-400">⚠️ Conteúdo bloqueado por administrador</h4>
+              <p className="mt-1 text-sm text-slate-300">
+                Este post foi bloqueado e não está visível ao público. Entre em contato com a equipe para mais
+                informações.
+              </p>
+            </div>
+            <Link to="/mensagens/admin" className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm">
+              <Mail size={16} />
+              Falar com admin
+            </Link>
+          </div>
+        </div>
+      )}
 
       <section className="space-y-4 rounded-xl border border-slate-700 bg-slate-800/40 p-5">
         <Field

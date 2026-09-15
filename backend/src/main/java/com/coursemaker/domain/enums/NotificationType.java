@@ -12,7 +12,13 @@ public enum NotificationType {
     TRILHA_FOLLOW("trilha_follow"),
 
     /** Someone commented on a course/post/trilha the recipient owns. */
-    COMMENT("comment");
+    COMMENT("comment"),
+
+    /** Admin blocked a course/post/trilha owned by the recipient. */
+    ADMIN_BLOCKED("admin_blocked"),
+
+    /** Admin unblocked a course/post/trilha owned by the recipient. */
+    ADMIN_UNBLOCKED("admin_unblocked");
 
     private final String value;
 

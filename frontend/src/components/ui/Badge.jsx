@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { GraduationCap, Lock, Sparkles, FileEdit } from 'lucide-react'
+import { GraduationCap, Lock, Sparkles, FileEdit, Ban } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { STATUS, VISIBILITY } from '@/lib/constants'
 
@@ -7,6 +7,7 @@ const TONES = {
   draft: 'bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30',
   private: 'bg-violet-500/15 text-violet-300 ring-1 ring-inset ring-violet-500/30',
   featured: 'bg-green-500/15 text-green-300 ring-1 ring-inset ring-green-500/30',
+  blocked: 'bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30',
   neutral: 'bg-slate-700/60 text-slate-300',
   brand: 'bg-brand-500/15 text-brand-300 ring-1 ring-inset ring-brand-500/30',
 }
@@ -20,8 +21,18 @@ export function Badge({ tone = 'neutral', className, children, ...props }) {
 }
 
 /** The draft / private / featured / school badges a course or post card shows, in a fixed order. */
-export function ContentBadges({ status, visibility, featured, school, className }) {
+export function ContentBadges({ status, visibility, featured, blockedByAdmin, school, className }) {
   const badges = []
+
+  // Blocked badge has highest priority - shows first
+  if (blockedByAdmin) {
+    badges.push(
+      <Badge key="blocked" tone="blocked">
+        <Ban size={12} /> Bloqueado
+      </Badge>,
+    )
+  }
+
   if (status === STATUS.UNAVAILABLE) {
     badges.push(
       <Badge key="draft" tone="draft">

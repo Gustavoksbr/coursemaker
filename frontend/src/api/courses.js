@@ -53,6 +53,11 @@ export async function toggleCourseFeatured(id) {
   return data
 }
 
+export async function toggleCourseBlock(id) {
+  const { data } = await api.post(`/courses/${id}/toggle-block`)
+  return data
+}
+
 export async function downloadCourseCertificate(id) {
   const { data } = await api.get(`/courses/${id}/certificate`, { responseType: 'blob' })
   return data

@@ -86,6 +86,10 @@ public class Post {
     @Builder.Default
     private boolean featured = false;
 
+    @Column(name = "blocked_by_admin", nullable = false)
+    @Builder.Default
+    private boolean blockedByAdmin = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -95,7 +99,7 @@ public class Post {
     private Instant updatedAt;
 
     public boolean isPublished() {
-        return status == CourseStatus.AVAILABLE;
+        return status == CourseStatus.AVAILABLE && !blockedByAdmin;
     }
 
     public boolean isPrivate() {

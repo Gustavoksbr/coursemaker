@@ -8,6 +8,7 @@ import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { CertificateButton } from '@/components/shared/CertificateButton'
 import { FeatureToggleButton } from '@/components/shared/FeatureToggleButton'
+import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { TrilhaItemsList } from '@/components/trilha/TrilhaItemsList'
@@ -164,6 +165,11 @@ export default function TrilhaViewPage() {
               featured={trilha.featured}
               onChanged={invalidate}
             />
+            <BlockToggleButton
+              kind="trilha"
+              item={trilha}
+              onSuccess={invalidate}
+            />
             {detail.isOwner ? (
               <Link to={`${trilhaHref(trilha)}/edit`} className="btn-secondary">
                 <Pencil size={16} /> Editar trilha
@@ -183,6 +189,28 @@ export default function TrilhaViewPage() {
             )}
           </div>
         </div>
+
+        {/* Blocked warning for owner */}
+        {detail.isOwner && trilha.blockedByAdmin && (
+          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                <h4 className="font-semibold text-red-400">Conteúdo bloqueado por administrador</h4>
+                <p className="mt-1 text-sm text-slate-300">
+                  Esta trilha foi bloqueada por um administrador e não está visível ao público. Entre em contato com a
+                  equipe para mais informações.
+                </p>
+              </div>
+              <Link
+                to="/mensagens/admin"
+                className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm"
+              >
+                <Mail size={16} />
+                Falar com admin
+              </Link>
+            </div>
+          </div>
+        )}
 
         <Thumbnail src={trilha.thumbnailUrl} alt={trilha.title} className="rounded-xl" />
 

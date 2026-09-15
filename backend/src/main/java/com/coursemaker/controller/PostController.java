@@ -119,6 +119,13 @@ public class PostController {
         return postService.toggleFeatured(id, principal.user());
     }
 
+    @Operation(summary = "Bloqueia ou desbloqueia o post (apenas admin)")
+    @PostMapping("/api/v1/posts/{id}/toggle-block")
+    public PostSummary toggleBlock(@PathVariable UUID id,
+                                   @AuthenticationPrincipal AuthenticatedUser principal) {
+        return postService.toggleBlock(id, principal.user());
+    }
+
     @Operation(summary = "Valida a senha de um post privado e libera o conteudo")
     @PostMapping("/api/v1/posts/private-access/validate")
     public PrivateAccessResponse validatePrivateAccess(

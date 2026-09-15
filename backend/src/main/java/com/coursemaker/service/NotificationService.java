@@ -1,6 +1,9 @@
 package com.coursemaker.service;
 
+import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.Notification;
+import com.coursemaker.domain.entity.Post;
+import com.coursemaker.domain.entity.Trilha;
 import com.coursemaker.domain.entity.User;
 import com.coursemaker.domain.enums.EntityKind;
 import com.coursemaker.domain.enums.NotificationType;
@@ -109,5 +112,125 @@ public class NotificationService {
                 UserSummary.from(notification.getActor()),
                 notification.getReadAt() != null,
                 notification.getCreatedAt());
+    }
+
+    /** Notify owner when admin blocks their course. */
+    @Transactional
+    public void notifyCourseBlocked(Course course, User admin) {
+        if (course.getOwner().getId().equals(admin.getId())) {
+            return; // Don't notify if admin is blocking their own content
+        }
+        
+        String link = "/" + course.getOwner().getNickname() + "/c/" + course.getSlug();
+        Notification notification = Notification.builder()
+                .recipient(course.getOwner())
+                .actor(admin)
+                .type(NotificationType.ADMIN_BLOCKED)
+                .entityKind(EntityKind.COURSE)
+                .entityId(course.getId())
+                .entityTitle(course.getName())
+                .entityLink(link)
+                .build();
+        notificationRepository.save(notification);
+    }
+
+    /** Notify owner when admin unblocks their course. */
+    @Transactional
+    public void notifyCourseUnblocked(Course course, User admin) {
+        if (course.getOwner().getId().equals(admin.getId())) {
+            return;
+        }
+        
+        String link = "/" + course.getOwner().getNickname() + "/c/" + course.getSlug();
+        Notification notification = Notification.builder()
+                .recipient(course.getOwner())
+                .actor(admin)
+                .type(NotificationType.ADMIN_UNBLOCKED)
+                .entityKind(EntityKind.COURSE)
+                .entityId(course.getId())
+                .entityTitle(course.getName())
+                .entityLink(link)
+                .build();
+        notificationRepository.save(notification);
+    }
+
+    /** Notify owner when admin blocks their trilha. */
+    @Transactional
+    public void notifyTrilhaBlocked(Trilha trilha, User admin) {
+        if (trilha.getOwner().getId().equals(admin.getId())) {
+            return;
+        }
+        
+        String link = "/" + trilha.getOwner().getNickname() + "/trilha/" + trilha.getSlug();
+        Notification notification = Notification.builder()
+                .recipient(trilha.getOwner())
+                .actor(admin)
+                .type(NotificationType.ADMIN_BLOCKED)
+                .entityKind(EntityKind.TRILHA)
+                .entityId(trilha.getId())
+                .entityTitle(trilha.getTitle())
+                .entityLink(link)
+                .build();
+        notificationRepository.save(notification);
+    }
+
+    /** Notify owner when admin unblocks their trilha. */
+    @Transactional
+    public void notifyTrilhaUnblocked(Trilha trilha, User admin) {
+        if (trilha.getOwner().getId().equals(admin.getId())) {
+            return;
+        }
+        
+        String link = "/" + trilha.getOwner().getNickname() + "/trilha/" + trilha.getSlug();
+        Notification notification = Notification.builder()
+                .recipient(trilha.getOwner())
+                .actor(admin)
+                .type(NotificationType.ADMIN_UNBLOCKED)
+                .entityKind(EntityKind.TRILHA)
+                .entityId(trilha.getId())
+                .entityTitle(trilha.getTitle())
+                .entityLink(link)
+                .build();
+        notificationRepository.save(notification);
+    }
+
+    /** Notify owner when admin blocks their post. */
+    @Transactional
+    public void notifyPostBlocked(Post post, User admin) {
+        if (post.getOwner().getId().equals(admin.getId())) {
+            return;
+        }
+        
+        String link = "/" + post.getOwner().getNickname() + "/post/" + post.getSlug();
+        Notification notification = Notification.builder()
+                .recipient(post.getOwner())
+                .actor(admin)
+                .type(NotificationType.ADMIN_BLOCKED)
+                .entityKind(EntityKind.POST)
+                .entityId(post.getId())
+                .entityTitle(post.getTitle())
+                .entityLink(link)
+                .build();
+        notificationRepository.save(notification);
+    }
+
+    /** Notify owner when admin unblocks their post. */
+    @Transactional
+    public void notifyPostUnblocked(Post post, User admin) {
+        if (post.getOwner().getId().equals(admin.getId())) {
+            return;
+        }
+        
+        String link = "/" + post.getOwner().getNickname() + "/post/" + post.getSlug();
+        Notification notification = Notification.builder()
+                .recipient(post.getOwner())
+                .actor(admin)
+                .type(NotificationType.ADMIN_UNBLOCKED)
+                .entityKind(EntityKind.POST)
+                .entityId(post.getId())
+                .entityTitle(post.getTitle())
+                .entityLink(link)
+                .build();
+        notificationRepository.save(notification);
     }
 }

@@ -65,7 +65,7 @@ public class TrilhaMapper {
                 : new HashSet<>(libraryItemRepository.findSavedTrilhaIds(viewer.getId(), ids));
 
         return trilhas.stream()
-                .map(trilha -> toSummary(trilha, enrolled.contains(trilha.getId()), saved.contains(trilha.getId())))
+                .map(trilha -> toSummary(trilha, enrolled.contains(trilha.getId()), saved.contains(trilha.getId()), viewer))
                 .toList();
     }
 
@@ -74,7 +74,11 @@ public class TrilhaMapper {
         return toSummaries(List.of(trilha), viewer).get(0);
     }
 
-    private TrilhaSummary toSummary(Trilha trilha, boolean enrolledByMe, boolean savedByMe) {
+    private TrilhaSummary toSummary(Trilha trilha, boolean enrolledByMe, boolean savedByMe, User viewer) {
+        // Only show blockedByAdmin to the owner and admins
+        boolean showBlockedStatus = viewer != null && 
+                (trilha.getOwner().getId().equals(viewer.getId()) || viewer.isAdmin());
+        
         return new TrilhaSummary(
                 trilha.getId(),
                 trilha.getTitle(),
@@ -85,6 +89,7 @@ public class TrilhaMapper {
                 trilha.getStatus(),
                 trilha.getCategories(),
                 trilha.isFeatured(),
+                showBlockedStatus && trilha.isBlockedByAdmin(),
                 AreaSummary.from(trilha.getArea()),
                 SchoolSummary.from(trilha.getSchool()),
                 UserSummary.from(trilha.getOwner()),

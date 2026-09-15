@@ -69,6 +69,7 @@ public class CourseService {
     private final LessonBlockRepository lessonBlockRepository;
     private final LessonCompletionRepository lessonCompletionRepository;
     private final QuestionAnswerRepository questionAnswerRepository;
+    private final NotificationService notificationService;
     private final EnrollmentRepository enrollmentRepository;
     private final CourseAccessService accessService;
     private final CourseMapper courseMapper;
@@ -268,6 +269,28 @@ public class CourseService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Curso"));
         course.setFeatured(!course.isFeatured());
         return courseMapper.toSummary(courseRepository.save(course), admin);
+    }
+
+    @Transactional
+    public CourseSummary toggleBlock(UUID id, User admin) {
+        if (!admin.isAdmin()) {
+            throw new ForbiddenException("Apenas administradores podem bloquear cursos");
+        }
+        Course course = courseRepository.findByIdWithOwner(id)
+                .orElseThrow(() -> ResourceNotFoundException.of("Curso"));
+        
+        boolean wasBlocked = course.isBlockedByAdmin();
+        course.setBlockedByAdmin(!wasBlocked);
+        Course saved = courseRepository.save(course);
+        
+        // Notify owner
+        if (!wasBlocked) {
+            notificationService.notifyCourseBlocked(saved, admin);
+        } else {
+            notificationService.notifyCourseUnblocked(saved, admin);
+        }
+        
+        return courseMapper.toSummary(saved, admin);
     }
 
     // ---------------------------------------------------------------- helpers

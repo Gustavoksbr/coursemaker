@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
+  Mail,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -26,6 +27,7 @@ import { CommentThread } from '@/components/comments/CommentThread'
 import { CurriculumNav, flattenLessons } from '@/components/course/CurriculumNav'
 import { CertificateButton } from '@/components/shared/CertificateButton'
 import { FeatureToggleButton } from '@/components/shared/FeatureToggleButton'
+import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
 import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
@@ -304,6 +306,11 @@ export function Landing({
               featured={course.featured}
               onChanged={onSavedChange}
             />
+            <BlockToggleButton
+              kind="course"
+              item={course}
+              onSuccess={onSavedChange}
+            />
             {isOwner ? (
               <Link to={`${courseHref(course)}/edit`} className="btn-secondary">
                 <Pencil size={16} /> Editar curso
@@ -323,6 +330,28 @@ export function Landing({
             )}
           </div>
         </div>
+
+        {/* Blocked warning for owner */}
+        {isOwner && course.blockedByAdmin && (
+          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                <h4 className="font-semibold text-red-400">Conteúdo bloqueado por administrador</h4>
+                <p className="mt-1 text-sm text-slate-300">
+                  Este curso foi bloqueado por um administrador e não está visível ao público. Entre em contato com a
+                  equipe para mais informações.
+                </p>
+              </div>
+              <Link
+                to="/mensagens/admin"
+                className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm"
+              >
+                <Mail size={16} />
+                Falar com admin
+              </Link>
+            </div>
+          </div>
+        )}
 
         <Thumbnail src={course.thumbnailUrl} alt={course.name} className="rounded-xl" />
       </header>
@@ -441,8 +470,8 @@ export function LessonView({
   // what keeps the button itself from ever attempting a completion that would be rejected.
   const pendingQuestionBlockIds = canTrackProgress
     ? blocks
-        .filter((block) => block.type === 'question' && !answeredQuestionBlockIds?.has(block.id))
-        .map((block) => block.id)
+      .filter((block) => block.type === 'question' && !answeredQuestionBlockIds?.has(block.id))
+      .map((block) => block.id)
     : []
   const hasPendingQuestions = pendingQuestionBlockIds.length > 0
 
