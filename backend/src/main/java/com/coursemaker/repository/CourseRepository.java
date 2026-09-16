@@ -47,6 +47,11 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
     @Query("SELECT c FROM Course c JOIN FETCH c.owner o JOIN FETCH c.area WHERE o.id = :ownerId ORDER BY c.createdAt DESC")
     List<Course> findAllByOwnerId(@Param("ownerId") UUID ownerId);
 
+    /** Admin moderation list. */
+    @Query("SELECT c FROM Course c JOIN FETCH c.owner JOIN FETCH c.area WHERE c.blockedByAdmin = true "
+            + "ORDER BY c.updatedAt DESC")
+    List<Course> findAllBlocked();
+
     /**
      * Catalogue listing. Native SQL because {@code categories} is a real Postgres {@code text[]},
      * which JPQL cannot search. Every filter is optional; passing null disables it.

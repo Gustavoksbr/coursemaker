@@ -18,7 +18,9 @@ def login_admin(http: HttpClient, config: Config) -> str:
             "ADMIN_EMAIL/ADMIN_PASSWORD nao configurados no .env deste bot - precisa das "
             "credenciais do admin do backend para criar/gerenciar Schools."
         )
-    data = http.post("/auth/login", {"email": config.admin.email, "password": config.admin.password}, auth=False)
+    data = http.post(
+        "/auth/login", {"identifier": config.admin.email, "password": config.admin.password}, auth=False,
+    )
     return data["token"]
 
 
@@ -34,7 +36,7 @@ def ensure_curator(http: HttpClient, config: Config) -> tuple[str, dict]:
         if error.status != 409:
             raise
         data = http.post(
-            "/auth/login", {"email": config.curator.email, "password": config.curator.password}, auth=False,
+            "/auth/login", {"identifier": config.curator.email, "password": config.curator.password}, auth=False,
         )
 
     token, user = data["token"], data["user"]

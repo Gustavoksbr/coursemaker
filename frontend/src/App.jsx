@@ -27,6 +27,7 @@ import SchoolPage from '@/pages/SchoolPage'
 import SchoolsListPage from '@/pages/SchoolsListPage'
 import AdminAreasPage from '@/pages/admin/AdminAreasPage'
 import AdminHomePage from '@/pages/admin/AdminHomePage'
+import AdminModerationPage from '@/pages/admin/AdminModerationPage'
 import AdminSchoolsPage from '@/pages/admin/AdminSchoolsPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
@@ -112,6 +113,7 @@ const router = createBrowserRouter([
           { path: '/admin/areas', element: <AdminAreasPage /> },
           { path: '/admin/schools', element: <AdminSchoolsPage /> },
           { path: '/admin/home', element: <AdminHomePage /> },
+          { path: '/admin/moderacao', element: <AdminModerationPage /> },
         ],
       },
 

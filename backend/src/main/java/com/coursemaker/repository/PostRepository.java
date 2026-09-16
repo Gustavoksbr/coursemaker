@@ -35,6 +35,11 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     @Query("SELECT p FROM Post p JOIN FETCH p.owner o JOIN FETCH p.area WHERE o.id = :ownerId ORDER BY p.createdAt DESC")
     List<Post> findAllByOwnerId(@Param("ownerId") UUID ownerId);
 
+    /** Admin moderation list. */
+    @Query("SELECT p FROM Post p JOIN FETCH p.owner JOIN FETCH p.area WHERE p.blockedByAdmin = true "
+            + "ORDER BY p.updatedAt DESC")
+    List<Post> findAllBlocked();
+
     /** Mirrors {@link CourseRepository#search}; see the notes there. */
     @Query(value = """
             SELECT p.* FROM posts p

@@ -13,7 +13,8 @@ from .http_client import HttpClient
 
 
 def build_trilha(http: HttpClient, *, title: str, description: str, area_id: str,
-                  course_ids: list[str], publish: bool = True) -> dict:
+                  course_ids: list[str], categories: list[str] | None = None,
+                  publish: bool = True) -> dict:
     """Creates a trilha (as whichever user `http` is authenticated as - the curator), adds each
     course as an item in the given order, and publishes it. Idempotency is the caller's job: call
     this once per trilha, not on every run."""
@@ -21,7 +22,7 @@ def build_trilha(http: HttpClient, *, title: str, description: str, area_id: str
         "title": title,
         "description": description,
         "visibility": "public",
-        "categories": [],
+        "categories": categories or [],
         "areaId": area_id,
     })
 

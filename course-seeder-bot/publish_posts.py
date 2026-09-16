@@ -45,7 +45,7 @@ def main() -> None:
             "title": post["title"],
             "description": post["description"],
             "visibility": "public",
-            "categories": [],
+            "categories": post.get("categories", []),
             "areaId": area["id"],
         })
 

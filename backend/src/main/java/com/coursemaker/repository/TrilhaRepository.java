@@ -35,6 +35,11 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
     @Query("SELECT t FROM Trilha t JOIN FETCH t.owner o JOIN FETCH t.area WHERE o.id = :ownerId ORDER BY t.createdAt DESC")
     List<Trilha> findAllByOwnerId(@Param("ownerId") UUID ownerId);
 
+    /** Admin moderation list. */
+    @Query("SELECT t FROM Trilha t JOIN FETCH t.owner JOIN FETCH t.area WHERE t.blockedByAdmin = true "
+            + "ORDER BY t.updatedAt DESC")
+    List<Trilha> findAllBlocked();
+
     /** Every trilha that contains this course, most recently added first -- backs "ver mais". */
     @Query("""
             SELECT t FROM Trilha t JOIN FETCH t.owner

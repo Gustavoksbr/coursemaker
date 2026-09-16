@@ -317,6 +317,16 @@ export function Navbar() {
                         <Shield size={15} /> Personalizar home
                       </Link>
                     )}
+                    {isAdmin && (
+                      <Link
+                        to="/admin/moderacao"
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-700"
+                      >
+                        <Ban size={15} /> Moderacao
+                      </Link>
+                    )}
                     <button
                       type="button"
                       role="menuitem"
