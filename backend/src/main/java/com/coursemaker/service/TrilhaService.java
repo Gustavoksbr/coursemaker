@@ -48,6 +48,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -291,15 +292,31 @@ public class TrilhaService {
         trilhaRepository.delete(loadForEditing(id, viewer));
     }
 
+    /**
+     * Admin curation of the home page's trilhas section: exactly these trilhas, in this order.
+     * Anything previously featured but left out of {@code ids} is unfeatured.
+     */
     @Transactional
-    public TrilhaSummary toggleFeatured(UUID id, User admin) {
+    public List<TrilhaSummary> setHomePicks(List<UUID> ids, User admin) {
         if (!admin.isAdmin()) {
-            throw new ForbiddenException("Apenas administradores podem destacar trilhas");
+            throw new ForbiddenException("Apenas administradores podem curar a home");
         }
-        Trilha trilha = trilhaRepository.findByIdWithOwner(id)
-                .orElseThrow(() -> ResourceNotFoundException.of("Trilha"));
-        trilha.setFeatured(!trilha.isFeatured());
-        return trilhaMapper.toSummary(trilhaRepository.save(trilha), admin);
+        Map<UUID, Trilha> touched = new LinkedHashMap<>();
+        trilhaRepository.findAllByFeaturedTrue().forEach(t -> touched.put(t.getId(), t));
+        trilhaRepository.findAllById(ids).forEach(t -> touched.put(t.getId(), t));
+        for (Trilha trilha : touched.values()) {
+            int index = ids.indexOf(trilha.getId());
+            trilha.setFeatured(index >= 0);
+            trilha.setHomeOrder(index >= 0 ? index : null);
+        }
+        trilhaRepository.saveAll(touched.values());
+        return trilhaMapper.toSummaries(trilhaRepository.findAllByFeaturedTrueOrderByHomeOrderAsc(), admin);
+    }
+
+    /** The home page's currently curated trilhas. */
+    @Transactional(readOnly = true)
+    public List<TrilhaSummary> listHomePicks(User admin) {
+        return trilhaMapper.toSummaries(trilhaRepository.findAllByFeaturedTrueOrderByHomeOrderAsc(), admin);
     }
 
     @Transactional

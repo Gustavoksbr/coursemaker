@@ -27,8 +27,8 @@ import java.util.UUID;
  * Everything the landing page needs that is not just a content listing: the admin-editable copy,
  * the testimonial wall, and the live counters.
  *
- * <p>Admin authorisation is the same inline guard used by {@link AreaService} and the
- * {@code toggleFeatured} endpoints - there is no role-based rule in the security config.
+ * <p>Admin authorisation is the same inline guard used by {@link AreaService} and
+ * {@link AdminHomeCurationService} - there is no role-based rule in the security config.
  */
 @Service
 @RequiredArgsConstructor

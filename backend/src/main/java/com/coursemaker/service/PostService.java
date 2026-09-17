@@ -25,7 +25,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -179,15 +181,31 @@ public class PostService {
         postRepository.delete(loadForEditing(id, viewer));
     }
 
+    /**
+     * Admin curation of the home page's posts section: exactly these posts, in this order.
+     * Anything previously featured but left out of {@code ids} is unfeatured.
+     */
     @Transactional
-    public PostSummary toggleFeatured(UUID id, User admin) {
+    public List<PostSummary> setHomePicks(List<UUID> ids, User admin) {
         if (!admin.isAdmin()) {
-            throw new ForbiddenException("Apenas administradores podem destacar posts");
+            throw new ForbiddenException("Apenas administradores podem curar a home");
         }
-        Post post = postRepository.findByIdWithOwner(id)
-                .orElseThrow(() -> ResourceNotFoundException.of("Post"));
-        post.setFeatured(!post.isFeatured());
-        return postMapper.toSummary(postRepository.save(post), admin);
+        Map<UUID, Post> touched = new LinkedHashMap<>();
+        postRepository.findAllByFeaturedTrue().forEach(p -> touched.put(p.getId(), p));
+        postRepository.findAllById(ids).forEach(p -> touched.put(p.getId(), p));
+        for (Post post : touched.values()) {
+            int index = ids.indexOf(post.getId());
+            post.setFeatured(index >= 0);
+            post.setHomeOrder(index >= 0 ? index : null);
+        }
+        postRepository.saveAll(touched.values());
+        return postMapper.toSummaries(postRepository.findAllByFeaturedTrueOrderByHomeOrderAsc(), admin);
+    }
+
+    /** The home page's currently curated posts. */
+    @Transactional(readOnly = true)
+    public List<PostSummary> listHomePicks(User admin) {
+        return postMapper.toSummaries(postRepository.findAllByFeaturedTrueOrderByHomeOrderAsc(), admin);
     }
 
     @Transactional

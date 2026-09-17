@@ -67,13 +67,6 @@ public class SchoolController {
         return schoolService.update(id, request, principal.user());
     }
 
-    @Operation(summary = "Alterna o destaque da escola na home (apenas admin)")
-    @PostMapping("/{id}/featured")
-    public SchoolSummary toggleFeaturedOnHome(@PathVariable UUID id,
-                                              @AuthenticationPrincipal AuthenticatedUser principal) {
-        return schoolService.toggleFeaturedOnHome(id, principal.user());
-    }
-
     @Operation(summary = "Exclui uma escola; o conteudo associado perde a atribuicao mas continua existindo (apenas admin)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser principal) {

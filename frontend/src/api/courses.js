@@ -48,11 +48,6 @@ export async function deleteCourse(id) {
   await api.delete(`/courses/${id}`)
 }
 
-export async function toggleCourseFeatured(id) {
-  const { data } = await api.post(`/courses/${id}/featured`)
-  return data
-}
-
 export async function toggleCourseBlock(id) {
   const { data } = await api.post(`/courses/${id}/toggle-block`)
   return data

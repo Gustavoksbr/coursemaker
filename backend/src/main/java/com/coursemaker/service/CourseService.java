@@ -39,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -260,15 +261,31 @@ public class CourseService {
         courseRepository.delete(course);
     }
 
+    /**
+     * Admin curation of the home page's courses section: exactly these courses, in this order.
+     * Anything previously featured but left out of {@code ids} is unfeatured.
+     */
     @Transactional
-    public CourseSummary toggleFeatured(UUID id, User admin) {
+    public List<CourseSummary> setHomePicks(List<UUID> ids, User admin) {
         if (!admin.isAdmin()) {
-            throw new ForbiddenException("Apenas administradores podem destacar cursos");
+            throw new ForbiddenException("Apenas administradores podem curar a home");
         }
-        Course course = courseRepository.findByIdWithOwner(id)
-                .orElseThrow(() -> ResourceNotFoundException.of("Curso"));
-        course.setFeatured(!course.isFeatured());
-        return courseMapper.toSummary(courseRepository.save(course), admin);
+        Map<UUID, Course> touched = new LinkedHashMap<>();
+        courseRepository.findAllByFeaturedTrue().forEach(c -> touched.put(c.getId(), c));
+        courseRepository.findAllById(ids).forEach(c -> touched.put(c.getId(), c));
+        for (Course course : touched.values()) {
+            int index = ids.indexOf(course.getId());
+            course.setFeatured(index >= 0);
+            course.setHomeOrder(index >= 0 ? index : null);
+        }
+        courseRepository.saveAll(touched.values());
+        return courseMapper.toSummaries(courseRepository.findAllByFeaturedTrueOrderByHomeOrderAsc(), admin);
+    }
+
+    /** The home page's currently curated courses. */
+    @Transactional(readOnly = true)
+    public List<CourseSummary> listHomePicks(User admin) {
+        return courseMapper.toSummaries(courseRepository.findAllByFeaturedTrueOrderByHomeOrderAsc(), admin);
     }
 
     @Transactional

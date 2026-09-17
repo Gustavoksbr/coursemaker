@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Pencil, Plus, Star, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
+import { Check, Pencil, Plus, Trash2, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Field'
 import { Modal, ConfirmModal } from '@/components/ui/Modal'
@@ -16,13 +17,11 @@ import {
   listSchools,
   revokeSchoolMembership,
   schoolKeys,
-  toggleSchoolFeatured,
   updateSchool,
 } from '@/api/schools'
 import { searchUsers } from '@/api/users'
 import { errorMessage } from '@/lib/api'
 import { LIMITS } from '@/lib/constants'
-import { cn } from '@/lib/cn'
 
 const BLANK_FORM = { name: '', description: '', logoUrl: '', websiteUrl: '' }
 
@@ -76,15 +75,6 @@ export default function AdminSchoolsPage() {
     },
   })
 
-  const { mutate: toggleFeatured } = useMutation({
-    mutationFn: (id) => toggleSchoolFeatured(id),
-    onSuccess: (updated) => {
-      invalidate()
-      toast.success(updated.featuredOnHome ? 'Escola destacada na home.' : 'Destaque removido da home.')
-    },
-    onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel alterar o destaque.')),
-  })
-
   const startEditing = (school) => {
     setEditingId(school.id)
     setEditForm({
@@ -103,8 +93,12 @@ export default function AdminSchoolsPage() {
         <h1 className="text-2xl font-bold text-slate-100">Gerenciar escolas</h1>
         <p className="mt-1 text-sm text-slate-400">
           Escolas sao credito de procedencia, nao parceria oficial. Conceda associacao a um usuario
-          para que ele possa publicar conteudo em nome de uma escola. Use a estrela para destacar
-          escolas na home - sem nenhuma destacada, a home mostra todas.
+          para que ele possa publicar conteudo em nome de uma escola. Para escolher quais aparecem
+          na home, use{' '}
+          <Link to="/admin/home" className="text-brand-400 hover:underline">
+            Personalizar home
+          </Link>
+          .
         </p>
       </div>
 
@@ -229,18 +223,6 @@ export default function AdminSchoolsPage() {
                       <p className="truncate text-xs text-slate-500">{school.description}</p>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleFeatured(school.id)}
-                    className={cn(
-                      'rounded p-1.5 text-slate-400 hover:bg-slate-700 hover:text-amber-300',
-                      school.featuredOnHome && 'text-amber-300',
-                    )}
-                    aria-label={school.featuredOnHome ? 'Remover destaque da home' : 'Destacar na home'}
-                    title={school.featuredOnHome ? 'Remover destaque da home' : 'Destacar na home'}
-                  >
-                    <Star size={15} className={cn(school.featuredOnHome && 'fill-current')} />
-                  </button>
                   <button
                     type="button"
                     onClick={() => setMembersSchool(school)}

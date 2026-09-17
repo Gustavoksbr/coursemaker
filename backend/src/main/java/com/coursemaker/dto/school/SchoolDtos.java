@@ -19,13 +19,14 @@ public final class SchoolDtos {
 
     /** Badge/card payload. {@code null} on content that has no school - the badge just doesn't render. */
     public record SchoolSummary(UUID id, String name, String slug, String description, String logoUrl,
-                                String websiteUrl, boolean featuredOnHome) {
+                                String websiteUrl, boolean featuredOnHome, Integer homeOrder) {
         public static SchoolSummary from(School school) {
             if (school == null) {
                 return null;
             }
             return new SchoolSummary(school.getId(), school.getName(), school.getSlug(),
-                    school.getDescription(), school.getLogoUrl(), school.getWebsiteUrl(), school.isFeaturedOnHome());
+                    school.getDescription(), school.getLogoUrl(), school.getWebsiteUrl(), school.isFeaturedOnHome(),
+                    school.getHomeOrder());
         }
     }
 

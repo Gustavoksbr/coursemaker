@@ -105,15 +105,18 @@ export default function HomePage() {
     ? (data?.courses.items ?? []).filter((course) => course.area?.id === selectedArea.id)
     : (data?.courses.items ?? [])
 
-  // Before the default area resolves: whatever the admin flagged "featured on home", or every
-  // school if nobody has been flagged yet - same "empty curation means show all" default used
-  // elsewhere. Once an area is selected (which is almost immediately): only the schools actually
-  // publishing content there, derived from the same preloaded pool, so this needs no extra request.
+  // Before the default area resolves: whatever the admin chose for the home page, in the order
+  // they set - or every school if nothing has been chosen yet, same "empty curation means show
+  // all" default used for courses/trilhas/posts. Once an area is selected (which is almost
+  // immediately): only the schools actually publishing content there, derived from the same
+  // preloaded pool, so this needs no extra request.
   const displayedSchools = useMemo(() => {
     if (!schools?.length) return []
     if (!selectedArea) {
-      const featured = schools.filter((school) => school.featuredOnHome)
-      return featured.length > 0 ? featured : schools
+      const chosen = schools
+        .filter((school) => school.featuredOnHome)
+        .sort((a, b) => (a.homeOrder ?? 0) - (b.homeOrder ?? 0))
+      return chosen.length > 0 ? chosen : schools
     }
     const relevantIds = new Set(
       [...(data?.courses.items ?? []), ...(data?.posts.items ?? []), ...(data?.trilhas.items ?? [])]

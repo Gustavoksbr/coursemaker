@@ -18,9 +18,10 @@ import java.util.UUID;
 /**
  * The unified search: one query term, courses/posts/trilhas/people previewed together.
  *
- * <p>With an empty term it degrades into a "destaques" view - featured content first, falling back
- * to the most recent, plus the newest people to join. This backs both the homepage's default view
- * and the search page's "Principais" tab.
+ * <p>With an empty term it degrades into a "destaques" view - the admin's home curation
+ * ({@code sort=curated}), falling back to the most recent when nothing has been chosen yet, plus
+ * the newest people to join. This backs both the homepage's default view and the search page's
+ * "Principais" tab.
  */
 @Service
 @RequiredArgsConstructor
@@ -36,19 +37,23 @@ public class SearchService {
         String term = (query == null || query.isBlank()) ? null : query.trim();
 
         if (term == null) {
-            PageResponse<CourseSummary> featured =
-                    courseService.search(null, null, null, null, true, areaIds, null, "recent", 0, limit, viewer);
-            PageResponse<CourseSummary> courses = featured.items().isEmpty()
+            PageResponse<CourseSummary> curatedCourses =
+                    courseService.search(null, null, null, null, true, areaIds, null, "curated", 0, limit, viewer);
+            PageResponse<CourseSummary> courses = curatedCourses.items().isEmpty()
                     ? courseService.search(null, null, null, null, null, areaIds, null, "recent", 0, limit, viewer)
-                    : featured;
-            PageResponse<PostSummary> posts =
-                    postService.search(null, null, null, null, null, areaIds, null, "recent", 0, limit, viewer);
+                    : curatedCourses;
 
-            PageResponse<TrilhaSummary> featuredTrilhas =
-                    trilhaService.search(null, null, null, null, true, areaIds, null, "recent", 0, limit, viewer);
-            PageResponse<TrilhaSummary> trilhas = featuredTrilhas.items().isEmpty()
+            PageResponse<PostSummary> curatedPosts =
+                    postService.search(null, null, null, null, true, areaIds, null, "curated", 0, limit, viewer);
+            PageResponse<PostSummary> posts = curatedPosts.items().isEmpty()
+                    ? postService.search(null, null, null, null, null, areaIds, null, "recent", 0, limit, viewer)
+                    : curatedPosts;
+
+            PageResponse<TrilhaSummary> curatedTrilhas =
+                    trilhaService.search(null, null, null, null, true, areaIds, null, "curated", 0, limit, viewer);
+            PageResponse<TrilhaSummary> trilhas = curatedTrilhas.items().isEmpty()
                     ? trilhaService.search(null, null, null, null, null, areaIds, null, "recent", 0, limit, viewer)
-                    : featuredTrilhas;
+                    : curatedTrilhas;
 
             PageResponse<PersonSummary> people = userService.search(null, "recent", 0, limit);
 

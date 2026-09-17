@@ -42,11 +42,6 @@ export async function deletePost(id) {
   await api.delete(`/posts/${id}`)
 }
 
-export async function togglePostFeatured(id) {
-  const { data } = await api.post(`/posts/${id}/featured`)
-  return data
-}
-
 export async function togglePostBlock(id) {
   const { data } = await api.post(`/posts/${id}/toggle-block`)
   return data

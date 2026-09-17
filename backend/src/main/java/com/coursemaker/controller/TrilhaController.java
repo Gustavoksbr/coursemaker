@@ -130,12 +130,6 @@ public class TrilhaController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Alterna o destaque da trilha (apenas admin)")
-    @PostMapping("/api/v1/trilhas/{id}/featured")
-    public TrilhaSummary toggleFeatured(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser principal) {
-        return trilhaService.toggleFeatured(id, principal.user());
-    }
-
     @Operation(summary = "Bloqueia ou desbloqueia a trilha (apenas admin)")
     @PostMapping("/api/v1/trilhas/{id}/toggle-block")
     public TrilhaSummary toggleBlock(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser principal) {

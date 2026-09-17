@@ -60,6 +60,10 @@ public class School {
     @Column(name = "featured_on_home", nullable = false)
     private boolean featuredOnHome;
 
+    /** Position among featured schools on the home page; null when not currently chosen. */
+    @Column(name = "home_order")
+    private Integer homeOrder;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

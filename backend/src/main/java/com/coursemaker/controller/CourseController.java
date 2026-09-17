@@ -109,13 +109,6 @@ public class CourseController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Alterna o destaque do curso (apenas admin)")
-    @PostMapping("/{id}/featured")
-    public CourseSummary toggleFeatured(@PathVariable UUID id,
-                                        @AuthenticationPrincipal AuthenticatedUser principal) {
-        return courseService.toggleFeatured(id, principal.user());
-    }
-
     @Operation(summary = "Bloqueia ou desbloqueia o curso (apenas admin)")
     @PostMapping("/{id}/toggle-block")
     public CourseSummary toggleBlock(@PathVariable UUID id,

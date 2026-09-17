@@ -1,20 +1,17 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
-import { BookOpen, ExternalLink, GraduationCap, Star, Waypoints } from 'lucide-react'
+import { BookOpen, ExternalLink, GraduationCap, Waypoints } from 'lucide-react'
 import { CourseCard } from '@/components/course/CourseCard'
 import { PostCard } from '@/components/post/PostCard'
 import { TrilhaCard } from '@/components/trilha/TrilhaCard'
 import { EmptyState, ErrorState, PageLoader } from '@/components/ui/Feedback'
-import { useAuth } from '@/context/AuthContext'
-import { useToast } from '@/context/ToastContext'
 import { courseKeys, listCourses } from '@/api/courses'
 import { listPosts, postKeys } from '@/api/posts'
 import { listTrilhas, trilhaKeys } from '@/api/trilhas'
-import { getSchoolBySlug, schoolKeys, toggleSchoolFeatured } from '@/api/schools'
+import { getSchoolBySlug, schoolKeys } from '@/api/schools'
 import { errorMessage } from '@/lib/api'
 import { PAGE_SIZE } from '@/lib/constants'
-import { cn } from '@/lib/cn'
 
 /**
  * A school's own public page: who they are, plus every course/post/trilha published under their
@@ -24,25 +21,12 @@ import { cn } from '@/lib/cn'
 export default function SchoolPage() {
   const { slug } = useParams()
   const [tab, setTab] = useState('courses')
-  const { isAdmin } = useAuth()
-  const queryClient = useQueryClient()
-  const toast = useToast()
 
   const schoolQuery = useQuery({
     queryKey: schoolKeys.bySlug(slug),
     queryFn: () => getSchoolBySlug(slug),
   })
   const school = schoolQuery.data
-
-  const { mutate: toggleFeatured, isPending: togglingFeatured } = useMutation({
-    mutationFn: () => toggleSchoolFeatured(school.id),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(schoolKeys.bySlug(slug), updated)
-      queryClient.invalidateQueries({ queryKey: schoolKeys.list() })
-      toast.success(updated.featuredOnHome ? 'Escola destacada na home.' : 'Destaque removido da home.')
-    },
-    onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel alterar o destaque.')),
-  })
 
   const filters = { schoolId: school?.id, sort: 'recent', page: 0, size: PAGE_SIZE }
   const coursesQuery = useQuery({
@@ -92,25 +76,7 @@ export default function SchoolPage() {
         )}
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Escola</p>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => toggleFeatured()}
-                disabled={togglingFeatured}
-                className={cn(
-                  'inline-flex items-center gap-1 rounded p-1 text-xs text-slate-400 hover:bg-slate-700 hover:text-amber-300 disabled:opacity-50',
-                  school.featuredOnHome && 'text-amber-300',
-                )}
-                aria-label={school.featuredOnHome ? 'Remover destaque da home' : 'Destacar na home'}
-                title={school.featuredOnHome ? 'Remover destaque da home' : 'Destacar na home'}
-              >
-                <Star size={14} className={cn(school.featuredOnHome && 'fill-current')} />
-                {school.featuredOnHome ? 'Destacada na home' : 'Destacar na home'}
-              </button>
-            )}
-          </div>
+          <p className="text-xs uppercase tracking-wide text-slate-500">Escola</p>
           <h1 className="text-2xl font-bold text-slate-100">{school.name}</h1>
           {school.description && (
             <p className="mt-2 max-w-2xl whitespace-pre-wrap text-sm text-slate-300">{school.description}</p>

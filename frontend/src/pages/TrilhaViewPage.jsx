@@ -7,7 +7,6 @@ import { ContentBadges } from '@/components/ui/Badge'
 import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { SaveToLibraryButton } from '@/components/library/SaveToLibraryButton'
 import { CertificateButton } from '@/components/shared/CertificateButton'
-import { FeatureToggleButton } from '@/components/shared/FeatureToggleButton'
 import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
@@ -159,12 +158,6 @@ export default function TrilhaViewPage() {
 
           <div className="ml-auto flex items-center gap-2">
             <SaveToLibraryButton kind="trilha" contentId={trilha.id} saved={trilha.savedByMe} onChange={invalidate} />
-            <FeatureToggleButton
-              kind="trilha"
-              contentId={trilha.id}
-              featured={trilha.featured}
-              onChanged={invalidate}
-            />
             <BlockToggleButton
               kind="trilha"
               item={trilha}

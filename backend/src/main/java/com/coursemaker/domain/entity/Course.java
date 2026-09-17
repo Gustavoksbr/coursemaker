@@ -89,6 +89,10 @@ public class Course {
     @Builder.Default
     private boolean featured = false;
 
+    /** Position among featured courses on the home page; null when not currently chosen. */
+    @Column(name = "home_order")
+    private Integer homeOrder;
+
     @Column(name = "blocked_by_admin", nullable = false)
     @Builder.Default
     private boolean blockedByAdmin = false;

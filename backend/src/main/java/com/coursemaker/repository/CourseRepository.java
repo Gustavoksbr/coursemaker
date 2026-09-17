@@ -52,6 +52,14 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
             + "ORDER BY c.updatedAt DESC")
     List<Course> findAllBlocked();
 
+    /** Every course currently chosen for the home page, in whatever order they were saved. */
+    List<Course> findAllByFeaturedTrue();
+
+    /** The home page's curated courses section. */
+    @Query("SELECT c FROM Course c JOIN FETCH c.owner JOIN FETCH c.area WHERE c.featured = true "
+            + "ORDER BY c.homeOrder ASC")
+    List<Course> findAllByFeaturedTrueOrderByHomeOrderAsc();
+
     /**
      * Catalogue listing. Native SQL because {@code categories} is a real Postgres {@code text[]},
      * which JPQL cannot search. Every filter is optional; passing null disables it.
@@ -84,6 +92,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
               AND (CAST(:schoolId AS uuid) IS NULL OR c.school_id = CAST(:schoolId AS uuid))
               AND (c.status = 'available' OR c.owner_id = CAST(:viewerId AS uuid))
             ORDER BY
+              CASE WHEN CAST(:sort AS text) = 'curated' THEN COALESCE(c.home_order, 999999) ELSE 999999 END ASC,
               CASE WHEN CAST(:sort AS text) = 'likes'
                    THEN (SELECT count(*) FROM course_likes cl WHERE cl.course_id = c.id)
                    ELSE 0 END DESC,

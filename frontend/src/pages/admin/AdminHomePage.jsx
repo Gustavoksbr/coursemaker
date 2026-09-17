@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Field'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { EmptyState, PageLoader } from '@/components/ui/Feedback'
+import { HomePicksEditor } from '@/components/admin/HomePicksEditor'
 import { useToast } from '@/context/ToastContext'
+import { adminKeys, getHomePicks } from '@/api/admin'
 import {
   createTestimonial,
   deleteTestimonial,
@@ -15,15 +17,19 @@ import {
   updateSiteSettings,
   updateTestimonial,
 } from '@/api/home'
+import { listCourses } from '@/api/courses'
+import { listPosts } from '@/api/posts'
+import { listTrilhas } from '@/api/trilhas'
+import { listSchools, schoolKeys } from '@/api/schools'
 import { errorMessage } from '@/lib/api'
 
 const BLANK_TESTIMONIAL = { authorName: '', authorRole: '', authorImage: '', quote: '' }
 
 /**
  * Admin-only: the parts of the landing page that cannot be derived from real data. Everything else
- * there - the counters, the area grid, the featured content - comes straight from the database, so
- * it is deliberately not editable here. Featured content is curated with the "Destacar" button on
- * each course/post/trilha instead.
+ * there - the counters and the area grid - comes straight from the database, so it is deliberately
+ * not editable here. Which courses/posts/trilhas/schools appear is chosen in the "Conteudo em
+ * destaque" section below, backed by {@code GET/PUT /admin/home-picks}.
  */
 export default function AdminHomePage() {
   const queryClient = useQueryClient()
@@ -31,6 +37,11 @@ export default function AdminHomePage() {
 
   const { data: settings, isPending } = useQuery({ queryKey: homeKeys.settings, queryFn: getSiteSettings })
   const { data: testimonials } = useQuery({ queryKey: homeKeys.allTestimonials, queryFn: listAllTestimonials })
+  const { data: picks, isPending: picksPending } = useQuery({
+    queryKey: adminKeys.homePicks,
+    queryFn: getHomePicks,
+  })
+  const { data: schools } = useQuery({ queryKey: schoolKeys.list(), queryFn: listSchools })
 
   const [form, setForm] = useState(null)
   useEffect(() => {
@@ -162,6 +173,76 @@ export default function AdminHomePage() {
           <Save size={16} /> Salvar textos
         </Button>
       </div>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-100">Conteudo em destaque</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Escolha exatamente o que aparece na home em cada categoria, e em que ordem. Sem nada
+            escolhido numa categoria, a home mostra os itens mais recentes dela.
+          </p>
+        </div>
+        {picksPending ? (
+          <PageLoader label="Carregando destaques..." />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <HomePicksEditor
+              kind="courses"
+              title="Cursos"
+              emptyHint="Nada escolhido - a home mostra os cursos mais recentes."
+              items={picks.courses}
+              normalize={(course) => ({
+                id: course.id,
+                title: course.name,
+                subtitle: `@${course.owner.nickname}`,
+              })}
+              search={(q) => listCourses({ q, page: 0, size: 8 }).then((result) => result.items)}
+            />
+            <HomePicksEditor
+              kind="posts"
+              title="Posts"
+              emptyHint="Nada escolhido - a home mostra os posts mais recentes."
+              items={picks.posts}
+              normalize={(post) => ({
+                id: post.id,
+                title: post.title,
+                subtitle: `@${post.owner.nickname}`,
+              })}
+              search={(q) => listPosts({ q, page: 0, size: 8 }).then((result) => result.items)}
+            />
+            <HomePicksEditor
+              kind="trilhas"
+              title="Trilhas"
+              emptyHint="Nada escolhido - a home mostra as trilhas mais recentes."
+              items={picks.trilhas}
+              normalize={(trilha) => ({
+                id: trilha.id,
+                title: trilha.title,
+                subtitle: `@${trilha.owner.nickname}`,
+              })}
+              search={(q) => listTrilhas({ q, page: 0, size: 8 }).then((result) => result.items)}
+            />
+            <HomePicksEditor
+              kind="schools"
+              title="Escolas"
+              emptyHint="Nada escolhido - a home mostra todas as escolas."
+              items={picks.schools}
+              normalize={(school) => ({
+                id: school.id,
+                title: school.name,
+                subtitle: school.description ?? '',
+              })}
+              search={(q) =>
+                Promise.resolve(
+                  (schools ?? [])
+                    .filter((school) => school.name.toLowerCase().includes(q.toLowerCase()))
+                    .slice(0, 8),
+                )
+              }
+            />
+          </div>
+        )}
+      </section>
 
       <TestimonialsManager testimonials={testimonials} onChanged={invalidateHome} />
     </div>

@@ -39,12 +39,6 @@ export async function updateSchool(id, payload) {
   return data
 }
 
-/** Admin-only "show on the home page" toggle - empty selection means "show every school". */
-export async function toggleSchoolFeatured(id) {
-  const { data } = await api.post(`/schools/${id}/featured`)
-  return data
-}
-
 export async function deleteSchool(id) {
   await api.delete(`/schools/${id}`)
 }

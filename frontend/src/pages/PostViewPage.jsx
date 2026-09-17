@@ -12,7 +12,6 @@ import { ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { BlockList } from '@/components/blocks/BlockRenderer'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
-import { FeatureToggleButton } from '@/components/shared/FeatureToggleButton'
 import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useToast } from '@/context/ToastContext'
@@ -81,7 +80,6 @@ export default function PostViewPage() {
 
             <div className="ml-auto flex items-center gap-2">
               <SaveToLibraryButton kind="post" contentId={post.id} saved={post.savedByMe} onChange={invalidate} />
-              <FeatureToggleButton kind="post" contentId={post.id} featured={post.featured} onChanged={invalidate} />
               <BlockToggleButton kind="post" item={post} onSuccess={invalidate} />
               {detail.isOwner && (
                 <Link to={`/posts/${post.id}/edit`} className="btn-secondary">

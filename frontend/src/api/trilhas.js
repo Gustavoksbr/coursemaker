@@ -48,11 +48,6 @@ export async function deleteTrilha(id) {
   await api.delete(`/trilhas/${id}`)
 }
 
-export async function toggleTrilhaFeatured(id) {
-  const { data } = await api.post(`/trilhas/${id}/featured`)
-  return data
-}
-
 export async function toggleTrilhaBlock(id) {
   const { data } = await api.post(`/trilhas/${id}/toggle-block`)
   return data

@@ -40,6 +40,14 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
             + "ORDER BY t.updatedAt DESC")
     List<Trilha> findAllBlocked();
 
+    /** Every trilha currently chosen for the home page, in whatever order they were saved. */
+    List<Trilha> findAllByFeaturedTrue();
+
+    /** The home page's curated trilhas section. */
+    @Query("SELECT t FROM Trilha t JOIN FETCH t.owner JOIN FETCH t.area WHERE t.featured = true "
+            + "ORDER BY t.homeOrder ASC")
+    List<Trilha> findAllByFeaturedTrueOrderByHomeOrderAsc();
+
     /** Every trilha that contains this course, most recently added first -- backs "ver mais". */
     @Query("""
             SELECT t FROM Trilha t JOIN FETCH t.owner
@@ -80,6 +88,7 @@ public interface TrilhaRepository extends JpaRepository<Trilha, UUID> {
               AND (CAST(:schoolId AS uuid) IS NULL OR t.school_id = CAST(:schoolId AS uuid))
               AND (t.status = 'available' OR t.owner_id = CAST(:viewerId AS uuid))
             ORDER BY
+              CASE WHEN CAST(:sort AS text) = 'curated' THEN COALESCE(t.home_order, 999999) ELSE 999999 END ASC,
               CASE WHEN CAST(:sort AS text) = 'name' THEN t.title ELSE '' END ASC,
               t.created_at DESC
             """,

@@ -19,7 +19,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -112,13 +114,33 @@ public class SchoolService {
         return SchoolSummary.from(schoolRepository.save(school));
     }
 
-    /** Admin-only "show on the home page" toggle - see {@code School.featuredOnHome}. */
+    /**
+     * Admin curation of the home page's schools section: exactly these schools, in this order.
+     * Anything previously featured but left out of {@code ids} is unfeatured.
+     */
     @Transactional
-    public SchoolSummary toggleFeaturedOnHome(UUID id, User admin) {
+    public List<SchoolSummary> setHomePicks(List<UUID> ids, User admin) {
         requireAdmin(admin);
-        School school = schoolRepository.findById(id).orElseThrow(() -> ResourceNotFoundException.of("Escola"));
-        school.setFeaturedOnHome(!school.isFeaturedOnHome());
-        return SchoolSummary.from(schoolRepository.save(school));
+        Map<UUID, School> touched = new LinkedHashMap<>();
+        schoolRepository.findAllByFeaturedOnHomeTrue().forEach(s -> touched.put(s.getId(), s));
+        schoolRepository.findAllById(ids).forEach(s -> touched.put(s.getId(), s));
+        for (School school : touched.values()) {
+            int index = ids.indexOf(school.getId());
+            school.setFeaturedOnHome(index >= 0);
+            school.setHomeOrder(index >= 0 ? index : null);
+        }
+        schoolRepository.saveAll(touched.values());
+        return schoolRepository.findAllByFeaturedOnHomeTrueOrderByHomeOrderAsc().stream()
+                .map(SchoolSummary::from)
+                .toList();
+    }
+
+    /** The home page's currently curated schools. */
+    @Transactional(readOnly = true)
+    public List<SchoolSummary> listHomePicks() {
+        return schoolRepository.findAllByFeaturedOnHomeTrueOrderByHomeOrderAsc().stream()
+                .map(SchoolSummary::from)
+                .toList();
     }
 
     @Transactional

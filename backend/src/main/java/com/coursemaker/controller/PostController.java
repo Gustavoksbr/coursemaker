@@ -112,13 +112,6 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Alterna o destaque do post (apenas admin)")
-    @PostMapping("/api/v1/posts/{id}/featured")
-    public PostSummary toggleFeatured(@PathVariable UUID id,
-                                      @AuthenticationPrincipal AuthenticatedUser principal) {
-        return postService.toggleFeatured(id, principal.user());
-    }
-
     @Operation(summary = "Bloqueia ou desbloqueia o post (apenas admin)")
     @PostMapping("/api/v1/posts/{id}/toggle-block")
     public PostSummary toggleBlock(@PathVariable UUID id,

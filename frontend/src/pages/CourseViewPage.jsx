@@ -26,7 +26,6 @@ import { BlockList } from '@/components/blocks/BlockRenderer'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { CurriculumNav, flattenLessons } from '@/components/course/CurriculumNav'
 import { CertificateButton } from '@/components/shared/CertificateButton'
-import { FeatureToggleButton } from '@/components/shared/FeatureToggleButton'
 import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
 import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
@@ -300,12 +299,6 @@ export function Landing({
 
           <div className="ml-auto flex items-center gap-2">
             <SaveToLibraryButton kind="course" contentId={course.id} saved={course.savedByMe} onChange={onSavedChange} />
-            <FeatureToggleButton
-              kind="course"
-              contentId={course.id}
-              featured={course.featured}
-              onChanged={onSavedChange}
-            />
             <BlockToggleButton
               kind="course"
               item={course}

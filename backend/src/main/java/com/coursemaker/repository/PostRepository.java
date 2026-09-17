@@ -40,6 +40,14 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             + "ORDER BY p.updatedAt DESC")
     List<Post> findAllBlocked();
 
+    /** Every post currently chosen for the home page, in whatever order they were saved. */
+    List<Post> findAllByFeaturedTrue();
+
+    /** The home page's curated posts section. */
+    @Query("SELECT p FROM Post p JOIN FETCH p.owner JOIN FETCH p.area WHERE p.featured = true "
+            + "ORDER BY p.homeOrder ASC")
+    List<Post> findAllByFeaturedTrueOrderByHomeOrderAsc();
+
     /** Mirrors {@link CourseRepository#search}; see the notes there. */
     @Query(value = """
             SELECT p.* FROM posts p
@@ -61,6 +69,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
               AND (CAST(:schoolId AS uuid) IS NULL OR p.school_id = CAST(:schoolId AS uuid))
               AND (p.status = 'available' OR p.owner_id = CAST(:viewerId AS uuid))
             ORDER BY
+              CASE WHEN CAST(:sort AS text) = 'curated' THEN COALESCE(p.home_order, 999999) ELSE 999999 END ASC,
               CASE WHEN CAST(:sort AS text) = 'likes'
                    THEN (SELECT count(*) FROM post_likes pl WHERE pl.post_id = p.id)
                    ELSE 0 END DESC,

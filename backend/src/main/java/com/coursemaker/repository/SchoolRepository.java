@@ -16,4 +16,10 @@ public interface SchoolRepository extends JpaRepository<School, UUID> {
     boolean existsBySlug(String slug);
 
     boolean existsByName(String name);
+
+    /** Every school currently chosen for the home page, in whatever order they were saved. */
+    List<School> findAllByFeaturedOnHomeTrue();
+
+    /** The home page's curated schools section. */
+    List<School> findAllByFeaturedOnHomeTrueOrderByHomeOrderAsc();
 }
