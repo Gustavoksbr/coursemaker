@@ -120,3 +120,65 @@ criou uma conta aqui e nao autorizou isso. Em vez disso, o script usa a conta ne
 como dona do curso, cria uma `School` com o nome do canal (registrando so a origem do conteudo,
 nunca uma parceria - o mesmo principio que o backend ja usa pra esse recurso) e a primeira aula
 do curso e sempre um aviso explicito de atribuicao com link para a playlist original.
+
+## Pipeline alternativo: conteudo escrito a mao (por um LLM) a partir da transcricao real
+
+O `build_from_playlist.py` manda a transcricao pra Groq gerar os blocos de aula em tempo real -
+o que esbarra rapido na cota diaria (TPD) do tier gratuito da Groq, muito mais restritiva que o
+limite por minuto (ver secao acima). Pra contornar isso sem depender da Groq pra gerar o texto,
+o pipeline foi dividido em duas etapas independentes, cada uma com seu proprio script:
+
+1. **`dump_transcripts.py`** - busca a playlist e a transcricao real de cada video (legenda
+   primeiro, fallback pra Whisper/Groq so quando nao ha legenda - isso nao usa a cota de
+   chat-completion, entao nao esbarra no TPD) e salva tudo num JSON, sem chamar nenhum LLM pra
+   gerar conteudo:
+
+   ```bash
+   .venv\Scripts\python.exe dump_transcripts.py <playlist_id_ou_url> saida.json [--max-videos N] [--exclude id1,id2]
+   ```
+
+2. Um LLM (ou voce mesmo) le esse JSON e escreve um segundo arquivo, `content.json`, com os
+   blocos de texto/codigo de cada aula e os quizzes de cada modulo - seguindo o mesmo formato que
+   `real_content_generator.py` usava, mas grounded apenas no que a transcricao realmente diz (2-4
+   blocos por video, 1 quiz de multipla escolha por `--lessons-per-module` videos, exatamente uma
+   alternativa correta). Formato esperado:
+
+   ```json
+   {
+     "videos": {
+       "<video_id>": [{"type": "text", "content": "<p>...</p>", "language": null}, {"type": "code", "content": "...", "language": "python"}]
+     },
+     "quizzes": [
+       {"prompt": "...", "alternatives": [{"text": "...", "correct": true, "explanation": "..."}, ...]}
+     ]
+   }
+   ```
+
+3. **`apply_playlist_course.py`** - le o dump e o `content.json` e faz o trabalho de fato: cria
+   curador, escola de origem, curso, modulos, aulas (com bloco de video + os blocos escritos na
+   etapa 2), quizzes e publica - o mesmo fluxo que `build_from_playlist.run_playlist_flow` faz,
+   so que com o conteudo ja pronto em vez de gerado on-the-fly:
+
+   ```bash
+   .venv\Scripts\python.exe apply_playlist_course.py dump.json content.json \
+       --course-name "Nome do Curso" [--lessons-per-module 5] [--categories "python,backend"]
+   ```
+
+Util pra cursos gerados fora do fluxo Groq (por exemplo, com o Claude Code lendo a transcricao
+e escrevendo o `content.json` a mao) ou pra reaproveitar um dump ja baixado sem gastar cota de
+novo. `--categories` aceita uma lista separada por virgula com as stacks/linguagens do curso
+(usada nos filtros/badges do frontend).
+
+## Outros scripts auxiliares
+
+- **`publish_posts.py posts.json`** - publica posts (nao-curso) escritos a mao, como conta
+  curadora. Espera uma lista de objetos `{"title", "description", "categories"?, "blocks": [...]}`
+  no mesmo formato de bloco usado nas aulas; pula posts cujo titulo ja existe (idempotente).
+- **`seeder/trilha_builder.py`** (modulo, nao script standalone) - `build_trilha(http, title=,
+  description=, area_id=, course_ids=, categories=, publish=True)` agrupa cursos ja publicados
+  numa Trilha ordenada. Nao gera conteudo novo, so cura e ordena cursos existentes.
+- **`seed_production.py`** - script de uso unico que documenta o plano de conteudo usado para
+  popular a instancia de producao (curso a curso, playlist a playlist, ja verificadas contra a
+  YouTube Data API) e agrupa tudo em Trilhas ao final. Nao e uma ferramenta generica reutilizavel
+  - e o "plano" de uma populacao especifica, mantido como script por ser resumivel se falhar no
+  meio (pula curso/trilha cujo nome ja existe sob a conta curadora).

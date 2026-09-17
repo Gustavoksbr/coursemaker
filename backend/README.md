@@ -40,7 +40,8 @@ a suíte.
 
 ```
 com.coursemaker
-├── config/       SecurityConfig, JwtService, JwtAuthenticationFilter, OpenApiConfig
+├── config/       SecurityConfig, JwtService, JwtAuthenticationFilter, OpenApiConfig,
+│                 WebSocketConfig (STOMP/SockJS), AdminAccountSeeder, SelfPingScheduler
 ├── controller/   Endpoints REST (somente orquestração e HTTP)
 ├── domain/       Entidades JPA e enums
 ├── dto/          Records de request/response (nunca expõem entidades)
@@ -61,6 +62,12 @@ Decisões que valem registro:
   visitantes anônimos — daí o helper `AuthenticatedUser.userOrNull`.
 - **Sanitização de HTML no servidor.** Blocos `text` passam pelo `HtmlSanitizer` (jsoup) antes de
   serem persistidos, em vez de confiar apenas no DOMPurify do frontend.
+- **Notificações e mensagens em tempo real via STOMP/SockJS**, não polling. `WebSocketConfig` expõe
+  um broker restrito a `/queue` (destino por usuário, sem broadcast em `/topic`); cada push usa
+  `SimpMessagingTemplate.convertAndSendToUser(...)`. O handshake reaproveita o mesmo JWT do REST
+  (`StompAuthChannelInterceptor`).
+- **`SelfPingScheduler`** bate no próprio `/ping` periodicamente — mitiga o cold-start do plano
+  gratuito do Render, que hiberna a instância após um tempo sem tráfego.
 
 ## Autenticação
 
@@ -74,6 +81,15 @@ no `localStorage` e o envia em `Authorization: Bearer {token}`.
   `GOOGLE_CLIENT_ID` configurado, o endpoint responde 400 ("Login com Google nao esta configurado")
   — o frontend só mostra o botão quando `VITE_GOOGLE_CLIENT_ID` está definido.
 
+### Recuperação de senha
+
+`POST /auth/password-reset/request` gera um token de uso único (hash armazenado, nunca o valor
+puro) com TTL configurável (`app.password-reset.token-ttl-minutes`) e envia o link por e-mail via
+Resend (`ResendMailSender`). A resposta é sempre igual, exista ou não a conta com aquele e-mail —
+mesmo princípio de não vazar informação que o login já segue. `POST /auth/password-reset/confirm`
+troca a senha e reaproveita `AuthService.afterPasswordReset` para devolver um token JWT novo, como
+se fosse um login. Tem rate limit próprio, com cooldown de reenvio.
+
 ### Proteção contra força bruta
 
 `LoginAttempts` conta falhas consecutivas por identificador. 5 falhas bloqueiam por 15 minutos
@@ -82,24 +98,38 @@ senha de curso privado (chave por `curso:usuário`). Qualquer sucesso zera o con
 
 ## Endpoints
 
+Todos com o prefixo `/api/v1`. Especificação completa e sempre atualizada em `/v3/api-docs`
+(Swagger UI em `/swagger-ui.html`).
+
 | Área | Endpoints |
 |------|-----------|
-| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/google`, `GET /auth/me` |
-| Usuários | `GET /users/nickname-available`, `GET /users/{nickname}`, `PATCH /users/{id}` |
-| Cursos | `GET /courses`, `GET /courses/slug-check`, `GET /courses/{id}`, `GET /courses/by-slug/{nickname}/{slug}`, `POST /courses`, `PATCH /courses/{id}`, `DELETE /courses/{id}`, `POST /courses/{id}/featured` |
+| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/google`, `GET /auth/me`, `POST /auth/password-reset/request`, `POST /auth/password-reset/confirm` |
+| Usuários | `GET /users/nickname-available`, `GET /users/search`, `GET /users/{nickname}`, `GET /users/me/schools`, `PATCH /users/{id}`, `DELETE /users/me` |
+| Áreas | `GET|POST /areas`, `PATCH|DELETE /areas/{id}` |
+| Cursos | `GET /courses`, `GET /courses/slug-check`, `GET /courses/{id}`, `GET /courses/by-slug/{nickname}/{slug}`, `POST /courses`, `PATCH /courses/{id}`, `DELETE /courses/{id}`, `POST /courses/{id}/featured`, `POST /courses/{id}/toggle-block`, `GET /courses/{id}/certificate[/preview]` |
 | Módulos | `GET|POST /courses/{courseId}/modules`, `PATCH|DELETE /modules/{id}`, `PUT /courses/{courseId}/modules/reorder` |
-| Lições | `GET|POST /modules/{moduleId}/lessons`, `PATCH|DELETE /lessons/{id}`, `PUT /modules/{moduleId}/lessons/reorder` |
-| Blocos de lição | `GET|POST /lessons/{lessonId}/blocks`, `PATCH|DELETE /blocks/{id}`, `PUT /lessons/{lessonId}/blocks/reorder` |
-| Matrículas | `POST /enrollments`, `DELETE /enrollments/{courseId}`, `GET /enrollments/me`, `GET /courses/{courseId}/students` |
-| Acesso privado | `POST /enrollments/private-access/validate`, `POST /courses/{courseId}/revoke-access/{userId}` |
+| Lições e blocos | `GET|POST /modules/{moduleId}/lessons`, `PATCH|DELETE /lessons/{id}`, `PUT /modules/{moduleId}/lessons/reorder`, `GET|POST /lessons/{lessonId}/blocks`, `PATCH|DELETE /blocks/{id}`, `PUT /lessons/{lessonId}/blocks/reorder`, `POST /blocks/{id}/answer` (quiz) |
+| Matrículas | `POST /enrollments`, `DELETE /enrollments/{courseId}`, `GET /enrollments/me[/in-progress\|/completed\|/last-accessed]`, `GET /courses/{courseId}/students` |
+| Acesso privado | `POST /enrollments/private-access/validate`, `POST /posts/private-access/validate`, `POST /courses/{courseId}/revoke-access/{userId}` |
+| Trilhas | `GET /trilhas`, `GET /trilhas/slug-check`, `GET /trilhas/{id}`, `GET /trilhas/by-slug/{nickname}/{slug}`, `GET /trilhas/me/following\|completed`, `POST /trilhas`, `PATCH|DELETE /trilhas/{id}`, `POST /trilhas/{id}/featured\|toggle-block\|enroll`, `DELETE /trilhas/{id}/enroll`, `GET /trilhas/{id}/progress\|certificate[/preview]` |
+| Itens e etapas da trilha | `POST /trilhas/{id}/items`, `PATCH /trilhas/{id}/items/{itemId}`, `PUT /trilhas/{id}/items/{itemId}/step`, `DELETE /trilhas/{id}/items/{itemId}`, `PUT /trilhas/{id}/items/reorder`, `POST|PATCH|DELETE /trilhas/{id}/steps[/{stepId}]`, `PUT /trilhas/{id}/steps/reorder`, `POST|DELETE /trilha-items/{itemId}/complete` |
+| Curso ↔ trilha | `GET /courses/{courseId}/trilhas[/highlighted]`, `PUT|DELETE /courses/{courseId}/trilhas/{trilhaId}/highlight`, `GET /posts/{postId}/trilhas` |
+| Escolas | `GET|POST /schools`, `GET /schools/{slug}`, `GET /schools/{id}/members`, `PATCH|DELETE /schools/{id}`, `POST /schools/{id}/featured`, `PUT|DELETE /schools/{id}/members/{userId}` |
 | Curtidas | `POST|DELETE /courses/{id}/like`, `POST|DELETE /posts/{id}/like` |
 | Progresso | `POST|DELETE /lessons/{id}/complete`, `GET /courses/{id}/progress` |
-| Comentários | `GET|POST /courses/{courseId}/comments`, `DELETE /comments/{id}`, `GET /courses/{courseId}/bans`, `POST|DELETE /courses/{courseId}/bans/{userId}` |
-| Posts | `GET /posts`, `GET /posts/slug-check`, `GET /posts/{id}`, `GET /posts/by-slug/{nickname}/{slug}`, `POST /posts`, `PATCH|DELETE /posts/{id}`, `POST /posts/{id}/featured` |
+| Comentários | `GET|POST /courses/{courseId}/comments`, `GET|POST /posts/{postId}/comments`, `GET|POST /trilhas/{trilhaId}/comments`, `DELETE /comments/{id}`, `GET /courses/{courseId}/bans`, `POST|DELETE /courses/{courseId}/bans/{userId}` |
+| Itens relacionados | `GET|POST /courses/{courseId}/related`, `DELETE /courses/{courseId}/related/{relatedItemId}`, `GET|POST /posts/{postId}/related`, `DELETE /posts/{postId}/related/{relatedItemId}` |
+| Posts | `GET /posts`, `GET /posts/slug-check`, `GET /posts/{id}`, `GET /posts/by-slug/{nickname}/{slug}`, `POST /posts`, `PATCH|DELETE /posts/{id}`, `POST /posts/{id}/featured\|toggle-block` |
 | Blocos de post | `GET|POST /posts/{postId}/blocks`, `PATCH|DELETE /post-blocks/{id}`, `PUT /posts/{postId}/blocks/reorder` |
+| Biblioteca (favoritos/pastas) | `GET /library/overview`, `GET /library/courses/{id}/status`, `DELETE /library/courses/{id}`, `PUT /library/courses/{id}/folder` (idem para `posts` e `trilhas`), `GET|POST /library/folders`, `PATCH|DELETE /library/folders/{folderId}`, `GET /library/folders/{folderId}[/items]` |
+| Mensagens diretas | `GET /messages/conversations`, `GET /messages/unread-count`, `GET|POST /messages/with/{nickname}`, `PATCH|DELETE /messages/{id}` |
+| Notificações | `GET /notifications[/unread-count]`, `POST /notifications/{id}/read`, `POST /notifications/read-all` |
+| Chat com IA | `POST /ai/courses/{courseId}/chat`, `POST /ai/posts/{postId}/chat` |
+| Uploads | `GET /uploads/cloudinary-status`, `POST /uploads/cloudinary-signature` |
 | Busca | `GET /search?q=` |
-
-Todos com o prefixo `/api/v1`.
+| Home / site | `GET|PATCH /site-settings`, `GET /stats`, `GET /testimonials[/all]`, `POST|PATCH|DELETE /testimonials[/{id}]` |
+| Admin | `GET /admin/blocked-content` |
+| Saúde | `GET /ping` |
 
 ## Formato de erro
 
