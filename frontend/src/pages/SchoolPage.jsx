@@ -12,6 +12,7 @@ import { listTrilhas, trilhaKeys } from '@/api/trilhas'
 import { getSchoolBySlug, schoolKeys } from '@/api/schools'
 import { errorMessage } from '@/lib/api'
 import { PAGE_SIZE } from '@/lib/constants'
+import { cn } from '@/lib/cn'
 
 /**
  * A school's own public page: who they are, plus every course/post/trilha published under their
