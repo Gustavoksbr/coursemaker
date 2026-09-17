@@ -156,7 +156,7 @@ export default function HomePage() {
           <Reveal delayMs={80}>
             <p className="mx-auto mt-4 max-w-xl text-lg text-slate-400">
               {settings?.heroSubtitle ??
-                'Cursos estruturados, posts e trilhas escritos por quem entende do assunto.'}
+                'Aprenda ou ensine o que quiser. Matricule-se ou crie seu próprio curso.'}
             </p>
           </Reveal>
 

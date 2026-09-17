@@ -13,7 +13,7 @@ export function Layout() {
         </main>
         <footer className="border-t border-slate-800 py-6">
           <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 text-center text-xs text-slate-500 sm:px-6">
-            <p>CourseMaker — cursos, posts e trilhas feitos por desenvolvedores, para desenvolvedores.</p>
+            <p>CourseMaker — aprenda ou ensine o que quiser. Matricule-se ou crie seu proprio curso.</p>
             <Link to="/privacidade" className="hover:text-slate-300 hover:underline">
               Politica de Privacidade
             </Link>
