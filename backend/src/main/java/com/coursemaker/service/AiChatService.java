@@ -105,7 +105,7 @@ public class AiChatService {
         assertNotRateLimited(viewer.getId());
 
         if (apiKey == null || apiKey.isBlank()) {
-            throw new ServiceUnavailableException("O assistente de IA nao esta configurado neste momento.");
+            throw new ServiceUnavailableException("O assistente de IA não está configurado neste momento.");
         }
 
         List<GroqMessage> messages = new ArrayList<>();

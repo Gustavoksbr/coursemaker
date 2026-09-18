@@ -63,7 +63,7 @@ export default function PublicProfilePage() {
 
           {profile.deleted && (
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-slate-700/60 px-2.5 py-1 text-xs font-medium text-slate-400">
-              <UserX size={13} /> Esta conta foi excluida pelo proprio usuario
+              <UserX size={13} /> Esta conta foi excluída pelo próprio usuário
             </p>
           )}
 

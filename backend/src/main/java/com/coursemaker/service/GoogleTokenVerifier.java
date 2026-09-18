@@ -36,7 +36,7 @@ public class GoogleTokenVerifier {
 
     public GoogleProfile verify(String idToken) {
         if (!isEnabled()) {
-            throw new BadRequestException("Login com Google nao esta configurado neste servidor");
+            throw new BadRequestException("Login com Google não está configurado neste servidor");
         }
 
         JsonNode payload;

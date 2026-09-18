@@ -48,7 +48,7 @@ public class CloudinarySignatureService {
 
     public CloudinarySignatureResponse sign() {
         if (!isEnabled()) {
-            throw new BadRequestException("Upload de imagens nao esta configurado neste servidor");
+            throw new BadRequestException("Upload de imagens não está configurado neste servidor");
         }
 
         long timestamp = Instant.now().getEpochSecond();

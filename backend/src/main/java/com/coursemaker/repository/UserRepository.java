@@ -22,7 +22,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     /**
      * People search, for the "Pessoas" tab and the unified preview. Only users who have set a
-     * nickname are findable - without one there is no public profile URL to link to.
+     * nickname are findable - without one there is no public profile URL to link to. A deleted
+     * account is excluded too: its public profile still resolves directly by nickname (see
+     * {@link com.coursemaker.service.UserService}), but it has no business surfacing in a search
+     * result someone else is browsing.
      *
      * <p>Native SQL, like {@link CourseRepository#search}: a bare JPQL {@code :q IS NULL} with no
      * other type context makes the PostgreSQL JDBC driver infer the parameter as {@code bytea},
@@ -33,6 +36,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query(value = """
             SELECT * FROM users
             WHERE nickname IS NOT NULL
+              AND deleted_at IS NULL
               AND (CAST(:q AS text) IS NULL
                    OR name ILIKE '%' || CAST(:q AS text) || '%'
                    OR nickname ILIKE '%' || CAST(:q AS text) || '%')
@@ -43,6 +47,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             countQuery = """
             SELECT count(*) FROM users
             WHERE nickname IS NOT NULL
+              AND deleted_at IS NULL
               AND (CAST(:q AS text) IS NULL
                    OR name ILIKE '%' || CAST(:q AS text) || '%'
                    OR nickname ILIKE '%' || CAST(:q AS text) || '%')

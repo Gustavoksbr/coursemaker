@@ -78,7 +78,7 @@ no `localStorage` e o envia em `Authorization: Bearer {token}`.
 - Expiração configurável por `JWT_EXPIRY_HOURS` (padrão 24h).
 - `POST /api/v1/auth/google` recebe o **ID token** do Google Identity Services e o valida no
   endpoint `tokeninfo` do Google, conferindo o `aud` contra o `GOOGLE_CLIENT_ID`. Sem
-  `GOOGLE_CLIENT_ID` configurado, o endpoint responde 400 ("Login com Google nao esta configurado")
+  `GOOGLE_CLIENT_ID` configurado, o endpoint responde 400 ("Login com Google não está configurado")
   — o frontend só mostra o botão quando `VITE_GOOGLE_CLIENT_ID` está definido.
 
 ### Recuperação de senha
