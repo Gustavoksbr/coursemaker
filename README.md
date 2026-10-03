@@ -12,8 +12,9 @@ publicou.
 ```
 coursemaker/
 ├── backend/            # API REST (Java + Spring Boot)
-├── frontend/           # SPA (React + Tailwind)
-└── course-seeder-bot/  # bot Python de povoamento de conteúdo
+├── web/                # SPA (React + Tailwind)
+├── course-seeder-bot/  # bot Python de povoamento de conteúdo
+└── piston-gateway/     # gateway (Go) na frente do Piston, p/ execução de código
 ```
 
 ## ⚙️ Configuração
@@ -41,20 +42,20 @@ cd backend && cp .env.example .env && mvn spring-boot:run
 - API: `http://localhost:8080`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 
-### 3. Frontend
+### 3. Web
 
 ```bash
-cd frontend && npm install && npm run dev
+cd web && npm install && npm run dev
 ```
 
 - App: `http://localhost:5173`
 
-O frontend usa `VITE_API_URL` (padrão `http://localhost:8080`) para achar a API. O backend libera
+O app web usa `VITE_API_URL` (padrão `http://localhost:8080`) para achar a API. O backend libera
 CORS para a origem definida em `FRONTEND_URL`; os dois precisam combinar.
 
 ### 4. Conteúdo (opcional)
 
-Com backend e frontend rodando, mas o banco vazio, use o [course-seeder-bot](./course-seeder-bot/README.md)
+Com backend e web rodando, mas o banco vazio, use o [course-seeder-bot](./course-seeder-bot/README.md)
 para popular a plataforma com cursos, posts e trilhas de exemplo.
 
 ## 🧪 Testes
@@ -73,7 +74,7 @@ decisões técnicas detalhadas:
 
 - 📗 **[Backend](./backend/README.md)** — API REST em Java/Spring Boot: autenticação, endpoints,
   banco de dados, WebSocket, migrations.
-- 📘 **[Frontend](./frontend/README.md)** — SPA em React/Vite: rotas, estrutura de componentes,
+- 📘 **[Web](./web/README.md)** — SPA em React/Vite: rotas, estrutura de componentes,
   variáveis de ambiente, decisões de UI.
 - 🤖 **[course-seeder-bot](./course-seeder-bot/README.md)** — bot em Python usado para popular a
   plataforma com cursos, posts e trilhas reais, tanto gerados do zero (via LLM) quanto extraídos de

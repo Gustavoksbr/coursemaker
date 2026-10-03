@@ -30,6 +30,7 @@ import AdminHomePage from '@/pages/admin/AdminHomePage'
 import AdminModerationPage from '@/pages/admin/AdminModerationPage'
 import AdminSchoolsPage from '@/pages/admin/AdminSchoolsPage'
 import NotFoundPage from '@/pages/NotFoundPage'
+import CodePlaygroundPage from '@/pages/CodePlaygroundPage'
 
 // The editors pull in Tiptap/ProseMirror, which is the single heaviest dependency here and is
 // useless to a reader. Splitting them keeps it out of the bundle everyone downloads.
@@ -96,6 +97,13 @@ const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [{ path: '/profile', element: <ProfilePage /> }],
+      },
+
+      {
+        // Prototipo cru pra testar o bloco de codigo executavel - remover a rota quando a feature
+        // de verdade existir dentro do editor de curso/post.
+        element: <ProtectedRoute requireNickname={false} />,
+        children: [{ path: '/code-playground', element: <CodePlaygroundPage /> }],
       },
 
       {

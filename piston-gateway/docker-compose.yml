@@ -1,0 +1,54 @@
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: piston_api
+    privileged: true
+    volumes:
+      - piston_data:/piston
+    networks:
+      - internal
+    restart: unless-stopped
+    # Sem "ports:" aqui de proposito - o Piston nunca fica acessivel fora desta rede interna do
+    # Compose. So o gateway (abaixo) publica porta pra fora.
+
+  piston-init:
+    image: curlimages/curl:8.8.0
+    container_name: piston_init
+    depends_on:
+      - piston
+    networks:
+      - internal
+    # Instala os runtimes na primeira vez que o volume piston_data e criado. Se o volume ja tiver
+    # os pacotes (ex. depois de um "docker compose down" sem "-v"), isso so reconfirma - rapido e
+    # inofensivo rodar de novo.
+    entrypoint: >
+      sh -c "
+      echo 'Esperando o Piston ficar de pe...';
+      until curl -sf http://piston:2000/api/v2/runtimes > /dev/null; do sleep 2; done;
+      echo 'Instalando node...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"node\",\"version\":\"20.11.1\"}';
+      echo 'Instalando python...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"python\",\"version\":\"3.12.0\"}';
+      echo 'Instalando java...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"java\",\"version\":\"15.0.2\"}';
+      echo 'Pacotes prontos.'
+      "
+
+  gateway:
+    build: .
+    container_name: piston_gateway
+    environment:
+      - PISTON_URL=http://piston:2000/api/v2
+      - AUTH_TOKEN=${AUTH_TOKEN:?crie o arquivo .env a partir do .env.example e defina AUTH_TOKEN}
+      - PORT=8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      - piston
+    networks:
+      - internal
+    restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  piston_data:

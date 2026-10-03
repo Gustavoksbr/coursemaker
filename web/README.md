@@ -1,4 +1,4 @@
-# CourseMaker — Frontend
+# CourseMaker — Web
 
 SPA em React 18 + Vite + Tailwind CSS, consumindo a API REST do backend com JWT no `localStorage`.
 
@@ -18,8 +18,8 @@ essa mesma origem, senão o CORS bloqueia as requisições.
 | `VITE_API_URL` | não (padrão `http://localhost:8080`) | Base da API |
 | `VITE_GOOGLE_CLIENT_ID` | não | Mostra o botão "Entrar com Google". Deve ser igual ao `GOOGLE_CLIENT_ID` do backend |
 
-O upload de imagem não precisa de nenhuma variável própria no frontend: o backend assina cada
-upload (ver `CLOUDINARY_*` em `backend/.env`) e o frontend só pede a assinatura na hora de enviar.
+O upload de imagem não precisa de nenhuma variável própria no app web: o backend assina cada
+upload (ver `CLOUDINARY_*` em `backend/.env`) e o app web só pede a assinatura na hora de enviar.
 O botão "enviar imagem" aparece sozinho quando o backend tem o Cloudinary configurado; sem ele, o
 campo de imagem continua funcionando — só aceita URL colada.
 
@@ -32,7 +32,7 @@ npm run preview       # serve o build localmente
 npm run lint          # ESLint
 npm run test          # testes unitários (Vitest)
 npm run test:watch    # idem, em modo watch
-npm run test:e2e      # end-to-end (Playwright) — precisa do backend + frontend rodando
+npm run test:e2e      # end-to-end (Playwright) — precisa do backend + web rodando
 ```
 
 ## Estrutura

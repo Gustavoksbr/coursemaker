@@ -1,5 +1,5 @@
 {
-  "name": "coursemaker-frontend",
+  "name": "coursemaker-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -15,6 +15,10 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-java": "^6.0.2",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-python": "^6.2.1",
     "@shikijs/langs": "^1.24.2",
     "@shikijs/themes": "^1.24.2",
     "@stomp/stompjs": "^7.3.0",
@@ -23,6 +27,8 @@
     "@tiptap/extension-placeholder": "^2.10.4",
     "@tiptap/react": "^2.10.4",
     "@tiptap/starter-kit": "^2.10.4",
+    "@uiw/codemirror-theme-vscode": "^4.25.12",
+    "@uiw/react-codemirror": "^4.25.12",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
     "dompurify": "^3.2.3",

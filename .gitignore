@@ -4,19 +4,19 @@ backend/.idea/
 backend/*.iml
 backend/*.log
 
-# Frontend (React/Node)
-frontend/node_modules/
-frontend/build/
-frontend/dist/
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
+# Web (React/Node)
+web/node_modules/
+web/build/
+web/dist/
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
 
 # Playwright (e2e)
-frontend/test-results/
-frontend/playwright-report/
-frontend/blob-report/
-frontend/playwright/.cache/
+web/test-results/
+web/playwright-report/
+web/blob-report/
+web/playwright/.cache/
 
 # Env files (anywhere in the tree)
 .env
