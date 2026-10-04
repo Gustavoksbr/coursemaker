@@ -249,3 +249,27 @@ export async function getCodeExerciseSpec(blockId) {
   const { data } = await api.get(`/blocks/${blockId}/exercise/spec`)
   return data
 }
+
+/** "Executar exemplos": only the visible tests, never counted as a submission. */
+export async function runCodeExercise(blockId, code) {
+  const { data } = await api.post(`/blocks/${blockId}/exercise/run`, { code })
+  return data
+}
+
+/** "Enviar solucao": every test, recorded as an attempt. */
+export async function submitCodeExercise(blockId, code) {
+  const { data } = await api.post(`/blocks/${blockId}/exercise/submit`, { code })
+  return data
+}
+
+/** `{ passed, failedSubmissions, solutionAvailable, lastCode }` for the signed-in student. */
+export async function getCodeExerciseProgress(blockId) {
+  const { data } = await api.get(`/blocks/${blockId}/exercise/progress`)
+  return data
+}
+
+/** The author's solution; the server refuses until the student passed or failed twice. */
+export async function getCodeExerciseSolution(blockId) {
+  const { data } = await api.get(`/blocks/${blockId}/exercise/solution`)
+  return data
+}

@@ -1,12 +1,27 @@
 import { useState } from 'react'
-import { CheckCircle2, ChevronDown, Circle } from 'lucide-react'
+import { BookOpen, CheckCircle2, ChevronDown, CirclePlay, ClipboardList } from 'lucide-react'
+import { lessonActivityCounts, lessonKind } from '@/lib/lessonActivities'
 import { cn } from '@/lib/cn'
+
+const KIND_ICON = { reading: BookOpen, video: CirclePlay, activity: ClipboardList }
+const KIND_LABEL = { reading: 'Leitura', video: 'Video', activity: 'Atividade' }
 
 /**
  * Read-only curriculum navigation for the course viewer: modules collapse, the active lesson is
  * highlighted, and completed lessons get a green check.
+ *
+ * Each lesson's icon is automatic (see `lessonKind`): reading, video, or - amber, and winning over
+ * the others - activity when it holds a question or a code exercise. With `showProgress`, an
+ * activity lesson also shows how many of its activities are done ("0/2").
  */
-export function CurriculumNav({ modules, activeLessonId, onSelectLesson }) {
+export function CurriculumNav({
+  modules,
+  activeLessonId,
+  onSelectLesson,
+  answeredQuestionBlockIds,
+  passedExerciseBlockIds,
+  showProgress = false,
+}) {
   // Everything starts expanded; the module holding the active lesson must never be hidden.
   const [collapsed, setCollapsed] = useState(() => new Set())
 
@@ -55,6 +70,12 @@ export function CurriculumNav({ modules, activeLessonId, onSelectLesson }) {
               <ul className="ml-5 space-y-0.5 border-l border-slate-700 pl-2">
                 {module.lessons.map((lesson) => {
                   const active = lesson.id === activeLessonId
+                  const kind = lessonKind(lesson.blocks)
+                  const KindIcon = KIND_ICON[kind]
+                  const counts =
+                    showProgress && kind === 'activity'
+                      ? lessonActivityCounts(lesson, answeredQuestionBlockIds, passedExerciseBlockIds)
+                      : null
                   return (
                     <li key={lesson.id}>
                       <button
@@ -68,12 +89,24 @@ export function CurriculumNav({ modules, activeLessonId, onSelectLesson }) {
                             : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200',
                         )}
                       >
-                        {lesson.completed ? (
-                          <CheckCircle2 size={15} className="shrink-0 text-green-400" />
-                        ) : (
-                          <Circle size={15} className="shrink-0 text-slate-600" />
-                        )}
+                        <KindIcon
+                          size={15}
+                          aria-label={KIND_LABEL[kind]}
+                          className={cn('shrink-0', kind === 'activity' ? 'text-amber-400' : 'text-slate-500')}
+                        />
                         <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                        {lesson.completed ? (
+                          <CheckCircle2 size={15} className="shrink-0 text-green-400" aria-label="Concluida" />
+                        ) : (
+                          counts && (
+                            <span
+                              title="atividades feitas nesta aula"
+                              className="shrink-0 text-xs tabular-nums text-slate-500"
+                            >
+                              {counts.done}/{counts.total}
+                            </span>
+                          )
+                        )}
                       </button>
                     </li>
                   )

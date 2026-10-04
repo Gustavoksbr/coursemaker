@@ -33,7 +33,7 @@ function tabAtCursor(view) {
 const TAB_KEYMAP = keymap.of([{ key: 'Tab', run: tabAtCursor, shift: indentLess }])
 
 /** Editor de codigo estilo VS Code: realce de sintaxe, auto-indent, fecha ({["', numeros de linha. */
-export default function CodeEditor({ value, onChange, language = 'javascript', minHeight = '160px' }) {
+export default function CodeEditor({ value, onChange, language = 'javascript', minHeight = '160px', readOnly = false }) {
   const languageExtension = (LANGUAGE_EXTENSIONS[language] ?? LANGUAGE_EXTENSIONS.javascript)()
 
   return (
@@ -42,6 +42,7 @@ export default function CodeEditor({ value, onChange, language = 'javascript', m
       onChange={onChange}
       theme={vscodeDark}
       indentWithTab={false}
+      readOnly={readOnly}
       extensions={[languageExtension, TAB_KEYMAP]}
       minHeight={minHeight}
       basicSetup={{

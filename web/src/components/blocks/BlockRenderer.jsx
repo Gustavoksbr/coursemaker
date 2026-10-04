@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify'
 import { FileQuestion } from 'lucide-react'
 import { CodeBlock } from './CodeBlock'
 import { QuestionBlock } from './QuestionBlock'
-import { CodeExercisePreview } from './CodeExercisePreview'
+import { CodeExerciseBlock } from './CodeExerciseBlock'
 import { BLOCK_TYPE } from '@/lib/constants'
 import { videoEmbedUrl } from '@/lib/video'
 import { cn } from '@/lib/cn'
@@ -12,11 +12,21 @@ import { cn } from '@/lib/cn'
  * Renders one content block, exactly as the public view shows it — the editor's preview mode reuses
  * this component so what you see really is what gets published.
  *
+ * Code exercises are only interactive (editor, run, submit) when `exercisesInteractive` is set -
+ * the course lesson view does; the editor preview and posts show them read-only.
+ *
  * `answeredQuestionBlockIds`/`onAnswerQuestion` are only meaningful for a QUESTION block viewed in
  * a gradable lesson (see CourseViewPage); every other caller (post view, editor preview) omits them
  * and QuestionBlock falls back to its plain, ungraded quiz behaviour.
  */
-export function BlockRenderer({ block, answeredQuestionBlockIds, onAnswerQuestion }) {
+export function BlockRenderer({
+  block,
+  answeredQuestionBlockIds,
+  onAnswerQuestion,
+  passedExerciseBlockIds,
+  onExercisePassed,
+  exercisesInteractive = false,
+}) {
   switch (block.type) {
     case BLOCK_TYPE.TEXT:
       return <TextBlock html={block.content} />
@@ -35,7 +45,14 @@ export function BlockRenderer({ block, answeredQuestionBlockIds, onAnswerQuestio
         />
       )
     case BLOCK_TYPE.CODE_EXERCISE:
-      return <CodeExercisePreview block={block} />
+      return (
+        <CodeExerciseBlock
+          block={block}
+          interactive={exercisesInteractive}
+          passed={passedExerciseBlockIds?.has(block.id) ?? false}
+          onPassed={onExercisePassed}
+        />
+      )
     default:
       return (
         <p className="flex items-center gap-2 text-sm text-slate-500">
@@ -92,6 +109,9 @@ export function BlockList({
   emptyMessage = 'Esta licao ainda nao tem conteudo.',
   answeredQuestionBlockIds,
   onAnswerQuestion,
+  passedExerciseBlockIds,
+  onExercisePassed,
+  exercisesInteractive = false,
 }) {
   if (!blocks?.length) {
     return <p className={cn('text-sm text-slate-500', className)}>{emptyMessage}</p>
@@ -105,6 +125,9 @@ export function BlockList({
             block={block}
             answeredQuestionBlockIds={answeredQuestionBlockIds}
             onAnswerQuestion={onAnswerQuestion}
+            passedExerciseBlockIds={passedExerciseBlockIds}
+            onExercisePassed={onExercisePassed}
+            exercisesInteractive={exercisesInteractive}
           />
         </div>
       ))}
