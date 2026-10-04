@@ -132,7 +132,7 @@ class CodeExerciseIT extends IntegrationTest {
     void validateEndpointReportsWithoutSaving() throws Exception {
         TestUser owner = fixtures.user("ana");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
-        String path = "/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/code-exercise/validate";
+        String path = "/api/v1/courses/" + curriculum.courseId() + "/code-exercise/validate";
 
         JsonNode bad = postOk(path, Map.of("language", "python", "exercise", functionSpec(DIFF_SOLUTION)),
                 owner.caller());
@@ -255,6 +255,32 @@ class CodeExerciseIT extends IntegrationTest {
         post("/api/v1/posts/" + postId + "/blocks",
                 exerciseBlockBody("python", functionSpec(SUM_SOLUTION)), owner.caller())
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("o admin liga e desliga exercicios de codigo por area; omitir o campo nao mexe nele")
+    void adminTogglesAreaFlag() throws Exception {
+        TestUser admin = fixtures.admin("root");
+        TestUser regular = fixtures.user("ana");
+        String path = "/api/v1/areas/" + fixtures.defaultAreaId();
+
+        JsonNode off = patchOk(path, Map.of("name", "Programação", "allowsCodeExercises", false), admin.caller());
+        assertThat(off.get("allowsCodeExercises").asBoolean()).isFalse();
+
+        JsonNode renamedOnly = patchOk(path, Map.of("name", "Programação"), admin.caller());
+        assertThat(renamedOnly.get("allowsCodeExercises").asBoolean()).isFalse();
+
+        JsonNode on = patchOk(path, Map.of("name", "Programação", "allowsCodeExercises", true), admin.caller());
+        assertThat(on.get("allowsCodeExercises").asBoolean()).isTrue();
+
+        patch(path, Map.of("name", "Programação", "allowsCodeExercises", false), regular.caller())
+                .andExpect(status().isForbidden());
+
+        // The flag is part of the area every course carries, which is how the editor knows to offer the block.
+        TestUser owner = fixtures.user("bia");
+        UUID courseId = fixtures.draftCourse(owner, "Curso");
+        JsonNode course = getOk("/api/v1/courses/" + courseId, owner.caller());
+        assertThat(course.get("summary").get("area").get("allowsCodeExercises").asBoolean()).isTrue();
     }
 
     // ------------------------------------------------------------------ student

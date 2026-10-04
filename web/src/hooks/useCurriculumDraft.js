@@ -28,6 +28,8 @@ import {
   updateLessonBlock,
   updateModule,
 } from '@/api/courses'
+import { BLOCK_TYPE } from '@/lib/constants'
+import { exerciseBlockerMessage, exerciseToPayload } from '@/lib/codeExercise'
 
 /** Strips a `ModuleResponse`/`LessonResponse` down to the fields the editor actually renders or edits. */
 function seedModules(initialModules) {
@@ -38,7 +40,8 @@ function seedModules(initialModules) {
       module.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title })),
     )
   }
-  return { modules, lessonsByModuleKey, blocksByLessonKey: {} }
+  // exerciseChecks: block id -> `{ ok, message }`, the outcome of the creator's "Testar solucao".
+  return { modules, lessonsByModuleKey, blocksByLessonKey: {}, exerciseChecks: {} }
 }
 
 function remapKey(record, oldKey, newKey) {
@@ -68,6 +71,10 @@ function reducer(state, action) {
     }
     case 'SET_BLOCKS':
       return { ...state, blocksByLessonKey: { ...state.blocksByLessonKey, [action.lessonId]: action.collection } }
+    case 'SET_EXERCISE_CHECK': {
+      const { [action.blockId]: previous, ...rest } = state.exerciseChecks
+      return { ...state, exerciseChecks: action.check ? { ...rest, [action.blockId]: action.check } : rest }
+    }
     case 'REPLACE_ALL':
       return action.state
     default:
@@ -90,6 +97,29 @@ async function runStep(label, fn) {
   }
 }
 
+/** Body of POST /lessons/{id}/blocks. An exercise sends its form; the server derives the content. */
+function createPayload(draft) {
+  if (draft.type === BLOCK_TYPE.CODE_EXERCISE) {
+    return { type: draft.type, language: draft.language, exercise: exerciseToPayload(draft.exercise) }
+  }
+  return { type: draft.type, content: draft.content, language: draft.language }
+}
+
+/** Body of PATCH /blocks/{id}: only what changed, with an exercise form converted for the API. */
+function updatePayload(fields) {
+  const { exercise, ...rest } = fields
+  return exercise ? { ...rest, exercise: exerciseToPayload(exercise) } : rest
+}
+
+/**
+ * After saving an exercise the server's public content (examples, hidden count) has changed
+ * underneath the form; pull it into both baseline and local so Visualizar shows what was stored.
+ */
+function syncExerciseContent(collection, saved) {
+  const apply = (item) => (item.id === saved.id ? { ...item, content: saved.content, language: saved.language } : item)
+  return { baseline: collection.baseline.map(apply), local: collection.local.map(apply) }
+}
+
 /**
  * Local-draft state for one course's curriculum (modules -> lessons -> blocks). Every add/rename/
  * delete/reorder mutates draft state only; nothing hits the network until `flush()`. See the plan
@@ -108,6 +138,22 @@ export function useCurriculumDraft(courseId, initialModules) {
     collectionIsDirty(state.modules) ||
     Object.values(state.lessonsByModuleKey).some(collectionIsDirty) ||
     Object.values(state.blocksByLessonKey).some(collectionIsDirty)
+
+  /**
+   * Why saving must be refused right now, as user-facing sentences: a code exercise that is still
+   * incomplete, or whose reference solution failed the creator's own "Testar solucao". The server
+   * checks the solution again on save, so an untested exercise is allowed through - this only
+   * stops what is already known to fail.
+   */
+  const saveBlockers = []
+  for (const collection of Object.values(state.blocksByLessonKey)) {
+    for (const block of collection.local) {
+      if (block.type !== BLOCK_TYPE.CODE_EXERCISE || !block.exercise) continue
+      const incomplete = exerciseBlockerMessage(block.exercise)
+      if (incomplete) saveBlockers.push(incomplete)
+      else if (state.exerciseChecks[block.id]?.ok === false) saveBlockers.push(state.exerciseChecks[block.id].message)
+    }
+  }
 
   function addModule() {
     const { collection, id } = insert(state.modules, { title: 'Novo modulo' })
@@ -189,6 +235,10 @@ export function useCurriculumDraft(courseId, initialModules) {
       removeBlock(id) {
         const current = state.blocksByLessonKey[lessonId] ?? emptyCollection([])
         dispatch({ type: 'SET_BLOCKS', lessonId, collection: remove(current, id) })
+        dispatch({ type: 'SET_EXERCISE_CHECK', blockId: id, check: null })
+      },
+      setExerciseCheck(blockId, check) {
+        dispatch({ type: 'SET_EXERCISE_CHECK', blockId, check })
       },
       reorderBlocks(ids) {
         const current = state.blocksByLessonKey[lessonId] ?? emptyCollection([])
@@ -264,18 +314,23 @@ export function useCurriculumDraft(courseId, initialModules) {
 
           for (const draft of blocksDiff.creates) {
             const real = await runStep(`um bloco de "${lesson.title}"`, () =>
-              createLessonBlock(lesson.id, { type: draft.type, content: draft.content, language: draft.language }),
+              createLessonBlock(lesson.id, createPayload(draft)),
             )
             blocks = commitCreate(blocks, draft.id, {
               id: real.id,
               type: real.type,
               content: real.content,
               language: real.language,
+              // The form the creator just saved stays, so reopening it needs no round trip.
+              ...(draft.exercise ? { exercise: draft.exercise } : {}),
             })
           }
           for (const { id, fields } of diffMutations(blocks).updates) {
-            await runStep(`um bloco de "${lesson.title}"`, () => updateLessonBlock(id, fields))
+            const saved = await runStep(`um bloco de "${lesson.title}"`, () =>
+              updateLessonBlock(id, updatePayload(fields)),
+            )
             blocks = commitUpdate(blocks, id)
+            if (saved?.type === BLOCK_TYPE.CODE_EXERCISE) blocks = syncExerciseContent(blocks, saved)
           }
           for (const id of diffMutations(blocks).deletes) {
             await runStep('um bloco excluido', () => deleteLessonBlock(id))
@@ -315,6 +370,7 @@ export function useCurriculumDraft(courseId, initialModules) {
     deleteLesson: deleteLessonDraft,
     reorderLessons: reorderLessonsDraft,
     blocksDraftFor,
+    saveBlockers,
     flush,
   }
 }

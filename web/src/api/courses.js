@@ -229,3 +229,23 @@ export async function banUser(courseId, userId) {
 export async function unbanUser(courseId, userId) {
   await api.delete(`/courses/${courseId}/bans/${userId}`)
 }
+
+// ------------------------------------------------------------ code exercises
+
+/** Which languages each correction mode supports: `{ function: [...], output: [...] }`. */
+export async function getCodeExerciseLanguages() {
+  const { data } = await api.get('/code-exercises/languages')
+  return data
+}
+
+/** Runs the reference solution against the tests without saving anything ("Testar solucao"). */
+export async function validateCodeExercise(courseId, payload) {
+  const { data } = await api.post(`/courses/${courseId}/code-exercise/validate`, payload)
+  return data
+}
+
+/** The creator's full view of an exercise: hidden tests and reference solution included. */
+export async function getCodeExerciseSpec(blockId) {
+  const { data } = await api.get(`/blocks/${blockId}/exercise/spec`)
+  return data
+}

@@ -7,6 +7,7 @@ import { EmptyState, Spinner } from '@/components/ui/Feedback'
 import { useDragReorder } from '@/hooks/useDragReorder'
 import { BLOCK_TYPE } from '@/lib/constants'
 import { defaultQuestionContent } from '@/lib/questionBlock'
+import { emptyExercise } from '@/lib/codeExercise'
 import { cn } from '@/lib/cn'
 
 const DEFAULT_CONTENT = {
@@ -25,7 +26,7 @@ const DEFAULT_CONTENT = {
  * page's own "Salvar alteracoes" flushes it. Visualizar therefore always shows exactly what is
  * currently in the edit fields.
  */
-export function BlockListEditor({ parentId, draft, emptyMessage }) {
+export function BlockListEditor({ parentId, draft, emptyMessage, courseId, allowCodeExercise = false }) {
   const [mode, setMode] = useState('edit')
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [isPending, setIsPending] = useState(Boolean(parentId))
@@ -72,6 +73,12 @@ export function BlockListEditor({ parentId, draft, emptyMessage }) {
   }
 
   const addBlock = (type) => {
+    if (type === BLOCK_TYPE.CODE_EXERCISE) {
+      // Its content is derived by the server from `exercise`; there is no content of its own.
+      const exercise = emptyExercise()
+      draft.addBlock({ type, content: '', language: exercise.language, exercise })
+      return
+    }
     draft.addBlock({
       // A fresh call per block: QUESTION's default embeds generated alternative ids, which a
       // shared static value (like the other types use) would bake in once and reuse everywhere.
@@ -133,14 +140,19 @@ export function BlockListEditor({ parentId, draft, emptyMessage }) {
                   </button>
                 </div>
 
-                <BlockEditor block={block} onChange={(fields) => draft.updateBlock(block.id, fields)} />
+                <BlockEditor
+                  block={block}
+                  onChange={(fields) => draft.updateBlock(block.id, fields)}
+                  courseId={courseId}
+                  onExerciseCheck={draft.setExerciseCheck}
+                />
               </li>
             )
           })}
         </ul>
       )}
 
-      {mode === 'edit' && <AddBlockBar onAdd={addBlock} />}
+      {mode === 'edit' && <AddBlockBar onAdd={addBlock} allowCodeExercise={allowCodeExercise} />}
 
       <ConfirmModal
         open={Boolean(confirmDelete)}

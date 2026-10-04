@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Mail, Pencil, Save, X } from 'lucide-react'
+import { Eye, Mail, Pencil, Save, X, TriangleAlert } from 'lucide-react'
 import { CoursePreview } from '@/components/course/CoursePreview'
 import { CourseSettingsPanel } from '@/components/course/CourseSettingsPanel'
 import { CurriculumEditor } from '@/components/course/CurriculumEditor'
@@ -76,6 +76,7 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
   const relatedDraft = useRelatedItemsDraft('course', course.id)
   const settingsDraft = useCourseSettingsDraft(course, detail.landingDescription, courseQueryKey)
   const isDirty = curriculumDraft.isDirty || relatedDraft.isDirty || settingsDraft.isDirty
+  const saveBlocked = curriculumDraft.saveBlockers.length > 0
   const blocker = useUnsavedChangesGuard(isDirty)
 
   const activeLessonId = searchParams.get('lesson')
@@ -167,9 +168,9 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
 
           <Button
             onClick={handleSave}
-            disabled={!isDirty}
+            disabled={!isDirty || saveBlocked}
             loading={curriculumDraft.isFlushing || relatedDraft.isFlushing || settingsDraft.isFlushing}
-            title={isDirty ? undefined : 'Faca uma alteracao para poder salvar'}
+            title={saveBlocked ? curriculumDraft.saveBlockers[0] : isDirty ? undefined : 'Faca uma alteracao para poder salvar'}
           >
             <Save size={16} /> Salvar alteracoes
           </Button>
@@ -189,6 +190,21 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
             <X size={14} /> Cancelar alteracoes
           </button>
         </header>
+
+        {/* Why "Salvar" is disabled: an exercise that is incomplete or whose own solution failed. */}
+        {saveBlocked && (
+          <div role="alert" className="mb-6 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+            <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium">Nao da para salvar ainda:</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-amber-100/90">
+                {curriculumDraft.saveBlockers.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* Blocked warning */}
         {course.blockedByAdmin && (
@@ -248,6 +264,8 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
                   parentId={activeLesson.id}
                   draft={curriculumDraft.blocksDraftFor(activeLesson.id)}
                   emptyMessage="Adicione texto, codigo, imagens ou videos a esta licao."
+                  courseId={course.id}
+                  allowCodeExercise={Boolean(course.area?.allowsCodeExercises)}
                 />
               </div>
             ) : (

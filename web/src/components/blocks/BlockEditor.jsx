@@ -1,8 +1,9 @@
-import { Code2, FileText, Image as ImageIcon, ListChecks, Video } from 'lucide-react'
+import { Code2, FileText, Image as ImageIcon, ListChecks, SquareTerminal, Video } from 'lucide-react'
 import { Field, Select, Textarea } from '@/components/ui/Field'
 import { RichTextEditor } from './RichTextEditor'
 import { ImageUploadField } from './ImageUploadField'
 import { QuestionEditor } from './QuestionEditor'
+import { CodeExerciseEditor } from './CodeExerciseEditor'
 import { BLOCK_TYPE, LIMITS } from '@/lib/constants'
 import { HIGHLIGHTABLE_LANGUAGES } from '@/lib/highlighter'
 import { videoEmbedUrl } from '@/lib/video'
@@ -13,6 +14,7 @@ export const BLOCK_META = {
   [BLOCK_TYPE.IMAGE]: { label: 'Imagem', icon: ImageIcon },
   [BLOCK_TYPE.VIDEO]: { label: 'Video', icon: Video },
   [BLOCK_TYPE.QUESTION]: { label: 'Questao', icon: ListChecks },
+  [BLOCK_TYPE.CODE_EXERCISE]: { label: 'Exercicio de codigo', icon: SquareTerminal },
 }
 
 /**
@@ -20,7 +22,7 @@ export const BLOCK_META = {
  * separate "Salvar bloco" step - the block content only reaches the server when the page's own
  * "Salvar alteracoes" flushes the whole draft.
  */
-export function BlockEditor({ block, onChange }) {
+export function BlockEditor({ block, onChange, courseId, onExerciseCheck }) {
   const content = block.content ?? ''
   const language = block.language ?? 'javascript'
 
@@ -100,16 +102,30 @@ export function BlockEditor({ block, onChange }) {
       {block.type === BLOCK_TYPE.QUESTION && (
         <QuestionEditor blockId={block.id} content={content} onChange={(next) => onChange({ content: next })} />
       )}
+
+      {block.type === BLOCK_TYPE.CODE_EXERCISE && (
+        <CodeExerciseEditor
+          block={block}
+          courseId={courseId}
+          onChange={onChange}
+          onCheck={onExerciseCheck ? (check) => onExerciseCheck(block.id, check) : undefined}
+        />
+      )}
     </div>
   )
 }
 
-/** The "+ Adicionar bloco" row, one button per block type. */
-export function AddBlockBar({ onAdd, disabled }) {
+/**
+ * The "+ Adicionar bloco" row, one button per block type. Code exercises only appear where the
+ * caller says they are allowed (courses of an area an admin enabled them for).
+ */
+export function AddBlockBar({ onAdd, disabled, allowCodeExercise = false }) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-slate-700 p-3">
       <span className="mr-1 text-sm text-slate-500">Adicionar bloco:</span>
-      {Object.entries(BLOCK_META).map(([type, { label, icon: Icon }]) => (
+      {Object.entries(BLOCK_META)
+        .filter(([type]) => allowCodeExercise || type !== BLOCK_TYPE.CODE_EXERCISE)
+        .map(([type, { label, icon: Icon }]) => (
         <button
           key={type}
           type="button"
@@ -119,7 +135,7 @@ export function AddBlockBar({ onAdd, disabled }) {
         >
           <Icon size={14} /> {label}
         </button>
-      ))}
+        ))}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import DOMPurify from 'dompurify'
 import { FileQuestion } from 'lucide-react'
 import { CodeBlock } from './CodeBlock'
 import { QuestionBlock } from './QuestionBlock'
+import { CodeExercisePreview } from './CodeExercisePreview'
 import { BLOCK_TYPE } from '@/lib/constants'
 import { videoEmbedUrl } from '@/lib/video'
 import { cn } from '@/lib/cn'
@@ -33,6 +34,8 @@ export function BlockRenderer({ block, answeredQuestionBlockIds, onAnswerQuestio
           onAnswered={onAnswerQuestion ? (alternativeId) => onAnswerQuestion(block.id, alternativeId) : undefined}
         />
       )
+    case BLOCK_TYPE.CODE_EXERCISE:
+      return <CodeExercisePreview block={block} />
     default:
       return (
         <p className="flex items-center gap-2 text-sm text-slate-500">

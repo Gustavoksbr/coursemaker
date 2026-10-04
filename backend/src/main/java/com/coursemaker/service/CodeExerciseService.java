@@ -4,7 +4,7 @@ import com.coursemaker.domain.entity.CodeExercise;
 import com.coursemaker.domain.entity.CodeExerciseProgress;
 import com.coursemaker.domain.entity.CodeExerciseTest;
 import com.coursemaker.domain.entity.CompositeIds.UserBlockId;
-import com.coursemaker.domain.entity.Lesson;
+import com.coursemaker.domain.entity.Course;
 import com.coursemaker.domain.entity.LessonBlock;
 import com.coursemaker.domain.entity.User;
 import com.coursemaker.domain.enums.BlockType;
@@ -97,7 +97,7 @@ public class CodeExerciseService {
     private final LessonBlockRepository blockRepository;
     private final AreaRepository areaRepository;
     private final CourseAccessService accessService;
-    private final LessonService lessonService;
+    private final CourseService courseService;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate tx;
 
@@ -177,9 +177,10 @@ public class CodeExerciseService {
     }
 
     /** "Testar solucao": same checks as saving, but nothing is persisted and a failing solution is a normal answer. */
-    public ValidationResponse validate(UUID lessonId, ValidateExerciseRequest request, User viewer) {
-        Lesson lesson = lessonService.loadForEditing(lessonId, viewer);
-        requireAreaAllows(lesson.getModule().getCourse().getId());
+    public ValidationResponse validate(UUID courseId, ValidateExerciseRequest request, User viewer) {
+        // Keyed by course, not lesson: a lesson created in the editor draft does not exist yet.
+        Course course = courseService.loadForEditing(courseId, viewer);
+        requireAreaAllows(course.getId());
 
         Normalized exercise = normalize(request.language(), request.exercise());
         limiter.check(viewer.getId());

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Check, Pencil, Plus, SquareTerminal, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
 import { ConfirmModal } from '@/components/ui/Modal'
@@ -9,6 +9,7 @@ import { useToast } from '@/context/ToastContext'
 import { areaKeys, createArea, deleteArea, listAreas, updateArea } from '@/api/areas'
 import { errorMessage } from '@/lib/api'
 import { LIMITS } from '@/lib/constants'
+import { cn } from '@/lib/cn'
 
 /**
  * Admin-only: the fixed, curated list of areas (Programação, Xadrez, ...) that every
@@ -45,6 +46,20 @@ export default function AdminAreasPage() {
       toast.success('Area renomeada.')
     },
     onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel renomear a area.')),
+  })
+
+  // The name is required by the endpoint, so toggling re-sends the current one.
+  const { mutate: toggleCodeExercises, isPending: toggling, variables: togglingArea } = useMutation({
+    mutationFn: (area) => updateArea(area.id, { name: area.name, allowsCodeExercises: !area.allowsCodeExercises }),
+    onSuccess: (updated) => {
+      invalidate()
+      toast.success(
+        updated.allowsCodeExercises
+          ? `Exercicios de codigo liberados em "${updated.name}".`
+          : `Exercicios de codigo desligados em "${updated.name}".`,
+      )
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel alterar a area.')),
   })
 
   const { mutate: remove, isPending: deleting } = useMutation({
@@ -133,6 +148,23 @@ export default function AdminAreasPage() {
               ) : (
                 <>
                   <span className="flex-1 text-sm text-slate-200">{area.name}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={area.allowsCodeExercises}
+                    onClick={() => toggleCodeExercises(area)}
+                    disabled={toggling && togglingArea?.id === area.id}
+                    title="Permite que os cursos desta area tenham exercicios de codigo corrigidos automaticamente"
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-60',
+                      area.allowsCodeExercises
+                        ? 'border-sky-500/50 bg-sky-500/10 text-sky-300'
+                        : 'border-slate-700 text-slate-500 hover:text-slate-300',
+                    )}
+                  >
+                    <SquareTerminal size={13} />
+                    Exercicios de codigo: {area.allowsCodeExercises ? 'ligado' : 'desligado'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => startEditing(area)}

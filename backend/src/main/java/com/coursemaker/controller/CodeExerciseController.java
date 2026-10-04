@@ -43,12 +43,12 @@ public class CodeExerciseController {
 
     // ------------------------------------------------------------------ creator
 
-    @Operation(summary = "Roda a solucao de referencia contra os testes, sem salvar (apenas o dono da licao)")
-    @PostMapping("/api/v1/lessons/{lessonId}/code-exercise/validate")
-    public ValidationResponse validate(@PathVariable UUID lessonId,
+    @Operation(summary = "Roda a solucao de referencia contra os testes, sem salvar (apenas o dono do curso)")
+    @PostMapping("/api/v1/courses/{courseId}/code-exercise/validate")
+    public ValidationResponse validate(@PathVariable UUID courseId,
                                        @Valid @RequestBody ValidateExerciseRequest request,
                                        @AuthenticationPrincipal AuthenticatedUser principal) {
-        return exerciseService.validate(lessonId, request, principal.user());
+        return exerciseService.validate(courseId, request, principal.user());
     }
 
     @Operation(summary = "Exercicio completo, com testes escondidos e solucao, para edicao (apenas o dono)")
