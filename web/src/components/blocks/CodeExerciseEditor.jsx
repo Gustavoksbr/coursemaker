@@ -29,6 +29,7 @@ import {
   exerciseProblems,
   exerciseToPayload,
   FALLBACK_LANGUAGES,
+  JAVA_TYPES,
   LANGUAGE_LABELS,
   MAX_PARAMS,
   MAX_TESTS,
@@ -111,9 +112,14 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
   /** Applies a change, keeps the starter code in step while the creator has not touched it, and drops a stale check. */
   const update = (changes) => {
     let next = { ...form, ...changes }
-    const untouched = form.starterCode === defaultStarter(form.mode, form.language, form.functionName, form.params)
+    const untouched =
+      form.starterCode ===
+      defaultStarter(form.mode, form.language, form.functionName, form.params, form.paramTypes, form.returnType)
     if (untouched && !('starterCode' in changes)) {
-      next = { ...next, starterCode: defaultStarter(next.mode, next.language, next.functionName, next.params) }
+      next = {
+        ...next,
+        starterCode: defaultStarter(next.mode, next.language, next.functionName, next.params, next.paramTypes, next.returnType),
+      }
     }
     onChange({ exercise: next, language: next.language })
     if (check) {
@@ -133,14 +139,30 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
     update({ ...fresh, title: form.title })
   }
 
+  // Java is typed: entering it gives every parameter (and the return value) a type; leaving drops them.
+  const changeLanguage = (language) => {
+    const typed = isFunction && language === 'java'
+    update({
+      language,
+      paramTypes: typed ? form.params.map((_, i) => form.paramTypes[i] ?? 'int') : [],
+      returnType: typed ? form.returnType || 'int' : '',
+    })
+  }
+
   // ---- parameters (function mode): every test keeps one argument cell per parameter
+  const typed = isFunction && form.language === 'java'
+
   const renameParam = (index, name) =>
     update({ params: form.params.map((param, i) => (i === index ? name : param)) })
+
+  const changeParamType = (index, type) =>
+    update({ paramTypes: form.paramTypes.map((current, i) => (i === index ? type : current)) })
 
   const addParam = () => {
     if (form.params.length >= MAX_PARAMS) return
     update({
       params: [...form.params, `p${form.params.length + 1}`],
+      paramTypes: typed ? [...form.paramTypes, 'int'] : form.paramTypes,
       tests: form.tests.map((test) => ({ ...test, args: [...test.args, ''] })),
     })
   }
@@ -148,6 +170,7 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
   const removeParam = (index) =>
     update({
       params: form.params.filter((_, i) => i !== index),
+      paramTypes: form.paramTypes.filter((_, i) => i !== index),
       tests: form.tests.map((test) => ({ ...test, args: test.args.filter((_, i) => i !== index) })),
     })
 
@@ -253,12 +276,12 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
         <Field
           label="Linguagem"
           htmlFor={`exercise-language-${id}`}
-          hint={isFunction ? 'Java, C e C++ por enquanto so no modo "Saida do programa".' : undefined}
+          hint={isFunction ? 'C e C++ por enquanto so no modo "Saida do programa".' : undefined}
         >
           <Select
             id={`exercise-language-${id}`}
             value={form.language}
-            onChange={(event) => update({ language: event.target.value })}
+            onChange={(event) => changeLanguage(event.target.value)}
           >
             {modeLanguages.map((language) => (
               <option key={language} value={language}>
@@ -280,6 +303,27 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
             />
           </Field>
         )}
+
+        {typed && (
+          <Field
+            label="Tipo de retorno"
+            htmlFor={`exercise-return-${id}`}
+            hint="Java e tipado: o aluno escreve so o metodo static, sem class."
+          >
+            <Select
+              id={`exercise-return-${id}`}
+              value={form.returnType}
+              onChange={(event) => update({ returnType: event.target.value })}
+              className="font-mono"
+            >
+              {JAVA_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
       </div>
 
       {isFunction && (
@@ -291,6 +335,20 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
                 key={index}
                 className="inline-flex items-center gap-1 rounded-md border border-slate-600 bg-slate-900 pl-2 pr-1 font-mono text-sm"
               >
+                {typed && (
+                  <select
+                    aria-label={`Tipo do parametro ${param}`}
+                    value={form.paramTypes[index] ?? 'int'}
+                    onChange={(event) => changeParamType(index, event.target.value)}
+                    className="cursor-pointer bg-transparent py-1 text-sky-300 outline-none"
+                  >
+                    {JAVA_TYPES.map((type) => (
+                      <option key={type} value={type} className="bg-slate-900">
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <input
                   aria-label={`Parametro ${index + 1}`}
                   value={param}

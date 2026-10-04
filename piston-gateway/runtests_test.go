@@ -108,7 +108,7 @@ func TestValidateRunTests(t *testing.T) {
 	}
 
 	bad := map[string]runTestsRequest{
-		"linguagem":    {Language: "java", Code: "x", FunctionName: "f", Tests: []testCase{{}}},
+		"linguagem":    {Language: "ruby", Code: "x", FunctionName: "f", Tests: []testCase{{}}},
 		"funcao":       {Language: "javascript", Code: "x", FunctionName: "f(); process.exit()", Tests: []testCase{{}}},
 		"funcao vazia": {Language: "python", Code: "x", FunctionName: "", Tests: []testCase{{}}},
 		"codigo":       {Language: "python", Code: "  ", FunctionName: "f", Tests: []testCase{{}}},

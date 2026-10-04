@@ -80,6 +80,22 @@ func handleRunOutput(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// isJavaCompileFailure reconhece o fim fixo da mensagem do launcher de fonte unico do Java.
+func isJavaCompileFailure(stderr string) bool {
+	return strings.HasSuffix(strings.TrimSpace(stderr), javaCompileFailure)
+}
+
+// concurrencyFor limita Java e C++ a 2 execucoes simultaneas: o Piston mata qualquer execucao em 3 s
+// (compilacao incluida), e varias JVMs/compilacoes disputando CPU estouram esse teto - ate uma que ja
+// tinha imprimido a resposta certa. Em linguagens interpretadas nao ha esse custo de partida.
+func concurrencyFor(lang languageInfo) int {
+	switch lang.pistonLanguage {
+	case "java", "c++":
+		return 2
+	}
+	return outputConcurrency
+}
+
 func validateRunOutput(req runOutputRequest) string {
 	if _, ok := languages[req.Language]; !ok {
 		return fmt.Sprintf("linguagem nao suportada: %s", req.Language)
@@ -120,7 +136,7 @@ func runOutput(req runOutputRequest) (*runOutputResponse, error) {
 		wg       sync.WaitGroup
 		mu       sync.Mutex
 		firstErr error
-		slots    = make(chan struct{}, outputConcurrency)
+		slots    = make(chan struct{}, concurrencyFor(lang))
 	)
 	for i := 1; i < len(req.Tests); i++ {
 		wg.Add(1)
@@ -166,7 +182,7 @@ func runOutputTest(lang languageInfo, code string, test outputTest, index int) (
 	}
 	// Java compila na mesma etapa em que roda, entao o erro vem como falha de execucao; o launcher
 	// sempre termina a mensagem com esta linha, o que permite distinguir de um erro em tempo de execucao.
-	if lang.pistonLanguage == "java" && strings.HasSuffix(strings.TrimSpace(piston.Stderr), javaCompileFailure) {
+	if lang.pistonLanguage == "java" && isJavaCompileFailure(piston.Stderr) {
 		return outputResult{Index: index, ExitCode: piston.ExitCode}, piston.Stderr, nil
 	}
 

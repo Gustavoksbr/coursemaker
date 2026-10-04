@@ -16,6 +16,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -172,8 +174,12 @@ class CodeExerciseIT extends IntegrationTest {
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
         String path = "/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/blocks";
 
-        // Java is only available in output mode.
+        // Java is typed: without a type per parameter the exercise cannot be built.
         post(path, exerciseBlockBody("java", functionSpec(SUM_SOLUTION)), owner.caller())
+                .andExpect(status().isBadRequest());
+
+        // C has no function mode.
+        post(path, exerciseBlockBody("c", functionSpec(SUM_SOLUTION)), owner.caller())
                 .andExpect(status().isBadRequest());
 
         // Function name must be an identifier.
@@ -281,6 +287,131 @@ class CodeExerciseIT extends IntegrationTest {
         UUID courseId = fixtures.draftCourse(owner, "Curso");
         JsonNode course = getOk("/api/v1/courses/" + courseId, owner.caller());
         assertThat(course.get("summary").get("area").get("allowsCodeExercises").asBoolean()).isTrue();
+    }
+
+    // --------------------------------------------------------------- java, function mode
+
+    private static final String JAVA_SUM = "static int soma(int a, int b) {\n  return a + b;\n}\n";
+    private static final String JAVA_DIFF = "static int soma(int a, int b) {\n  return a - b;\n}\n";
+
+    private Map<String, Object> javaFunctionSpec(String solution) {
+        Map<String, Object> spec = functionSpec(solution);
+        spec.put("paramTypes", List.of("int", "int"));
+        spec.put("returnType", "int");
+        spec.put("starterCode", "static int soma(int a, int b) {\n    return 0;\n}\n");
+        return spec;
+    }
+
+    @Test
+    @DisplayName("Java no modo funcao: tipos viajam ao gateway, ficam no conteudo publico e voltam ao dono")
+    void javaFunctionMode() throws Exception {
+        TestUser owner = fixtures.user("ana");
+        TestUser student = fixtures.user("bruno");
+        Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        UUID lessonId = curriculum.lessonIds().get(0);
+
+        JsonNode block = body(post("/api/v1/lessons/" + lessonId + "/blocks",
+                exerciseBlockBody("java", javaFunctionSpec(JAVA_SUM)), owner.caller()).andExpect(status().isCreated()));
+        UUID blockId = blockId(block);
+
+        // The gateway was asked to run Java with the declared parameter types.
+        ArgumentCaptor<RunTestsRequest> sent = ArgumentCaptor.forClass(RunTestsRequest.class);
+        verify(gateway).runTests(sent.capture());
+        assertThat(sent.getValue().language()).isEqualTo("java");
+        assertThat(sent.getValue().paramTypes()).containsExactly("int", "int");
+
+        JsonNode content = json.readTree(block.get("content").asText());
+        assertThat(content.get("paramTypes")).hasSize(2);
+        assertThat(content.get("returnType").asText()).isEqualTo("int");
+
+        JsonNode spec = getOk("/api/v1/blocks/" + blockId + "/exercise/spec", owner.caller());
+        assertThat(spec.get("exercise").get("paramTypes").get(0).asText()).isEqualTo("int");
+        assertThat(spec.get("exercise").get("returnType").asText()).isEqualTo("int");
+
+        JsonNode wrong = postOk("/api/v1/blocks/" + blockId + "/exercise/submit", Map.of("code", JAVA_DIFF), student.caller());
+        assertThat(wrong.get("allPassed").asBoolean()).isFalse();
+        JsonNode right = postOk("/api/v1/blocks/" + blockId + "/exercise/submit", Map.of("code", JAVA_SUM), student.caller());
+        assertThat(right.get("allPassed").asBoolean()).isTrue();
+        assertThat(right.toString()).doesNotContain(HIDDEN_MARKER);
+    }
+
+    @Test
+    @DisplayName("Java no modo funcao: exige tipos validos e valores que cabem neles")
+    void javaFunctionModeValidatesTypes() throws Exception {
+        TestUser owner = fixtures.user("ana");
+        Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        String path = "/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/blocks";
+
+        Map<String, Object> missingReturn = javaFunctionSpec(JAVA_SUM);
+        missingReturn.remove("returnType");
+        post(path, exerciseBlockBody("java", missingReturn), owner.caller()).andExpect(status().isBadRequest());
+
+        Map<String, Object> unsupported = javaFunctionSpec(JAVA_SUM);
+        unsupported.put("paramTypes", List.of("int", "Object"));
+        post(path, exerciseBlockBody("java", unsupported), owner.caller()).andExpect(status().isBadRequest());
+
+        Map<String, Object> tooFewTypes = javaFunctionSpec(JAVA_SUM);
+        tooFewTypes.put("paramTypes", List.of("int"));
+        post(path, exerciseBlockBody("java", tooFewTypes), owner.caller()).andExpect(status().isBadRequest());
+
+        // A text where an int is declared: the message points at the test and the parameter.
+        Map<String, Object> wrongValue = javaFunctionSpec(JAVA_SUM);
+        wrongValue.put("tests", List.of(testCase(true, List.of("abc", 3), 5)));
+        JsonNode error = body(post(path, exerciseBlockBody("java", wrongValue), owner.caller())
+                .andExpect(status().isBadRequest()));
+        assertThat(error.get("message").asText()).contains("Teste 1").contains("a (int)").contains("inteiro");
+
+        // The expected value is checked against the return type too.
+        Map<String, Object> wrongExpected = javaFunctionSpec(JAVA_SUM);
+        wrongExpected.put("returnType", "boolean");
+        post(path, exerciseBlockBody("java", wrongExpected), owner.caller()).andExpect(status().isBadRequest());
+
+        // Out of the int range.
+        Map<String, Object> tooBig = javaFunctionSpec(JAVA_SUM);
+        tooBig.put("tests", List.of(testCase(true, List.of(3000000000L, 1), 5)));
+        post(path, exerciseBlockBody("java", tooBig), owner.caller()).andExpect(status().isBadRequest());
+
+        assertThat(count("lesson_blocks")).isZero();
+    }
+
+    @Test
+    @DisplayName("Java no modo funcao: erro de compilacao da solucao volta como compileError no 422")
+    void javaFunctionModeCompileError() throws Exception {
+        TestUser owner = fixtures.user("ana");
+        Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+
+        JsonNode error = body(post("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/blocks",
+                exerciseBlockBody("java", javaFunctionSpec("CE-JAVA")), owner.caller())
+                .andExpect(status().isUnprocessableEntity()));
+
+        assertThat(error.get("validation").get("compileError").asText()).contains("';' expected");
+        assertThat(error.get("message").asText()).contains("nao compilou");
+    }
+
+    @Test
+    @DisplayName("os tipos escalares e de lista cobrem arrays e List<...> nos testes")
+    void javaFunctionModeAcceptsArraysAndLists() throws Exception {
+        TestUser owner = fixtures.user("ana");
+        Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        String path = "/api/v1/courses/" + curriculum.courseId() + "/code-exercise/validate";
+
+        // Validation reaches the (fake) gateway only when every value fits its declared type.
+        Map<String, Object> spec = new LinkedHashMap<>();
+        spec.put("mode", "function");
+        spec.put("functionName", "soma");
+        spec.put("params", List.of("a", "b"));
+        spec.put("paramTypes", List.of("int[]", "List<String>"));
+        spec.put("returnType", "double[]");
+        spec.put("solutionCode", JAVA_SUM);
+        spec.put("tests", List.of(testCase(true, List.of(List.of(1, 2), List.of("x", "y")), List.of(1, 2.5))));
+        // The shapes are fine (so no 400); the fake runner cannot read arrays, hence the 5xx is its own doing.
+        int httpStatus = post(path, Map.of("language", "java", "exercise", spec), owner.caller())
+                .andReturn().getResponse().getStatus();
+        assertThat(httpStatus).isNotEqualTo(400);
+
+        Map<String, Object> bad = new LinkedHashMap<>(spec);
+        bad.put("tests", List.of(testCase(true, List.of(List.of(1, "dois"), List.of("x")), List.of(1))));
+        post(path, Map.of("language", "java", "exercise", bad), owner.caller()).andExpect(status().isBadRequest());
     }
 
     // ------------------------------------------------------------------ student
@@ -514,6 +645,12 @@ class CodeExerciseIT extends IntegrationTest {
     /** "Runs" a function: a + b, a - b, or anything else (every test errors out). */
     private RunTestsResponse fakeRunTests(RunTestsRequest request) {
         List<FunctionResult> results = new ArrayList<>();
+        if (request.code().equals("CE-JAVA")) {
+            for (int i = 0; i < request.tests().size(); i++) {
+                results.add(new FunctionResult(i, false, null, "o programa terminou antes de executar este teste"));
+            }
+            return new RunTestsResponse(results, 0, results.size(), "", "", 1, false, "Main.java:2: error: ';' expected");
+        }
         int passed = 0;
         for (int i = 0; i < request.tests().size(); i++) {
             var test = request.tests().get(i);
@@ -528,7 +665,7 @@ class CodeExerciseIT extends IntegrationTest {
                 results.add(new FunctionResult(i, false, null, "NameError: nao entendi o codigo"));
             }
         }
-        return new RunTestsResponse(results, passed, results.size(), "", "", 0, false);
+        return new RunTestsResponse(results, passed, results.size(), "", "", 0, false, null);
     }
 
     /** "Runs" a program: SUM prints the sum of the input, BAD prints one more, CE does not compile. */

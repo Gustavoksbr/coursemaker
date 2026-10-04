@@ -46,6 +46,20 @@ produção.
 Ele vai perguntar se quer um curso inventado do zero ou montado a partir de uma playlist real do
 YouTube - veja o item correspondente acima para o que cada modo faz.
 
+## Curso de demonstração dos exercícios de código
+
+`seed_piston_demo.py` (só biblioteca padrão, sem Groq) cria no backend local uma professora, um aluno e
+um curso publicado com 12 exercícios de código (Python, JavaScript, Java, C++ e C, nos dois modos de
+correção, inclusive Java tipado no modo função), 2 questões e uma aula em vídeo. Cada solução de referência é validada de verdade no Piston
+ao salvar. Precisa do backend local e do `piston-gateway` de pé; rodar de novo substitui o curso anterior.
+
+```bash
+python seed_piston_demo.py
+```
+
+Contas de demonstração (só para o banco local): `prof.piston@example.com` e `aluno.piston@example.com`,
+senha no cabeçalho do script.
+
 ## Configuração (`.env`)
 
 | Variável | Descrição | Padrão |

@@ -8,6 +8,8 @@ import {
   exerciseProblems,
   exerciseToPayload,
   formatCall,
+  javaScalarOf,
+  javaValueProblem,
   testCounts,
 } from './codeExercise'
 
@@ -184,5 +186,91 @@ describe('small helpers', () => {
     expect(form.tests[0].visible).toBe(true)
     expect(form.tests[0].args).toHaveLength(form.params.length)
     expect(form.starterCode).toContain('def soma(a, b)')
+  })
+})
+
+describe('java (typed) function mode', () => {
+  function javaForm(overrides = {}) {
+    return {
+      ...emptyExercise(EXERCISE_MODE.FUNCTION, 'java'),
+      title: 'Soma',
+      solutionCode: 'static int soma(int a, int b) {\n  return a + b;\n}\n',
+      tests: [{ key: 'a', visible: true, args: ['2', '3'], expected: '5' }],
+      ...overrides,
+    }
+  }
+
+  it('starts with int parameters, an int return and a typed starter without a class', () => {
+    const form = emptyExercise(EXERCISE_MODE.FUNCTION, 'java')
+    expect(form.paramTypes).toEqual(['int', 'int'])
+    expect(form.returnType).toBe('int')
+    expect(form.starterCode).toContain('static int soma(int a, int b) {')
+    expect(form.starterCode).not.toContain('class')
+  })
+
+  it('sends the types only for java', () => {
+    expect(exerciseToPayload(javaForm())).toMatchObject({ paramTypes: ['int', 'int'], returnType: 'int' })
+    const python = exerciseToPayload(functionForm())
+    expect(python.paramTypes).toBeNull()
+    expect(python.returnType).toBeNull()
+  })
+
+  it('round-trips the types from the server', () => {
+    const original = javaForm({ paramTypes: ['int[]', 'String'], returnType: 'List<Integer>' })
+    const back = exerciseFromServer({ language: 'java', exercise: exerciseToPayload(original) })
+    expect(back.paramTypes).toEqual(['int[]', 'String'])
+    expect(back.returnType).toBe('List<Integer>')
+  })
+
+  it('accepts a complete exercise', () => {
+    expect(exerciseProblems(javaForm())).toEqual([])
+  })
+
+  it('flags values that do not fit the declared type, naming test, parameter and type', () => {
+    const form = javaForm({ tests: [{ key: 'a', visible: true, args: ['"abc"', '3'], expected: '5' }] })
+    expect(exerciseProblems(form).join(' | ')).toContain('teste 1, a (int): esperado um numero inteiro')
+  })
+
+  it('checks the expected value against the return type', () => {
+    const form = javaForm({ returnType: 'boolean' })
+    expect(exerciseProblems(form).join(' | ')).toContain('retorno esperado (boolean)')
+  })
+
+  it('asks for the types when they are missing', () => {
+    expect(exerciseProblems(javaForm({ paramTypes: ['int'] }))).toContain('escolha o tipo de cada parametro')
+    expect(exerciseProblems(javaForm({ returnType: '' }))).toContain('escolha o tipo de retorno')
+  })
+
+  it('does not apply type rules to python', () => {
+    expect(exerciseProblems(functionForm())).toEqual([])
+  })
+})
+
+describe('javaValueProblem', () => {
+  it('knows the scalar of each type', () => {
+    expect(javaScalarOf('int')).toBe('int')
+    expect(javaScalarOf('String[]')).toBe('String')
+    expect(javaScalarOf('List<Double>')).toBe('double')
+    expect(javaScalarOf('Object')).toBeNull()
+    expect(javaScalarOf('int[][]')).toBeNull()
+  })
+
+  it.each([
+    ['int', 2, null],
+    ['int', 2.5, 'esperado um numero inteiro'],
+    ['int', 3000000000, 'fora do intervalo de int'],
+    ['long', 3000000000, null],
+    ['double', 2, null],
+    ['boolean', 'true', 'esperado true ou false'],
+    ['String', null, null],
+    ['int', null, 'null so vale para String, array e lista'],
+    ['int[]', [1, 2], null],
+    ['int[]', null, null],
+    ['int[]', [1, 'a'], 'item 2: esperado um numero inteiro'],
+    ['int[]', 5, 'esperado uma lista [..]'],
+    ['List<String>', ['a', null], null],
+    ['List<Integer>', [1, null], 'item 2: null so vale para String, array e lista'],
+  ])('%s with %j', (type, value, expected) => {
+    expect(javaValueProblem(type, value)).toBe(expected)
   })
 })

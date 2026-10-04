@@ -72,7 +72,7 @@ compilação aparece em `stderr`, porque o Piston compila e roda na mesma etapa.
 ### Testes de uma função (`/run-tests`) — base das atividades de código
 
 O usuário escreve só uma função; o gateway roda **todos os testes numa única execução** do Piston
-e devolve o resultado de cada um. Linguagens: `javascript` e `python`.
+e devolve o resultado de cada um. Linguagens: `javascript`, `python` e `java` (veja a seção abaixo).
 
 ```bash
 curl -X POST http://localhost:8081/run-tests \
@@ -110,6 +110,40 @@ Como funciona e o que esperar:
 - Limites: até 100 testes e 50 KB de código por requisição.
 - O Piston aborta o sandbox se a saída passar de 1 KB; por isso o `docker-compose.yml` define
   `PISTON_OUTPUT_MAX_SIZE=65536` (o harness imprime uma linha por teste).
+
+#### Java no modo função
+
+Java é tipado, então o pedido leva `paramTypes` (um tipo por parâmetro) e o gateway **gera** um `Main.java`
+com cada argumento escrito como literal Java, em vez de ler JSON (o Java 15 do Piston não tem parser).
+Tipos aceitos: `int`, `long`, `double`, `boolean`, `String`, arrays desses (`int[]`, `String[]`...) e listas
+(`List<Integer>`, `List<Long>`, `List<Double>`, `List<Boolean>`, `List<String>`). O tipo de retorno não
+precisa ser informado: o que o método devolver é serializado em JSON e comparado em Go.
+
+```bash
+curl -X POST http://localhost:8081/run-tests \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d '{
+    "language": "java",
+    "functionName": "pares",
+    "paramTypes": ["List<Integer>"],
+    "code": "static List<Integer> pares(List<Integer> v) {\n  return v.stream().filter(x -> x % 2 == 0).collect(Collectors.toList());\n}",
+    "tests": [{"args": [[1, 2, 3, 4]], "expected": [2, 4]}]
+  }'
+```
+
+- O aluno escreve **só o(s) método(s) `static`, sem `class`**: o código dele vai para dentro de `public class Main {`,
+  e esse prefixo fica na mesma linha da primeira linha do aluno, então `Main.java:2:` nas mensagens do `javac` e
+  nas exceções é a linha 2 do editor. `java.util.*`, `java.util.function.*` e `java.util.stream.*` já estão
+  importados; `import` escritos pelo aluno sobem para o topo automaticamente.
+- Valor que não cabe no tipo declarado (ex. `"abc"` num `int`, `3000000000` num `int`) volta como **400** com a
+  mensagem apontando o teste e o argumento. `null` só vale para `String`, arrays e listas.
+- Erro de compilação vem em `compileError` (sem rodar teste nenhum). Se o `javac` apontar para a chamada gerada
+  (`__cmRun(...)`), isso quase sempre é método sem `static`, nome diferente ou tipos diferentes, e uma dica é
+  acrescentada à mensagem.
+- Os valores esperados continuam fora do sandbox, e todos os testes rodam numa única execução (uma JVM).
+- Limite do Piston: 3 s por execução, **compilação incluída**. Por isso o `/run-output` roda no máximo 2 execuções
+  de Java ou C++ ao mesmo tempo (várias JVMs em paralelo estouram esse teto).
 
 ### Saída do programa (`/run-output`) — programas que leem do teclado
 

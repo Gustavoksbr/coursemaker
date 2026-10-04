@@ -76,7 +76,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class CodeExerciseService {
 
-    public static final List<String> FUNCTION_LANGUAGES = List.of("javascript", "python");
+    public static final List<String> FUNCTION_LANGUAGES = List.of("javascript", "python", "java");
     public static final List<String> OUTPUT_LANGUAGES = List.of("javascript", "python", "java", "c", "cpp");
 
     /** "Ver solucao" unlocks after this many unsuccessful submissions. */
@@ -120,8 +120,8 @@ public class CodeExerciseService {
 
     /** The creator's spec after validation, with defaults applied. */
     private record Normalized(ExerciseMode mode, String language, String title, String functionName,
-                              List<String> params, String starterCode, String solutionCode,
-                              List<TestData> tests) {
+                              List<String> params, List<String> paramTypes, String returnType,
+                              String starterCode, String solutionCode, List<TestData> tests) {
     }
 
     /** What came back from the gateway, in one shape for both modes. */
@@ -134,7 +134,8 @@ public class CodeExerciseService {
                                    String solutionCode, String publicContent, List<CodeExerciseTest> tests) {
     }
 
-    private record Loaded(UUID blockId, String language, CodeExercise exercise, List<CodeExerciseTest> tests) {
+    private record Loaded(UUID blockId, String language, CodeExercise exercise, List<CodeExerciseTest> tests,
+                          List<String> paramTypes) {
     }
 
     // ----------------------------------------------------------------- creator
@@ -222,12 +223,17 @@ public class CodeExerciseService {
                     .map(test -> toSpec(exercise.getMode(), test))
                     .toList();
 
+            List<String> paramTypes = new ArrayList<>();
+            content.path("paramTypes").forEach(type -> paramTypes.add(type.asText()));
+
             ExerciseSpec spec = new ExerciseSpec(
                     exercise.getMode(),
                     content.path("title").isMissingNode() || content.path("title").isNull()
                             ? null : content.path("title").asText(),
                     exercise.getFunctionName(),
                     params,
+                    paramTypes.isEmpty() ? null : paramTypes,
+                    content.path("returnType").isMissingNode() ? null : content.path("returnType").asText(),
                     content.path("starterCode").asText(""),
                     exercise.getSolutionCode(),
                     tests);
@@ -253,7 +259,7 @@ public class CodeExerciseService {
         }
 
         GatewayRun result = execute(loaded.exercise().getMode(), loaded.language(),
-                loaded.exercise().getFunctionName(), code, visibleTests);
+                loaded.exercise().getFunctionName(), loaded.paramTypes(), code, visibleTests);
         rememberCode(viewer.getId(), blockId, code);
 
         List<VisibleOutcome> tests = new ArrayList<>();
@@ -278,7 +284,7 @@ public class CodeExerciseService {
 
         List<TestData> all = toData(loaded.tests());
         GatewayRun result = execute(loaded.exercise().getMode(), loaded.language(),
-                loaded.exercise().getFunctionName(), code, all);
+                loaded.exercise().getFunctionName(), loaded.paramTypes(), code, all);
 
         boolean allPassed = result.compileError() == null && result.passedCount() == all.size();
 
@@ -380,8 +386,10 @@ public class CodeExerciseService {
             requireExerciseBlock(block);
             CodeExercise exercise = exerciseRepository.findById(blockId)
                     .orElseThrow(() -> ResourceNotFoundException.of("Exercicio"));
+            List<String> paramTypes = new ArrayList<>();
+            parse(block.getContent()).path("paramTypes").forEach(type -> paramTypes.add(type.asText()));
             return new Loaded(blockId, block.getLanguage(), exercise,
-                    testRepository.findByBlockIdOrderByPositionAsc(blockId));
+                    testRepository.findByBlockIdOrderByPositionAsc(blockId), paramTypes);
         });
     }
 
@@ -429,6 +437,8 @@ public class CodeExerciseService {
 
         String functionName = null;
         List<String> params = List.of();
+        List<String> paramTypes = List.of();
+        String returnType = null;
         List<TestData> tests = new ArrayList<>();
 
         if (mode == ExerciseMode.FUNCTION) {
@@ -446,6 +456,17 @@ public class CodeExerciseService {
                     throw new BadRequestException("Parametro invalido ou repetido: " + param);
                 }
             }
+            if (language.equals("java")) {
+                paramTypes = spec.paramTypes() == null ? List.of() : spec.paramTypes().stream().map(String::trim).toList();
+                returnType = spec.returnType() == null ? "" : spec.returnType().trim();
+                if (paramTypes.size() != params.size()) {
+                    throw new BadRequestException("Informe o tipo de cada parametro (Java e tipado)");
+                }
+                for (String type : paramTypes) {
+                    requireJavaType(type, "parametro");
+                }
+                requireJavaType(returnType, "retorno");
+            }
             for (int i = 0; i < specs.size(); i++) {
                 TestSpec test = specs.get(i);
                 int number = i + 1;
@@ -457,6 +478,12 @@ public class CodeExerciseService {
                 }
                 requireSmall(test.expected().toString(), number);
                 test.args().forEach(arg -> requireSmall(arg.toString(), number));
+                if (language.equals("java")) {
+                    for (int arg = 0; arg < params.size(); arg++) {
+                        requireFits(paramTypes.get(arg), test.args().get(arg), number, params.get(arg));
+                    }
+                    requireFits(returnType, test.expected(), number, "retorno esperado");
+                }
                 tests.add(new TestData(test.visible(), List.copyOf(test.args()), null, test.expected()));
             }
         } else {
@@ -475,7 +502,22 @@ public class CodeExerciseService {
 
         String title = spec.title() == null || spec.title().isBlank() ? null : spec.title().trim();
         String starter = spec.starterCode() == null ? "" : spec.starterCode();
-        return new Normalized(mode, language, title, functionName, params, starter, spec.solutionCode(), tests);
+        return new Normalized(mode, language, title, functionName, params, paramTypes, returnType, starter,
+                spec.solutionCode(), tests);
+    }
+
+    private void requireJavaType(String type, String what) {
+        if (!JavaTypes.isSupported(type)) {
+            throw new BadRequestException("Tipo de " + what + " nao suportado em Java: \"" + type
+                    + "\" (use int, long, double, boolean, String, int[], String[]..., List<Integer>...)");
+        }
+    }
+
+    private void requireFits(String type, JsonNode value, int testNumber, String where) {
+        String problem = JavaTypes.problemWith(type, value);
+        if (problem != null) {
+            throw new BadRequestException("Teste " + testNumber + ", " + where + " (" + type + "): " + problem);
+        }
     }
 
     private void requireSmall(String value, int testNumber) {
@@ -487,7 +529,7 @@ public class CodeExerciseService {
 
     private ValidationResponse runSolution(Normalized exercise) {
         GatewayRun result = execute(exercise.mode(), exercise.language(), exercise.functionName(),
-                exercise.solutionCode(), exercise.tests());
+                exercise.paramTypes(), exercise.solutionCode(), exercise.tests());
         int total = exercise.tests().size();
         boolean valid = result.compileError() == null && result.outcomes().size() == total
                 && result.passedCount() == total;
@@ -505,16 +547,17 @@ public class CodeExerciseService {
 
     // ---------------------------------------------------------------- gateway
 
-    private GatewayRun execute(ExerciseMode mode, String language, String functionName, String code,
-                               List<TestData> tests) {
+    private GatewayRun execute(ExerciseMode mode, String language, String functionName, List<String> paramTypes,
+                               String code, List<TestData> tests) {
         return mode == ExerciseMode.FUNCTION
-                ? executeFunction(language, functionName, code, tests)
+                ? executeFunction(language, functionName, paramTypes, code, tests)
                 : executeOutput(language, code, tests);
     }
 
-    private GatewayRun executeFunction(String language, String functionName, String code, List<TestData> tests) {
+    private GatewayRun executeFunction(String language, String functionName, List<String> paramTypes, String code,
+                                       List<TestData> tests) {
         RunTestsResponse response = gateway.runTests(new RunTestsRequest(language, code, functionName,
-                tests.stream().map(test -> new FunctionTest(test.args(), test.expected())).toList()));
+                tests.stream().map(test -> new FunctionTest(test.args(), test.expected())).toList(), paramTypes));
 
         List<TestOutcome> outcomes = new ArrayList<>();
         if (response.results() != null) {
@@ -522,7 +565,9 @@ public class CodeExerciseService {
                 outcomes.add(new TestOutcome(result.index(), result.passed(), result.actual(), result.error()));
             }
         }
-        return new GatewayRun(outcomes, response.passedCount(), null, response.stderr(), response.output(),
+        String compileError = response.compileError() == null || response.compileError().isBlank()
+                ? null : response.compileError();
+        return new GatewayRun(outcomes, response.passedCount(), compileError, response.stderr(), response.output(),
                 response.timedOut(), response.exitCode());
     }
 
@@ -584,6 +629,11 @@ public class CodeExerciseService {
             root.put("functionName", exercise.functionName());
             ArrayNode params = root.putArray("params");
             exercise.params().forEach(params::add);
+            if (!exercise.paramTypes().isEmpty() || exercise.returnType() != null && !exercise.returnType().isEmpty()) {
+                ArrayNode types = root.putArray("paramTypes");
+                exercise.paramTypes().forEach(types::add);
+                root.put("returnType", exercise.returnType());
+            }
         }
         root.put("starterCode", exercise.starterCode());
 

@@ -43,7 +43,8 @@ public final class CodeExecutionDtos {
     // ---------------------------------------------------- piston-gateway: /run-tests
 
     /** Modo "funcao": o gateway chama functionName com cada args e compara o retorno com expected. */
-    public record RunTestsRequest(String language, String code, String functionName, List<FunctionTest> tests) {
+    public record RunTestsRequest(String language, String code, String functionName, List<FunctionTest> tests,
+                                  List<String> paramTypes) {
     }
 
     public record FunctionTest(List<JsonNode> args, JsonNode expected) {
@@ -56,7 +57,8 @@ public final class CodeExecutionDtos {
             String output,
             String stderr,
             int exitCode,
-            boolean timedOut) {
+            boolean timedOut,
+            String compileError) {
     }
 
     public record FunctionResult(int index, boolean passed, JsonNode actual, String error) {

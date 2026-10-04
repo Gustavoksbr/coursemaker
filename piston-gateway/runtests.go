@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -77,6 +78,9 @@ type runTestsRequest struct {
 	Code         string     `json:"code"`
 	FunctionName string     `json:"functionName"`
 	Tests        []testCase `json:"tests"`
+	// ParamTypes so e usado em Java (tipado): um tipo por parametro, do conjunto fechado de
+	// javaharness.go. Nas linguagens dinamicas e ignorado.
+	ParamTypes []string `json:"paramTypes"`
 }
 
 type testResult struct {
@@ -94,6 +98,8 @@ type runTestsResponse struct {
 	Stderr      string       `json:"stderr"`
 	ExitCode    int          `json:"exitCode"`
 	TimedOut    bool         `json:"timedOut"`
+	// CompileError so aparece em Java quando o codigo nem compilou: nenhum teste rodou.
+	CompileError string `json:"compileError,omitempty"`
 }
 
 // harnessEvent e uma linha "<marcador>{json}" emitida pelo harness.
@@ -126,6 +132,11 @@ func handleRunTests(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := runTests(req)
 	if err != nil {
+		var bad *requestError
+		if errors.As(err, &bad) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"message": bad.message})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, map[string]string{"message": err.Error()})
 		return
 	}
@@ -133,8 +144,9 @@ func handleRunTests(w http.ResponseWriter, r *http.Request) {
 }
 
 func validateRunTests(req runTestsRequest) string {
-	if _, ok := harnesses[req.Language]; !ok {
-		return fmt.Sprintf("linguagem nao suportada para testes: %s (use javascript ou python)", req.Language)
+	_, dynamic := harnesses[req.Language]
+	if !dynamic && req.Language != "java" {
+		return fmt.Sprintf("linguagem nao suportada para testes: %s (use javascript, python ou java)", req.Language)
 	}
 	if !identifierRe.MatchString(req.FunctionName) {
 		return "functionName invalido"
@@ -145,6 +157,9 @@ func validateRunTests(req runTestsRequest) string {
 	if len(req.Tests) == 0 || len(req.Tests) > maxTests {
 		return fmt.Sprintf("informe entre 1 e %d testes", maxTests)
 	}
+	if req.Language == "java" {
+		return javaParamTypesProblem(req.ParamTypes, req.Tests)
+	}
 	return ""
 }
 
@@ -154,15 +169,29 @@ func runTests(req runTestsRequest) (*runTestsResponse, error) {
 		return nil, err
 	}
 
-	harness := harnesses[req.Language]
-	program := req.Code + "\n" + strings.ReplaceAll(harness.template, "__FUNCTION__", req.FunctionName)
-
-	stdin, err := buildStdin(marker, req.Tests)
-	if err != nil {
-		return nil, err
+	var (
+		program string
+		stdin   string
+		lang    languageInfo
+	)
+	if req.Language == "java" {
+		// Java nao recebe nada pelo stdin: os argumentos viram literais no codigo gerado.
+		program, err = buildJavaProgram(req, marker)
+		if err != nil {
+			return nil, &requestError{err.Error()}
+		}
+		lang = languages["java"]
+	} else {
+		harness := harnesses[req.Language]
+		program = req.Code + "\n" + strings.ReplaceAll(harness.template, "__FUNCTION__", req.FunctionName)
+		stdin, err = buildStdin(marker, req.Tests)
+		if err != nil {
+			return nil, err
+		}
+		lang = languages[harness.language]
 	}
 
-	piston, err := runOnPiston(languages[harness.language], program, stdin)
+	piston, err := runOnPiston(lang, program, stdin)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +206,7 @@ func runTests(req runTestsRequest) (*runTestsResponse, error) {
 		}
 	}
 
-	return &runTestsResponse{
+	response := &runTestsResponse{
 		Results:     results,
 		PassedCount: passed,
 		Total:       len(results),
@@ -185,8 +214,18 @@ func runTests(req runTestsRequest) (*runTestsResponse, error) {
 		Stderr:      piston.Stderr,
 		ExitCode:    piston.ExitCode,
 		TimedOut:    piston.TimedOut,
-	}, nil
+	}
+	// Java compila na mesma etapa em que roda; o launcher termina a mensagem com uma linha fixa.
+	if req.Language == "java" && len(events) == 0 && isJavaCompileFailure(piston.Stderr) {
+		response.CompileError = piston.Stderr + javaCallHint(req, piston.Stderr)
+	}
+	return response, nil
 }
+
+// requestError e um problema do PEDIDO (ex.: um valor que nao cabe no tipo declarado), nao do Piston.
+type requestError struct{ message string }
+
+func (e *requestError) Error() string { return e.message }
 
 func newMarker() (string, error) {
 	b := make([]byte, 16)
