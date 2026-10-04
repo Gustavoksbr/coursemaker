@@ -26,11 +26,14 @@ type languageInfo struct {
 
 // Mesma versoes instaladas no Piston local - ver README para o comando de instalacao. O campo
 // "javascript" e o nome que o Piston espera em /execute; "node" (usado so em /packages) e algo
-// diferente que confunde facil - ver README.
+// diferente que confunde facil - ver README. C e C++ vem do mesmo pacote "gcc"; a chave "cpp" e
+// a que o resto do CourseMaker usa, e o Piston a conhece como "c++".
 var languages = map[string]languageInfo{
 	"javascript": {"javascript", "20.11.1", "main.js"},
 	"python":     {"python", "3.12.0", "main.py"},
-	"java":       {"java", "15.0.2", "Main.java"},
+	"java":       {"java", "15.0.2", "Main"}, // o Piston renomeia para Main.java na hora de rodar
+	"c":          {"c", "10.2.0", "main"},    // o script de compilacao do Piston acrescenta .c / .cpp
+	"cpp":        {"c++", "10.2.0", "main"},
 }
 
 type pistonFile struct {
@@ -69,6 +72,9 @@ type executeResponse struct {
 	ExitCode      int    `json:"exitCode"`
 	CompileOutput string `json:"compileOutput,omitempty"`
 	TimedOut      bool   `json:"timedOut,omitempty"`
+	// CompileFailed so vale para linguagens compiladas em etapa propria (C/C++): o programa nem
+	// chegou a rodar e a mensagem do compilador esta em CompileOutput.
+	CompileFailed bool `json:"compileFailed,omitempty"`
 }
 
 var (
@@ -89,6 +95,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/execute", withAuth(handleExecute))
 	mux.HandleFunc("/run-tests", withAuth(handleRunTests))
+	mux.HandleFunc("/run-output", withAuth(handleRunOutput))
 	mux.HandleFunc("/exercises/square/run", withAuth(handleSquareExercise))
 	mux.HandleFunc("/health", handleHealth)
 
@@ -231,6 +238,20 @@ func runOnPiston(lang languageInfo, code string, stdin string) (*executeResponse
 	if err := json.Unmarshal(data, &pResp); err != nil {
 		return nil, err
 	}
+	// Com erro de compilacao o Piston devolve "compile" com codigo != 0 (e, nas versoes recentes,
+	// um "run" que so repete a mesma mensagem) - o programa nunca chegou a executar.
+	if c := pResp.Compile; c != nil && ((c.Code != nil && *c.Code != 0) || c.Status != nil) {
+		code := 1
+		if c.Code != nil && *c.Code != 0 {
+			code = *c.Code
+		}
+		return &executeResponse{
+			ExitCode:      code,
+			CompileOutput: cleanCompilerOutput(firstNonEmpty(c.Stderr, c.Stdout)),
+			CompileFailed: true,
+			TimedOut:      c.Status != nil && *c.Status == "TO",
+		}, nil
+	}
 	if pResp.Run == nil {
 		return nil, fmt.Errorf("piston nao retornou resultado de execucao")
 	}
@@ -242,7 +263,7 @@ func runOnPiston(lang languageInfo, code string, stdin string) (*executeResponse
 
 	compileOutput := ""
 	if pResp.Compile != nil {
-		compileOutput = pResp.Compile.Stderr
+		compileOutput = cleanCompilerOutput(pResp.Compile.Stderr)
 	}
 
 	return &executeResponse{
@@ -252,6 +273,28 @@ func runOnPiston(lang languageInfo, code string, stdin string) (*executeResponse
 		CompileOutput: compileOutput,
 		TimedOut:      pResp.Run.Status != nil && *pResp.Run.Status == "TO",
 	}, nil
+}
+
+// cleanCompilerOutput tira o ruido que o script de compilacao do Piston (gcc) acrescenta depois do
+// erro de verdade: o "chmod" final falha porque nao existe executavel, o que nao ajuda o aluno.
+func cleanCompilerOutput(s string) string {
+	var kept []string
+	for _, line := range strings.Split(s, "\n") {
+		if strings.HasPrefix(line, "chmod: cannot access 'a.out'") {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

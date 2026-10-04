@@ -37,11 +37,11 @@ O `.env` do passo 1 precisa existir antes.
 
 Isso sobe 3 containers:
 - `piston_api` — o motor de execução (sem porta exposta).
-- `piston_init` — roda uma vez, instala Node/Python/Java no Piston, e termina (normal ver ele como
-  "Exited (0)" depois).
+- `piston_init` — roda uma vez, instala Node/Python/Java/GCC (C e C++) no Piston, e termina (normal
+  ver ele como "Exited (0)" depois).
 - `piston_gateway` — o proxy autenticado, escutando em `localhost:8081`.
 
-A primeira vez demora um pouco mais (baixa a imagem do Piston e os pacotes das 3 linguagens).
+A primeira vez demora um pouco mais (baixa a imagem do Piston e os pacotes das linguagens).
 Acompanhe com:
 
 ```bash
@@ -63,7 +63,11 @@ curl -X POST http://localhost:8081/execute \
   -d '{"language":"javascript","code":"console.log(\"Hello, CourseMaker!\")"}'
 ```
 
-Linguagens suportadas agora: `javascript`, `python`, `java`.
+Linguagens suportadas agora: `javascript`, `python`, `java`, `c`, `cpp`.
+
+Se a linguagem for compilada em etapa própria (`c`, `cpp`) e o código não compilar, a resposta vem
+com `compileFailed: true` e a mensagem do compilador em `compileOutput`. Em Java o erro de
+compilação aparece em `stderr`, porque o Piston compila e roda na mesma etapa.
 
 ### Testes de uma função (`/run-tests`) — base das atividades de código
 
@@ -106,6 +110,49 @@ Como funciona e o que esperar:
 - Limites: até 100 testes e 50 KB de código por requisição.
 - O Piston aborta o sandbox se a saída passar de 1 KB; por isso o `docker-compose.yml` define
   `PISTON_OUTPUT_MAX_SIZE=65536` (o harness imprime uma linha por teste).
+
+### Saída do programa (`/run-output`) — programas que leem do teclado
+
+Aqui o aluno escreve um **programa completo** (lê `stdin`, imprime no `stdout`), como em beecrowd
+ou URI. Não há harness: o gateway roda o programa **uma vez por teste**, com o `input` daquele
+teste no stdin, e compara a saída com `expected`. Funciona em todas as linguagens:
+`javascript`, `python`, `java`, `c`, `cpp`.
+
+```bash
+curl -X POST http://localhost:8081/run-output \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d '{
+    "language": "python",
+    "code": "a, b = map(int, input().split())\nprint(a + b)",
+    "tests": [
+      {"input": "2 3\n",   "expected": "5"},
+      {"input": "-5 -7\n", "expected": "-12"}
+    ]
+  }'
+```
+
+Resposta (`actual` é o que o programa imprimiu; o `expected` nunca volta):
+```json
+{"results":[{"index":0,"passed":true,"actual":"5\n","exitCode":0},
+            {"index":1,"passed":true,"actual":"-12\n","exitCode":0}],
+ "passedCount":2,"total":2}
+```
+
+O que esperar:
+- **Comparação**: ignora fim de linha do Windows, espaços no fim de cada linha e linhas em branco
+  no final. Espaços no começo da linha e linhas em branco no meio **contam**.
+- Um teste só passa se o programa terminou com código `0`, dentro do tempo, e a saída bateu. Saída
+  certa seguida de exceção reprova.
+- Exceção ou tempo estourado: aquele teste reprova com `stderr` / `timedOut: true` e os outros
+  seguem. O limite de tempo de cada execução é o do Piston (3 s).
+- Erro de compilação (`c`, `cpp`, `java`): o primeiro teste roda sozinho; se nem compilou, o
+  gateway para aí e devolve `compileError` com a mensagem, sem rodar os demais.
+- O valor esperado **nem chega ao Piston**: cada execução recebe só o `input` do teste.
+- Limites: até 20 testes, 10 KB de `input` e de `expected` por teste, 50 KB de código. Roda até 4
+  testes em paralelo. Java e C++ compilam a cada execução (cerca de 1 s cada), então 20 testes em
+  Java levam uns 5 s.
+- Java: a classe do programa precisa ser `public class Main`.
 
 ### Exemplo antigo (`/exercises/square/run`)
 
