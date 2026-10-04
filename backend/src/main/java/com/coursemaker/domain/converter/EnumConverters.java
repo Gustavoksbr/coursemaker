@@ -4,6 +4,7 @@ import com.coursemaker.domain.enums.BlockType;
 import com.coursemaker.domain.enums.CourseStatus;
 import com.coursemaker.domain.enums.CourseVisibility;
 import com.coursemaker.domain.enums.EntityKind;
+import com.coursemaker.domain.enums.ExerciseMode;
 import com.coursemaker.domain.enums.NotificationType;
 import com.coursemaker.domain.enums.UserRole;
 import jakarta.persistence.AttributeConverter;
@@ -94,6 +95,19 @@ public final class EnumConverters {
         @Override
         public EntityKind convertToEntityAttribute(String dbData) {
             return EntityKind.from(dbData);
+        }
+    }
+
+    @Converter(autoApply = true)
+    public static class ExerciseModeConverter implements AttributeConverter<ExerciseMode, String> {
+        @Override
+        public String convertToDatabaseColumn(ExerciseMode attribute) {
+            return attribute == null ? null : attribute.getValue();
+        }
+
+        @Override
+        public ExerciseMode convertToEntityAttribute(String dbData) {
+            return ExerciseMode.from(dbData);
         }
     }
 }

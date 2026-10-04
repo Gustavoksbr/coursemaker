@@ -13,15 +13,21 @@ public final class AreaDtos {
 
     private static final int MAX_NAME_LENGTH = 50;
 
-    public record AreaSummary(UUID id, String name, String slug) {
+    public record AreaSummary(UUID id, String name, String slug, boolean allowsCodeExercises) {
         public static AreaSummary from(Area area) {
-            return new AreaSummary(area.getId(), area.getName(), area.getSlug());
+            return new AreaSummary(area.getId(), area.getName(), area.getSlug(), area.isAllowsCodeExercises());
         }
     }
 
     public record CreateAreaRequest(@NotBlank @Size(max = MAX_NAME_LENGTH) String name) {
     }
 
-    public record UpdateAreaRequest(@NotBlank @Size(max = MAX_NAME_LENGTH) String name) {
+    /** {@code allowsCodeExercises} is optional: null keeps the current setting. */
+    public record UpdateAreaRequest(@NotBlank @Size(max = MAX_NAME_LENGTH) String name,
+                                    Boolean allowsCodeExercises) {
+
+        public UpdateAreaRequest(String name) {
+            this(name, null);
+        }
     }
 }

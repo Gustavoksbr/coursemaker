@@ -29,6 +29,7 @@ import com.coursemaker.repository.LessonBlockRepository;
 import com.coursemaker.repository.LessonCompletionRepository;
 import com.coursemaker.repository.LessonRepository;
 import com.coursemaker.repository.ModuleRepository;
+import com.coursemaker.repository.CodeExerciseProgressRepository;
 import com.coursemaker.repository.QuestionAnswerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -70,6 +71,7 @@ public class CourseService {
     private final LessonBlockRepository lessonBlockRepository;
     private final LessonCompletionRepository lessonCompletionRepository;
     private final QuestionAnswerRepository questionAnswerRepository;
+    private final CodeExerciseProgressRepository codeExerciseProgressRepository;
     private final NotificationService notificationService;
     private final EnrollmentRepository enrollmentRepository;
     private final CourseAccessService accessService;
@@ -341,6 +343,7 @@ public class CourseService {
 
         ProgressResponse progress = null;
         List<UUID> answeredQuestionBlockIds = List.of();
+        List<UUID> passedExerciseBlockIds = List.of();
         if (viewer != null && canViewContent) {
             List<UUID> completed = lessonCompletionRepository.findCompletedLessonIds(viewer.getId(), course.getId());
             long total = lessonRepository.countByCourseId(course.getId());
@@ -348,6 +351,8 @@ public class CourseService {
             progress = new ProgressResponse(completed.size(), total, percentage, completed);
             answeredQuestionBlockIds =
                     questionAnswerRepository.findCorrectlyAnsweredBlockIdsForCourse(viewer.getId(), course.getId());
+            passedExerciseBlockIds =
+                    codeExerciseProgressRepository.findPassedBlockIdsForCourse(viewer.getId(), course.getId());
         }
 
         return new CourseDetail(
@@ -359,7 +364,8 @@ public class CourseService {
                 course.isPrivate() && !canViewContent,
                 course.getPasswordHash() != null,
                 progress,
-                answeredQuestionBlockIds);
+                answeredQuestionBlockIds,
+                passedExerciseBlockIds);
     }
 
     private List<ModuleResponse> buildCurriculum(Course course, User viewer) {

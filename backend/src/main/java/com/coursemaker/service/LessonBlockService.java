@@ -11,6 +11,7 @@ import com.coursemaker.dto.curriculum.CurriculumDtos.AnswerBlockResponse;
 import com.coursemaker.dto.curriculum.CurriculumDtos.BlockResponse;
 import com.coursemaker.dto.curriculum.CurriculumDtos.CreateBlockRequest;
 import com.coursemaker.dto.curriculum.CurriculumDtos.UpdateBlockRequest;
+import com.coursemaker.service.CodeExerciseService.PreparedExercise;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import com.coursemaker.repository.LessonBlockRepository;
@@ -20,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -37,6 +39,8 @@ public class LessonBlockService {
     private final CourseAccessService accessService;
     private final HtmlSanitizer htmlSanitizer;
     private final ObjectMapper objectMapper;
+    private final CodeExerciseService codeExerciseService;
+    private final TransactionTemplate tx;
 
     @Transactional(readOnly = true)
     public List<BlockResponse> list(UUID lessonId, User viewer) {
@@ -44,35 +48,83 @@ public class LessonBlockService {
         return blockRepository.findByLessonOrdered(lessonId).stream().map(BlockResponse::of).toList();
     }
 
-    @Transactional
+    // create and update are not @Transactional as a whole: for a CODE_EXERCISE block the reference
+    // solution is run through the code runner first (it can take seconds), and a database
+    // transaction should not stay open across that call. The writes run in a short transaction.
     public BlockResponse create(UUID lessonId, CreateBlockRequest request, User viewer) {
         Lesson lesson = lessonService.loadForEditing(lessonId, viewer);
 
-        LessonBlock block = LessonBlock.builder()
-                .lesson(lesson)
-                .type(request.type())
-                .content(htmlSanitizer.sanitize(request.type(), request.content()))
-                .language(request.language())
-                .orderIndex(blockRepository.findMaxOrder(lessonId) + 1)
-                .build();
+        PreparedExercise exercise = null;
+        if (request.type() == BlockType.CODE_EXERCISE) {
+            exercise = codeExerciseService.prepare(
+                    lesson.getModule().getCourse().getId(), request.language(), request.exercise(), true, viewer);
+        } else if (request.exercise() != null) {
+            throw new BadRequestException("Dados de exercicio so valem para blocos de exercicio de codigo");
+        }
 
-        return BlockResponse.of(blockRepository.save(block));
+        PreparedExercise prepared = exercise;
+        return tx.execute(status -> {
+            LessonBlock block = LessonBlock.builder()
+                    .lesson(lesson)
+                    .type(request.type())
+                    .content(prepared != null
+                            ? prepared.publicContent()
+                            : htmlSanitizer.sanitize(request.type(), request.content()))
+                    .language(prepared != null ? prepared.language() : request.language())
+                    .orderIndex(blockRepository.findMaxOrder(lessonId) + 1)
+                    .build();
+
+            LessonBlock saved = blockRepository.save(block);
+            if (prepared != null) {
+                codeExerciseService.persist(saved.getId(), prepared);
+            }
+            return BlockResponse.of(saved);
+        });
     }
 
-    @Transactional
     public BlockResponse update(UUID blockId, UpdateBlockRequest request, User viewer) {
-        LessonBlock block = loadForEditing(blockId, viewer);
+        LessonBlock existing = loadForEditing(blockId, viewer);
+        boolean isExercise = existing.getType() == BlockType.CODE_EXERCISE;
 
-        if (request.type() != null) {
-            block.setType(request.type());
+        if (request.type() != null && (request.type() == BlockType.CODE_EXERCISE) != isExercise) {
+            throw new BadRequestException("Nao e possivel converter um bloco de ou para exercicio de codigo");
         }
-        if (request.content() != null) {
-            block.setContent(htmlSanitizer.sanitize(block.getType(), request.content()));
+        if (!isExercise && request.exercise() != null) {
+            throw new BadRequestException("Dados de exercicio so valem para blocos de exercicio de codigo");
         }
-        if (request.language() != null) {
-            block.setLanguage(request.language());
+
+        PreparedExercise exercise = null;
+        if (isExercise && request.exercise() != null) {
+            String language = request.language() != null ? request.language() : existing.getLanguage();
+            exercise = codeExerciseService.prepare(
+                    existing.getLesson().getModule().getCourse().getId(), language, request.exercise(), false, viewer);
         }
-        return BlockResponse.of(blockRepository.save(block));
+
+        PreparedExercise prepared = exercise;
+        return tx.execute(status -> {
+            LessonBlock block = loadForEditing(blockId, viewer);
+
+            if (isExercise) {
+                // The content of an exercise is derived from its spec, never taken from the client.
+                if (prepared != null) {
+                    block.setContent(prepared.publicContent());
+                    block.setLanguage(prepared.language());
+                    codeExerciseService.persist(blockId, prepared);
+                }
+                return BlockResponse.of(blockRepository.save(block));
+            }
+
+            if (request.type() != null) {
+                block.setType(request.type());
+            }
+            if (request.content() != null) {
+                block.setContent(htmlSanitizer.sanitize(block.getType(), request.content()));
+            }
+            if (request.language() != null) {
+                block.setLanguage(request.language());
+            }
+            return BlockResponse.of(blockRepository.save(block));
+        });
     }
 
     @Transactional

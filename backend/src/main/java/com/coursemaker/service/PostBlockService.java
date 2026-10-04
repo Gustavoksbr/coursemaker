@@ -36,6 +36,7 @@ public class PostBlockService {
     @Transactional
     public BlockResponse create(UUID postId, CreateBlockRequest request, User viewer) {
         Post post = postService.loadForEditing(postId, viewer);
+        requireNotExercise(request.type());
 
         PostBlock block = PostBlock.builder()
                 .post(post)
@@ -51,6 +52,7 @@ public class PostBlockService {
     @Transactional
     public BlockResponse update(UUID blockId, UpdateBlockRequest request, User viewer) {
         PostBlock block = loadForEditing(blockId, viewer);
+        requireNotExercise(request.type());
 
         if (request.type() != null) {
             block.setType(request.type());
@@ -93,5 +95,13 @@ public class PostBlockService {
                 .orElseThrow(() -> ResourceNotFoundException.of("Bloco"));
         accessService.requireOwner(block.getPost(), viewer);
         return block;
+    }
+
+    /** Auto-graded exercises only exist inside course lessons for now. */
+    private void requireNotExercise(com.coursemaker.domain.enums.BlockType type) {
+        if (type == com.coursemaker.domain.enums.BlockType.CODE_EXERCISE) {
+            throw new com.coursemaker.exception.ApiExceptions.BadRequestException(
+                    "Exercicios de codigo ainda nao estao disponiveis em posts");
+        }
     }
 }

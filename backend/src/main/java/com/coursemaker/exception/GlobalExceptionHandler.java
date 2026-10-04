@@ -18,12 +18,23 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /** 422 with the per-test results, so the editor can show which test the reference solution failed. */
+    @ExceptionHandler(ExerciseValidationException.class)
+    public ResponseEntity<ExerciseValidationErrorResponse> handleExerciseValidation(
+            ExerciseValidationException ex, HttpServletRequest request) {
+        HttpStatus status = ex.getStatus();
+        return ResponseEntity.status(status).body(new ExerciseValidationErrorResponse(
+                Instant.now(), status.value(), status.getReasonPhrase(), ex.getMessage(),
+                request.getRequestURI(), ex.getValidation()));
+    }
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiErrorResponse> handleApiException(ApiException ex, HttpServletRequest request) {

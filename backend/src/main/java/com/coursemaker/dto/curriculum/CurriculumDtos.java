@@ -5,6 +5,8 @@ import com.coursemaker.domain.entity.LessonBlock;
 import com.coursemaker.domain.entity.Module;
 import com.coursemaker.domain.entity.PostBlock;
 import com.coursemaker.domain.enums.BlockType;
+import com.coursemaker.dto.code.CodeExerciseDtos.ExerciseSpec;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -127,16 +129,30 @@ public final class CurriculumDtos {
         // file.
         private static final int MAX_BLOCK_CONTENT_LENGTH = 100_000;
 
+        /**
+         * {@code exercise} only applies to CODE_EXERCISE blocks, whose content is built by the server
+         * from it (a client-sent {@code content} is ignored for them).
+         */
         public record CreateBlockRequest(
                         @NotNull BlockType type,
                         @Size(max = MAX_BLOCK_CONTENT_LENGTH) String content,
-                        @Size(max = 50) String language) {
+                        @Size(max = 50) String language,
+                        @Valid ExerciseSpec exercise) {
+
+                public CreateBlockRequest(BlockType type, String content, String language) {
+                        this(type, content, language, null);
+                }
         }
 
         public record UpdateBlockRequest(
                         BlockType type,
                         @Size(max = MAX_BLOCK_CONTENT_LENGTH) String content,
-                        @Size(max = 50) String language) {
+                        @Size(max = 50) String language,
+                        @Valid ExerciseSpec exercise) {
+
+                public UpdateBlockRequest(BlockType type, String content, String language) {
+                        this(type, content, language, null);
+                }
         }
 
         /**

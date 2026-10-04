@@ -18,7 +18,14 @@ public enum BlockType {
     VIDEO("video"),
 
     /** Multiple-choice question. `content` holds a JSON-encoded alternatives list. */
-    QUESTION("question");
+    QUESTION("question"),
+
+    /**
+     * Auto-graded code exercise. content holds only the PUBLIC part (starter code, visible
+     * examples) as JSON built by the server; the reference solution and the hidden tests live in
+     * the code_exercises tables and never leave the backend.
+     */
+    CODE_EXERCISE("code_exercise");
 
     private final String value;
 

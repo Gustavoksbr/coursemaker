@@ -59,7 +59,8 @@ public final class CourseDtos {
             boolean requiresPassword,
             boolean hasPassword,
             ProgressResponse progress,
-            List<UUID> answeredQuestionBlockIds) {
+            List<UUID> answeredQuestionBlockIds,
+            List<UUID> passedExerciseBlockIds) {
     }
 
     public record ProgressResponse(long completedLessons, long totalLessons, int percentage,

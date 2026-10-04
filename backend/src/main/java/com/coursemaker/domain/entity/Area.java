@@ -42,6 +42,11 @@ public class Area {
     @Column(nullable = false, unique = true, length = 60)
     private String slug;
 
+    /** Admin switch: lessons of courses in this area may contain auto-graded code exercises. */
+    @Column(name = "allows_code_exercises", nullable = false)
+    @Builder.Default
+    private boolean allowsCodeExercises = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

@@ -4,11 +4,16 @@ import com.coursemaker.dto.code.CodeExecutionDtos.ExecuteRequest;
 import com.coursemaker.dto.code.CodeExecutionDtos.ExecuteResponse;
 import com.coursemaker.dto.code.CodeExecutionDtos.ExerciseRequest;
 import com.coursemaker.dto.code.CodeExecutionDtos.ExerciseResponse;
+import com.coursemaker.dto.code.CodeExecutionDtos.RunOutputRequest;
+import com.coursemaker.dto.code.CodeExecutionDtos.RunOutputResponse;
+import com.coursemaker.dto.code.CodeExecutionDtos.RunTestsRequest;
+import com.coursemaker.dto.code.CodeExecutionDtos.RunTestsResponse;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
 import com.coursemaker.exception.ApiExceptions.ServiceUnavailableException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -36,7 +41,22 @@ public class CodeExecutionService {
 
     @PostConstruct
     void init() {
-        this.restClient = RestClient.builder().baseUrl(runnerUrl).build();
+        // Java e C++ compilam a cada execucao: 20 testes levam alguns segundos, entao a leitura
+        // precisa de folga. Sem timeout nenhum, um gateway travado seguraria a requisicao para sempre.
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(60_000);
+        this.restClient = RestClient.builder().baseUrl(runnerUrl).requestFactory(factory).build();
+    }
+
+    /** Roda a funcao do usuario contra varios testes (modo "funcao"). */
+    public RunTestsResponse runTests(RunTestsRequest request) {
+        return call("/run-tests", request, RunTestsResponse.class);
+    }
+
+    /** Roda o programa do usuario uma vez por teste, comparando o stdout (modo "saida"). */
+    public RunOutputResponse runOutput(RunOutputRequest request) {
+        return call("/run-output", request, RunOutputResponse.class);
     }
 
     public ExecuteResponse execute(ExecuteRequest request) {

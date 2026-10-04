@@ -76,6 +76,9 @@ public class AreaService {
             area.setSlug(slugGenerator.uniqueSlug(name, takenSlugs));
         }
         area.setName(name);
+        if (request.allowsCodeExercises() != null) {
+            area.setAllowsCodeExercises(request.allowsCodeExercises());
+        }
         return AreaSummary.from(areaRepository.save(area));
     }
 

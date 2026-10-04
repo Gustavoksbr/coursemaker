@@ -9,6 +9,7 @@ import com.coursemaker.domain.entity.User;
 import com.coursemaker.domain.enums.BlockType;
 import com.coursemaker.dto.course.CourseDtos.ProgressResponse;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
+import com.coursemaker.repository.CodeExerciseProgressRepository;
 import com.coursemaker.repository.LessonBlockRepository;
 import com.coursemaker.repository.LessonCompletionRepository;
 import com.coursemaker.repository.LessonRepository;
@@ -30,6 +31,7 @@ public class ProgressService {
     private final LessonRepository lessonRepository;
     private final LessonBlockRepository lessonBlockRepository;
     private final QuestionAnswerRepository questionAnswerRepository;
+    private final CodeExerciseProgressRepository codeExerciseProgressRepository;
     private final LessonService lessonService;
     private final CourseService courseService;
 
@@ -38,6 +40,7 @@ public class ProgressService {
         Lesson lesson = lessonService.loadVisible(lessonId, user);
         Course course = lesson.getModule().getCourse();
         requireQuestionsAnswered(lessonId, user);
+        requireExercisesPassed(lessonId, user);
 
         UserLessonId key = new UserLessonId(user.getId(), lessonId);
         if (!completionRepository.existsById(key)) {
@@ -86,6 +89,25 @@ public class ProgressService {
         if (answeredCorrectly.size() < questionBlockIds.size()) {
             throw new BadRequestException(
                     "Responda corretamente todas as questoes desta licao antes de concluir");
+        }
+    }
+
+    /**
+     * Same rule for CODE_EXERCISE blocks: the lesson cannot be completed until each one has been
+     * solved (a submission that passed every test, see CodeExerciseService#submit).
+     */
+    private void requireExercisesPassed(UUID lessonId, User user) {
+        List<UUID> exerciseBlockIds = lessonBlockRepository.findByLessonOrdered(lessonId).stream()
+                .filter(block -> block.getType() == BlockType.CODE_EXERCISE)
+                .map(LessonBlock::getId)
+                .toList();
+        if (exerciseBlockIds.isEmpty()) {
+            return;
+        }
+        List<UUID> passed = codeExerciseProgressRepository.findPassedBlockIds(user.getId(), exerciseBlockIds);
+        if (passed.size() < exerciseBlockIds.size()) {
+            throw new BadRequestException(
+                    "Resolva todos os exercicios de codigo desta licao antes de concluir");
         }
     }
 }
