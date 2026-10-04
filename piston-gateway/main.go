@@ -46,9 +46,10 @@ type pistonRequest struct {
 }
 
 type pistonStage struct {
-	Stdout string `json:"stdout"`
-	Stderr string `json:"stderr"`
-	Code   *int   `json:"code"`
+	Stdout string  `json:"stdout"`
+	Stderr string  `json:"stderr"`
+	Code   *int    `json:"code"`
+	Status *string `json:"status"` // "TO" = tempo limite, "RE" = erro em execucao, etc.
 }
 
 type pistonResponse struct {
@@ -67,6 +68,7 @@ type executeResponse struct {
 	Stderr        string `json:"stderr"`
 	ExitCode      int    `json:"exitCode"`
 	CompileOutput string `json:"compileOutput,omitempty"`
+	TimedOut      bool   `json:"timedOut,omitempty"`
 }
 
 var (
@@ -86,6 +88,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/execute", withAuth(handleExecute))
+	mux.HandleFunc("/run-tests", withAuth(handleRunTests))
 	mux.HandleFunc("/exercises/square/run", withAuth(handleSquareExercise))
 	mux.HandleFunc("/health", handleHealth)
 
@@ -247,6 +250,7 @@ func runOnPiston(lang languageInfo, code string, stdin string) (*executeResponse
 		Stderr:        pResp.Run.Stderr,
 		ExitCode:      exitCode,
 		CompileOutput: compileOutput,
+		TimedOut:      pResp.Run.Status != nil && *pResp.Run.Status == "TO",
 	}, nil
 }
 

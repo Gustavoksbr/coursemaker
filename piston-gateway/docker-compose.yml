@@ -3,6 +3,10 @@ services:
     image: ghcr.io/engineer-man/piston
     container_name: piston_api
     privileged: true
+    environment:
+      # O padrao do Piston e 1024 bytes de saida; passou disso o sandbox aborta ("fatal signal 6").
+      # O harness de testes imprime uma linha por teste, entao precisa de bem mais folga.
+      - PISTON_OUTPUT_MAX_SIZE=65536
     volumes:
       - piston_data:/piston
     networks:

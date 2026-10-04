@@ -65,7 +65,52 @@ curl -X POST http://localhost:8081/execute \
 
 Linguagens suportadas agora: `javascript`, `python`, `java`.
 
-### Atividade estilo LeetCode (`/exercises/square/run`)
+### Testes de uma função (`/run-tests`) — base das atividades de código
+
+O usuário escreve só uma função; o gateway roda **todos os testes numa única execução** do Piston
+e devolve o resultado de cada um. Linguagens: `javascript` e `python`.
+
+```bash
+curl -X POST http://localhost:8081/run-tests \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d '{
+    "language": "javascript",
+    "functionName": "square",
+    "code": "function square(n) { return n * n }",
+    "tests": [
+      {"args": [3],  "expected": 9},
+      {"args": [-4], "expected": 16}
+    ]
+  }'
+```
+
+Resposta (`actual` é o que a função retornou; o `expected` nunca volta):
+```json
+{"results":[{"index":0,"passed":true,"actual":9},{"index":1,"passed":true,"actual":16}],
+ "passedCount":2,"total":2,"output":"","stderr":"","exitCode":0,"timedOut":false}
+```
+
+Como funciona e o que esperar:
+- `args` e `expected` são valores JSON quaisquer (números, strings, listas, objetos, `null`). A
+  comparação é por valor JSON: `1` e `1.0` são iguais, mas `0.1 + 0.2` **não** é igual a `0.3`
+  (sem tolerância de float por enquanto).
+- O que o usuário imprime (`console.log`/`print`) volta separado em `output`.
+- Exceção em um teste: aquele teste falha com `error` (ex. `ZeroDivisionError: ...`) e os outros
+  seguem. Erro de sintaxe: todos falham com "o programa terminou antes..." e o detalhe vai em
+  `stderr` (os números de linha batem com o código do usuário).
+- Loop infinito: o Piston mata o processo por tempo (`timedOut: true`); o teste que travou vem como
+  "tempo limite excedido" e os seguintes como "não executado". Os que já tinham rodado são mantidos.
+- Os valores esperados **não entram no sandbox**: o programa do usuário só recebe os argumentos (e
+  um marcador aleatório por execução, para a saída dele não se confundir com a dos testes).
+- Limites: até 100 testes e 50 KB de código por requisição.
+- O Piston aborta o sandbox se a saída passar de 1 KB; por isso o `docker-compose.yml` define
+  `PISTON_OUTPUT_MAX_SIZE=65536` (o harness imprime uma linha por teste).
+
+### Exemplo antigo (`/exercises/square/run`)
+
+Atividade fixa de exemplo, só JavaScript. Será removida quando as atividades passarem a usar
+`/run-tests` com testes vindos do backend.
 
 Você não manda um programa inteiro, só a função — o gateway gera um número aleatório, chama sua
 função com ele, e confere o resultado:
