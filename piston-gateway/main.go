@@ -34,6 +34,15 @@ var languages = map[string]languageInfo{
 	"java":       {"java", "15.0.2", "Main"}, // o Piston renomeia para Main.java na hora de rodar
 	"c":          {"c", "10.2.0", "main"},    // o script de compilacao do Piston acrescenta .c / .cpp
 	"cpp":        {"c++", "10.2.0", "main"},
+	// Alguns pacotes renomeiam o arquivo na compilacao (acrescentam .ts, .cs, .kt, .go), por isso o nome
+	// sem extensao; os demais usam a extensao propria.
+	"typescript": {"typescript", "5.0.3", "main"},
+	"php":        {"php", "8.2.3", "main.php"},
+	"csharp":     {"csharp", "6.12.0", "main"},
+	"go":         {"go", "1.16.2", "main"},
+	"rust":       {"rust", "1.68.2", "main.rs"},
+	"ruby":       {"ruby", "3.0.1", "main.rb"},
+	"kotlin":     {"kotlin", "1.8.20", "main"},
 }
 
 type pistonFile struct {
@@ -46,6 +55,9 @@ type pistonRequest struct {
 	Version  string       `json:"version"`
 	Files    []pistonFile `json:"files"`
 	Stdin    string       `json:"stdin"`
+	// CompileTimeout (ms) so e enviado quando PISTON_COMPILE_TIMEOUT esta definido: o Piston recusa valores
+	// acima do limite que ele proprio foi configurado, e Kotlin/C#/Rust compilam em mais que os 10 s padrao.
+	CompileTimeout int `json:"compile_timeout,omitempty"`
 }
 
 type pistonStage struct {
@@ -80,12 +92,15 @@ type executeResponse struct {
 var (
 	pistonURL  string
 	authToken  string
-	httpClient = &http.Client{Timeout: 15 * time.Second}
+	httpClient = &http.Client{Timeout: 50 * time.Second}
+	// compileTimeoutMs vem de PISTON_COMPILE_TIMEOUT (0 = usar o padrao do Piston).
+	compileTimeoutMs int
 )
 
 func main() {
 	pistonURL = envOrDefault("PISTON_URL", "http://localhost:2000/api/v2")
 	authToken = os.Getenv("AUTH_TOKEN")
+	compileTimeoutMs, _ = strconv.Atoi(os.Getenv("PISTON_COMPILE_TIMEOUT"))
 	port := envOrDefault("PORT", "8081")
 
 	if authToken == "" {
@@ -258,6 +273,8 @@ func runOnPiston(lang languageInfo, code string, stdin string) (*executeResponse
 		Version:  lang.version,
 		Files:    []pistonFile{{Name: lang.fileName, Content: code}},
 		Stdin:    stdin,
+
+		CompileTimeout: compileTimeoutMs,
 	}
 
 	payload, err := json.Marshal(body)
@@ -326,7 +343,8 @@ func runOnPiston(lang languageInfo, code string, stdin string) (*executeResponse
 func cleanCompilerOutput(s string) string {
 	var kept []string
 	for _, line := range strings.Split(s, "\n") {
-		if strings.HasPrefix(line, "chmod: cannot access 'a.out'") {
+		if strings.HasPrefix(line, "chmod: cannot access 'a.out'") || strings.HasPrefix(line, "chmod: cannot access 'binary'") ||
+			strings.HasPrefix(line, "Microsoft (R) Visual C# Compiler") || strings.HasPrefix(line, "Copyright (C) Microsoft Corporation") {
 			continue
 		}
 		kept = append(kept, line)

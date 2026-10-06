@@ -79,8 +79,15 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class CodeExerciseService {
 
-    public static final List<String> FUNCTION_LANGUAGES = List.of("javascript", "python", "java");
-    public static final List<String> OUTPUT_LANGUAGES = List.of("javascript", "python", "java", "c", "cpp");
+    public static final List<String> FUNCTION_LANGUAGES = List.of("javascript", "python", "typescript", "php", "ruby",
+            "java", "csharp", "cpp", "c", "go", "rust", "kotlin");
+    public static final List<String> OUTPUT_LANGUAGES = List.of("javascript", "python", "typescript", "php", "ruby",
+            "java", "csharp", "cpp", "c", "go", "rust", "kotlin");
+    /**
+     * Statically typed languages: a function-mode exercise declares a type per parameter and for the
+     * return value, from the closed set in {@link JavaTypes} (each language maps it to its own types).
+     */
+    static final Set<String> TYPED_LANGUAGES = Set.of("java", "csharp", "cpp", "c", "go", "rust", "kotlin");
 
     /** "Ver solucao" unlocks after this many unsuccessful submissions. */
     public static final int SOLUTION_UNLOCK_AFTER_FAILURES = 2;
@@ -459,16 +466,16 @@ public class CodeExerciseService {
                     throw new BadRequestException("Parametro invalido ou repetido: " + param);
                 }
             }
-            if (language.equals("java")) {
+            if (TYPED_LANGUAGES.contains(language)) {
                 paramTypes = spec.paramTypes() == null ? List.of() : spec.paramTypes().stream().map(String::trim).toList();
                 returnType = spec.returnType() == null ? "" : spec.returnType().trim();
                 if (paramTypes.size() != params.size()) {
-                    throw new BadRequestException("Informe o tipo de cada parametro (Java e tipado)");
+                    throw new BadRequestException("Informe o tipo de cada parametro (esta linguagem e tipada)");
                 }
                 for (String type : paramTypes) {
-                    requireJavaType(type, "parametro");
+                    requireJavaType(language, type, "parametro");
                 }
-                requireJavaType(returnType, "retorno");
+                requireJavaType(language, returnType, "retorno");
             }
             for (int i = 0; i < specs.size(); i++) {
                 TestSpec test = specs.get(i);
@@ -481,7 +488,7 @@ public class CodeExerciseService {
                 }
                 requireSmall(test.expected().toString(), number);
                 test.args().forEach(arg -> requireSmall(arg.toString(), number));
-                if (language.equals("java")) {
+                if (TYPED_LANGUAGES.contains(language)) {
                     for (int arg = 0; arg < params.size(); arg++) {
                         requireFits(paramTypes.get(arg), test.args().get(arg), number, params.get(arg));
                     }
@@ -509,10 +516,15 @@ public class CodeExerciseService {
                 spec.solutionCode(), tests);
     }
 
-    private void requireJavaType(String type, String what) {
+    private void requireJavaType(String language, String type, String what) {
         if (!JavaTypes.isSupported(type)) {
-            throw new BadRequestException("Tipo de " + what + " nao suportado em Java: \"" + type
+            throw new BadRequestException("Tipo de " + what + " nao suportado: \"" + type
                     + "\" (use int, long, double, boolean, String, int[], String[]..., List<Integer>...)");
+        }
+        // Em C um array precisa de um tamanho a parte, o que nao cabe na assinatura da funcao.
+        if (language.equals("c") && (type.endsWith("[]") || type.startsWith("List<"))) {
+            throw new BadRequestException("Em C so ha escalares e String no modo funcao: \"" + type
+                    + "\" nao e suportado (use o modo saida para trabalhar com listas)");
         }
     }
 

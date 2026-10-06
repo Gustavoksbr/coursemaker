@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -49,6 +51,64 @@ var harnesses = map[string]struct {
     process.stdout.write(__input.marker + line + '\n');
   });
 })();
+`},
+	"typescript": {language: "typescript", template: `
+(function () {
+  const __fs = require('fs');
+  const __input: any = JSON.parse(__fs.readFileSync(0, 'utf8'));
+  const __fn: any = __FUNCTION__;
+  __input.tests.forEach(function (test: any, i: number) {
+    let line: string;
+    try {
+      const value = __fn(...test.args);
+      line = JSON.stringify({ i: i, ok: true, value: value === undefined ? null : value });
+    } catch (e: any) {
+      line = JSON.stringify({ i: i, ok: false, error: (e && e.name ? e.name + ': ' : '') + (e && e.message ? e.message : String(e)) });
+    }
+    process.stdout.write(__input.marker + line + '\n');
+  });
+})();
+`},
+	"php": {language: "php", template: `
+
+function __cm_run() {
+  $data = json_decode(file_get_contents('php://stdin'), true);
+  foreach ($data['tests'] as $i => $t) {
+    try {
+      if (!function_exists('__FUNCTION__')) throw new Error('a funcao __FUNCTION__ nao foi encontrada');
+      $value = call_user_func_array('__FUNCTION__', $t['args']);
+      $json = json_encode($value, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION);
+      $line = '{"i":' . $i . ',"ok":true,"value":' . $json . '}';
+    } catch (Throwable $e) {
+      $line = json_encode(['i' => $i, 'ok' => false, 'error' => get_class($e) . ': ' . $e->getMessage()]);
+    }
+    echo $data['marker'] . $line . "\n";
+    flush();
+  }
+}
+
+__cm_run();
+`},
+	"ruby": {language: "ruby", template: `
+
+require 'json'
+
+def __cm_run
+  data = JSON.parse($stdin.read)
+  data['tests'].each_with_index do |t, i|
+    begin
+      raise NameError, 'a funcao __FUNCTION__ nao foi encontrada' unless respond_to?(:__FUNCTION__, true)
+      value = send(:__FUNCTION__, *t['args'])
+      line = JSON.generate({ 'i' => i, 'ok' => true, 'value' => value })
+    rescue Exception => e
+      line = JSON.generate({ 'i' => i, 'ok' => false, 'error' => e.class.name + ': ' + e.message })
+    end
+    $stdout.write(data['marker'] + line + "\n")
+    $stdout.flush
+  end
+end
+
+__cm_run
 `},
 	"python": {language: "python", template: `
 import json as __json, sys as __sys
@@ -161,8 +221,9 @@ func handleRunTests(w http.ResponseWriter, r *http.Request) {
 
 func validateRunTests(req runTestsRequest) string {
 	_, dynamic := harnesses[req.Language]
-	if !dynamic && req.Language != "java" {
-		return fmt.Sprintf("linguagem nao suportada para testes: %s (use javascript, python ou java)", req.Language)
+	_, typed := typedBuilders[req.Language]
+	if !dynamic && !typed {
+		return fmt.Sprintf("linguagem nao suportada para testes: %s", req.Language)
 	}
 	if !identifierRe.MatchString(req.FunctionName) {
 		return "functionName invalido"
@@ -173,8 +234,8 @@ func validateRunTests(req runTestsRequest) string {
 	if len(req.Tests) == 0 || len(req.Tests) > maxTests {
 		return fmt.Sprintf("informe entre 1 e %d testes", maxTests)
 	}
-	if req.Language == "java" {
-		return javaParamTypesProblem(req.ParamTypes, req.Tests)
+	if typed {
+		return typedParamTypesProblem(req.Language, req.ParamTypes, req.Tests)
 	}
 	return ""
 }
@@ -190,16 +251,25 @@ func runTests(req runTestsRequest) (*runTestsResponse, error) {
 		stdin   string
 		lang    languageInfo
 	)
-	if req.Language == "java" {
-		// Java nao recebe nada pelo stdin: os argumentos viram literais no codigo gerado.
-		program, err = buildJavaProgram(req, marker)
+	if build, ok := typedBuilders[req.Language]; ok {
+		// As linguagens tipadas nao recebem nada pelo stdin: os argumentos viram literais no codigo gerado.
+		program, err = build(req, marker)
 		if err != nil {
 			return nil, &requestError{err.Error()}
 		}
-		lang = languages["java"]
+		lang = languages[req.Language]
 	} else {
 		harness := harnesses[req.Language]
-		program = req.Code + "\n" + strings.ReplaceAll(harness.template, "__FUNCTION__", req.FunctionName)
+		code := req.Code
+		switch req.Language {
+		case "typescript":
+			// O tsc compila com alvo antigo (ES5); esta diretiva libera a biblioteca moderna (Map, includes...).
+			code = tsLibDirective + code
+		case "php":
+			// O arquivo PHP precisa abrir com a tag; se o aluno ja a escreveu, nao repetimos.
+			code = "<?php " + strings.TrimPrefix(strings.TrimLeft(code, " \t\r\n"), "<?php")
+		}
+		program = code + "\n" + strings.ReplaceAll(harness.template, "__FUNCTION__", req.FunctionName)
 		stdin, err = buildStdin(marker, req.Tests)
 		if err != nil {
 			return nil, err
@@ -231,11 +301,59 @@ func runTests(req runTestsRequest) (*runTestsResponse, error) {
 		ExitCode:    piston.ExitCode,
 		TimedOut:    piston.TimedOut,
 	}
-	// Java compila na mesma etapa em que roda; o launcher termina a mensagem com uma linha fixa.
-	if req.Language == "java" && len(events) == 0 && isJavaCompileFailure(piston.Stderr) {
-		response.CompileError = piston.Stderr + javaCallHint(req, piston.Stderr)
+	if len(events) == 0 {
+		response.CompileError = compileErrorOf(req, piston)
 	}
 	return response, nil
+}
+
+// tsLibDirective e a primeira linha do arquivo TypeScript; os erros do tsc voltam com o numero da linha
+// corrigido (menos 1) para baterem com o editor.
+const tsLibDirective = `/// <reference lib="es2022" />` + "\n" +
+	// Sem os tipos do Node, o tsc nao conhece require/process nem os modulos de entrada e saida; a mesma
+	// linha do codigo do aluno os declara como `any` (sem mudar a numeracao).
+	`declare const require: any; declare const process: any; declare const module: any; ` +
+	`declare module "fs"; declare module "readline"; declare module "path"; declare module "util"; ` +
+	`declare module "os"; declare module "assert"; `
+
+var tsLineRe = regexp.MustCompile(`main\.ts\((\d+),`)
+
+// shiftTSLines desconta a linha da diretiva que o gateway acrescenta no topo do arquivo TypeScript.
+func shiftTSLines(out string) string {
+	return tsLineRe.ReplaceAllStringFunc(out, func(m string) string {
+		sub := tsLineRe.FindStringSubmatch(m)
+		n, _ := strconv.Atoi(sub[1])
+		return "main.ts(" + strconv.Itoa(n-1) + ","
+	})
+}
+
+// compileErrorOf devolve a mensagem do compilador quando o codigo nem compilou (nenhum teste rodou), ou "".
+func compileErrorOf(req runTestsRequest, piston *executeResponse) string {
+	switch {
+	case req.Language == "java":
+		// Java compila na mesma etapa em que roda; o launcher termina a mensagem com uma linha fixa.
+		if isJavaCompileFailure(piston.Stderr) {
+			return piston.Stderr + javaCallHint(req, piston.Stderr)
+		}
+	case req.Language == "go":
+		// `go run` compila e roda numa etapa so; o erro de compilacao comeca com esta linha.
+		if strings.HasPrefix(piston.Stderr, "# command-line-arguments") {
+			return piston.Stderr + typedCallHint(req, piston.Stderr)
+		}
+	case piston.CompileFailed:
+		out := strings.TrimLeft(piston.CompileOutput, "\r\n")
+		if req.Language == "typescript" {
+			out = shiftTSLines(out)
+		}
+		if req.Language == "c" || req.Language == "cpp" {
+			out = fixGccSnippets(out, req.Code)
+		}
+		if _, typed := typedBuilders[req.Language]; !typed {
+			return out // TypeScript: o erro ja cita o nome que faltou, sem assinatura para sugerir
+		}
+		return out + typedCallHint(req, out)
+	}
+	return ""
 }
 
 // requestError e um problema do PEDIDO (ex.: um valor que nao cabe no tipo declarado), nao do Piston.
@@ -336,8 +454,9 @@ func missingReason(piston *executeResponse, first bool) string {
 	}
 }
 
-// jsonEqual compara por valor JSON (ignora espacos/ordem de chaves). Numeros sao comparados como
-// float64, entao 1 e 1.0 sao iguais; ja 0.1+0.2 nao e igual a 0.3 - sem tolerancia por enquanto.
+// jsonEqual compara por valor JSON (ignora espacos/ordem de chaves). Numeros sao comparados com uma
+// tolerancia relativa minuscula (1e-9): 0.1+0.2 e 0.3 sao iguais, como o aluno espera, ja que cada
+// linguagem imprime o ponto flutuante do seu jeito.
 func jsonEqual(a, b json.RawMessage) bool {
 	var av, bv any
 	if len(a) == 0 {
@@ -349,5 +468,44 @@ func jsonEqual(a, b json.RawMessage) bool {
 	if json.Unmarshal(a, &av) != nil || json.Unmarshal(b, &bv) != nil {
 		return false
 	}
-	return reflect.DeepEqual(av, bv)
+	return valuesEqual(av, bv)
+}
+
+func valuesEqual(a, b any) bool {
+	switch x := a.(type) {
+	case float64:
+		y, ok := b.(float64)
+		if !ok {
+			return false
+		}
+		if x == y {
+			return true
+		}
+		scale := math.Max(1, math.Max(math.Abs(x), math.Abs(y)))
+		return math.Abs(x-y) <= 1e-9*scale
+	case []any:
+		y, ok := b.([]any)
+		if !ok || len(x) != len(y) {
+			return false
+		}
+		for i := range x {
+			if !valuesEqual(x[i], y[i]) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		y, ok := b.(map[string]any)
+		if !ok || len(x) != len(y) {
+			return false
+		}
+		for k, v := range x {
+			w, ok := y[k]
+			if !ok || !valuesEqual(v, w) {
+				return false
+			}
+		}
+		return true
+	}
+	return reflect.DeepEqual(a, b)
 }

@@ -7,6 +7,10 @@ services:
       # O padrao do Piston e 1024 bytes de saida; passou disso o sandbox aborta ("fatal signal 6").
       # O harness de testes imprime uma linha por teste, entao precisa de bem mais folga.
       - PISTON_OUTPUT_MAX_SIZE=65536
+      # Kotlin, C# e Rust compilam devagar (o padrao do Piston e 10 s); o gateway pede o tempo de que cada um precisa.
+      - PISTON_COMPILE_TIMEOUT=60000
+      - PISTON_COMPILE_CPU_TIME=60000
+      - PISTON_MAX_PROCESS_COUNT=256
     volumes:
       - piston_data:/piston
     networks:
@@ -33,6 +37,13 @@ services:
       echo 'Instalando python...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"python\",\"version\":\"3.12.0\"}';
       echo 'Instalando java...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"java\",\"version\":\"15.0.2\"}';
       echo 'Instalando gcc (C e C++)...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"gcc\",\"version\":\"10.2.0\"}';
+      echo 'Instalando typescript...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"typescript\",\"version\":\"5.0.3\"}';
+      echo 'Instalando php...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"php\",\"version\":\"8.2.3\"}';
+      echo 'Instalando mono...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"mono\",\"version\":\"6.12.0\"}';
+      echo 'Instalando go...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"go\",\"version\":\"1.16.2\"}';
+      echo 'Instalando rust...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"rust\",\"version\":\"1.68.2\"}';
+      echo 'Instalando ruby...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"ruby\",\"version\":\"3.0.1\"}';
+      echo 'Instalando kotlin...'; curl -s -X POST http://piston:2000/api/v2/packages -H 'Content-Type: application/json' -d '{\"language\":\"kotlin\",\"version\":\"1.8.20\"}';
       echo 'Pacotes prontos.'
       "
 
@@ -41,6 +52,7 @@ services:
     container_name: piston_gateway
     environment:
       - PISTON_URL=http://piston:2000/api/v2
+      - PISTON_COMPILE_TIMEOUT=60000
       - AUTH_TOKEN=${AUTH_TOKEN:?crie o arquivo .env a partir do .env.example e defina AUTH_TOKEN}
       - PORT=8081
     ports:

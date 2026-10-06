@@ -12,6 +12,10 @@ services:
     environment:
       # O padrao do Piston e 1024 bytes de saida; passou disso o sandbox aborta ("fatal signal 6").
       - PISTON_OUTPUT_MAX_SIZE=65536
+      # Kotlin, C# e Rust compilam devagar (o padrao do Piston e 10 s); o gateway pede o tempo de que cada um precisa.
+      - PISTON_COMPILE_TIMEOUT=60000
+      - PISTON_COMPILE_CPU_TIME=60000
+      - PISTON_MAX_PROCESS_COUNT=256
     volumes:
       - piston_data:/piston
     networks:
@@ -28,7 +32,7 @@ services:
     environment:
       # "linguagem:versao" separados por espaco. Numa VM pequena (ex.: AMD Micro do Always Free, 1 GB de RAM)
       # use so "node:20.11.1 python:3.12.0": o gcc sozinho ocupa 2,8 GB e Java/C++ pedem mais memoria.
-      - "PISTON_PACKAGES=${PISTON_PACKAGES:-node:20.11.1 python:3.12.0 java:15.0.2 gcc:10.2.0}"
+      - "PISTON_PACKAGES=${PISTON_PACKAGES:-node:20.11.1 python:3.12.0 java:15.0.2 gcc:10.2.0 typescript:5.0.3 php:8.2.3 mono:6.12.0 go:1.16.2 rust:1.68.2 ruby:3.0.1 kotlin:1.8.20}"
     volumes:
       - ./piston-init.sh:/piston-init.sh:ro
     entrypoint: ["sh", "/piston-init.sh"]
@@ -38,6 +42,7 @@ services:
     container_name: piston_gateway
     environment:
       - PISTON_URL=http://piston:2000/api/v2
+      - PISTON_COMPILE_TIMEOUT=60000
       - AUTH_TOKEN=${AUTH_TOKEN:?defina AUTH_TOKEN no arquivo .env}
       - PORT=8081
     # Sem "ports:": so o Caddy (mesma rede interna) alcanca o gateway.

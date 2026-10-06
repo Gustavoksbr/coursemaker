@@ -29,7 +29,7 @@ import java.util.Set;
 @Service
 public class CodeExecutionService {
 
-    private static final Set<String> LANGUAGES = Set.of("javascript", "python", "java");
+    private static final Set<String> LANGUAGES = Set.of("javascript", "python", "java", "typescript", "php", "ruby", "csharp", "cpp", "c", "go", "rust", "kotlin");
 
     @Value("${code-runner.url}")
     private String runnerUrl;

@@ -301,6 +301,9 @@ func TestBuildArchive(t *testing.T) {
 
 func TestEveryLanguageHasADockerSpec(t *testing.T) {
 	for key, lang := range languages {
+		if pistonOnlyLanguages[key] {
+			continue
+		}
 		spec, ok := dockerSpecs[lang.pistonLanguage]
 		if !ok {
 			t.Errorf("a linguagem %s nao tem dockerSpec", key)

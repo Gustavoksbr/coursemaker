@@ -18,6 +18,9 @@ func TestJSONEqual(t *testing.T) {
 		{`[1,2,3]`, `[1, 2, 3]`, true},
 		{`{"a":1,"b":2}`, `{"b":2,"a":1}`, true},
 		{"1", "2", false},
+		{"0.30000000000000004", "0.3", true},
+		{"[0.1, 0.2]", "[0.1, 0.2000000001]", true},
+		{"1.001", "1.002", false},
 		{`[1,2]`, `[2,1]`, false},
 		{"null", "", true},
 		{`"1"`, "1", false},
@@ -108,7 +111,7 @@ func TestValidateRunTests(t *testing.T) {
 	}
 
 	bad := map[string]runTestsRequest{
-		"linguagem":    {Language: "ruby", Code: "x", FunctionName: "f", Tests: []testCase{{}}},
+		"linguagem":    {Language: "brainfuck", Code: "x", FunctionName: "f", Tests: []testCase{{}}},
 		"funcao":       {Language: "javascript", Code: "x", FunctionName: "f(); process.exit()", Tests: []testCase{{}}},
 		"funcao vazia": {Language: "python", Code: "x", FunctionName: "", Tests: []testCase{{}}},
 		"codigo":       {Language: "python", Code: "  ", FunctionName: "f", Tests: []testCase{{}}},

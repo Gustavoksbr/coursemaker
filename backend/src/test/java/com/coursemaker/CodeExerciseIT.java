@@ -178,7 +178,7 @@ class CodeExerciseIT extends IntegrationTest {
         post(path, exerciseBlockBody("java", functionSpec(SUM_SOLUTION)), owner.caller())
                 .andExpect(status().isBadRequest());
 
-        // C has no function mode.
+        // C is typed too: without a type per parameter the exercise cannot be built.
         post(path, exerciseBlockBody("c", functionSpec(SUM_SOLUTION)), owner.caller())
                 .andExpect(status().isBadRequest());
 
@@ -333,6 +333,45 @@ class CodeExerciseIT extends IntegrationTest {
         JsonNode right = postOk("/api/v1/blocks/" + blockId + "/exercise/submit", Map.of("code", JAVA_SUM), student.caller());
         assertThat(right.get("allPassed").asBoolean()).isTrue();
         assertThat(right.toString()).doesNotContain(HIDDEN_MARKER);
+    }
+
+    @Test
+    @DisplayName("outras linguagens tipadas no modo funcao: Go leva os tipos ao gateway e C recusa arrays")
+    void otherTypedLanguagesInFunctionMode() throws Exception {
+        TestUser owner = fixtures.user("ana");
+        Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        String path = "/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/blocks";
+
+        Map<String, Object> go = javaFunctionSpec("func soma(a int, b int) int {\n  return a + b\n}\n");
+        post(path, exerciseBlockBody("go", go), owner.caller()).andExpect(status().isCreated());
+        ArgumentCaptor<RunTestsRequest> sent = ArgumentCaptor.forClass(RunTestsRequest.class);
+        verify(gateway).runTests(sent.capture());
+        assertThat(sent.getValue().language()).isEqualTo("go");
+        assertThat(sent.getValue().paramTypes()).containsExactly("int", "int");
+
+        // C only has scalars and text: an array cannot be a parameter.
+        Map<String, Object> cArray = javaFunctionSpec("int soma(int a, int b) { return a + b; }\n");
+        cArray.put("paramTypes", List.of("int[]", "int"));
+        JsonNode error = body(post(path, exerciseBlockBody("c", cArray), owner.caller()).andExpect(status().isBadRequest()));
+        assertThat(error.toString()).contains("Em C so ha escalares");
+
+        Map<String, Object> cScalars = javaFunctionSpec("int soma(int a, int b) { return a + b; }\n");
+        post(path, exerciseBlockBody("c", cScalars), owner.caller()).andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("linguagens dinamicas novas (TypeScript, PHP, Ruby) nao levam tipos e linguagens fora da lista sao recusadas")
+    void dynamicLanguagesAndUnknownLanguages() throws Exception {
+        TestUser owner = fixtures.user("ana");
+        Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        String path = "/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/blocks";
+
+        for (String language : List.of("typescript", "php", "ruby")) {
+            post(path, exerciseBlockBody(language, functionSpec(SUM_SOLUTION)), owner.caller())
+                    .andExpect(status().isCreated());
+        }
+        post(path, exerciseBlockBody("brainfuck", functionSpec(SUM_SOLUTION)), owner.caller())
+                .andExpect(status().isBadRequest());
     }
 
     @Test

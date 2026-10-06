@@ -22,7 +22,7 @@ import {
 } from '@/api/courses'
 import { useToast } from '@/context/ToastContext'
 import { errorMessage } from '@/lib/api'
-import { EXERCISE_MODE, formatCall, LANGUAGE_LABELS } from '@/lib/codeExercise'
+import { EXERCISE_MODE, formatCall, LANGUAGE_LABELS, typedParam } from '@/lib/codeExercise'
 import { cn } from '@/lib/cn'
 
 /** Sent after this many unsuccessful submissions the author's solution unlocks (mirrors the backend). */
@@ -98,8 +98,10 @@ function InteractiveExercise({ block, passedFromCourse, onPassed }) {
   const examples = content.examples ?? []
   const hiddenCount = content.hiddenCount ?? 0
   const paramTypes = content.paramTypes ?? []
-  // Java shows typed parameters: soma(int a, int b)
-  const params = (content.params ?? []).map((param, index) => (paramTypes[index] ? `${paramTypes[index]} ${param}` : param)).join(', ')
+  // Typed languages show typed parameters: soma(int a, int b), soma(a int, b int) in Go...
+  const params = (content.params ?? [])
+    .map((param, index) => (paramTypes[index] ? typedParam(block.language, paramTypes[index], param) : param))
+    .join(', ')
   const done = progress.passed
 
   const changeCode = (value) => {

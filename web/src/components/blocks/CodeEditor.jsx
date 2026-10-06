@@ -5,6 +5,12 @@ import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
 import { java } from '@codemirror/lang-java'
 import { cpp } from '@codemirror/lang-cpp'
+import { php } from '@codemirror/lang-php'
+import { rust } from '@codemirror/lang-rust'
+import { go } from '@codemirror/lang-go'
+import { StreamLanguage } from '@codemirror/language'
+import { csharp, kotlin } from '@codemirror/legacy-modes/mode/clike'
+import { ruby } from '@codemirror/legacy-modes/mode/ruby'
 import { vscodeDark } from '@uiw/codemirror-theme-vscode'
 
 const LANGUAGE_EXTENSIONS = {
@@ -13,6 +19,13 @@ const LANGUAGE_EXTENSIONS = {
   java: () => java(),
   c: () => cpp(),
   cpp: () => cpp(),
+  typescript: () => javascript({ typescript: true }),
+  php: () => php(),
+  rust: () => rust(),
+  go: () => go(),
+  csharp: () => StreamLanguage.define(csharp),
+  kotlin: () => StreamLanguage.define(kotlin),
+  ruby: () => StreamLanguage.define(ruby),
 }
 
 const INDENT = '    '

@@ -67,6 +67,8 @@ export const CODE_LANGUAGES = [
   'jsx',
   'tsx',
   'java',
+  'c',
+  'cpp',
   'kotlin',
   'python',
   'go',

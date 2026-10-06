@@ -28,12 +28,15 @@ import {
   exerciseFromServer,
   exerciseProblems,
   exerciseToPayload,
+  coerceType,
   FALLBACK_LANGUAGES,
-  JAVA_TYPES,
+  isTypedLanguage,
   LANGUAGE_LABELS,
   MAX_PARAMS,
   MAX_TESTS,
+  nativeType,
   testCounts,
+  typeOptions,
 } from '@/lib/codeExercise'
 import { cn } from '@/lib/cn'
 
@@ -139,18 +142,20 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
     update({ ...fresh, title: form.title })
   }
 
-  // Java is typed: entering it gives every parameter (and the return value) a type; leaving drops them.
+  // Typed languages give every parameter (and the return value) a type; the dynamic ones drop them.
+  // Moving between typed languages keeps each type when the new language accepts it (C has no arrays).
   const changeLanguage = (language) => {
-    const typed = isFunction && language === 'java'
+    const typed = isFunction && isTypedLanguage(language)
     update({
       language,
-      paramTypes: typed ? form.params.map((_, i) => form.paramTypes[i] ?? 'int') : [],
-      returnType: typed ? form.returnType || 'int' : '',
+      paramTypes: typed ? form.params.map((_, i) => coerceType(language, form.paramTypes[i] ?? 'int')) : [],
+      returnType: typed ? coerceType(language, form.returnType || 'int') : '',
     })
   }
 
   // ---- parameters (function mode): every test keeps one argument cell per parameter
-  const typed = isFunction && form.language === 'java'
+  const typed = isFunction && isTypedLanguage(form.language)
+  const typeChoices = typeOptions(form.language)
 
   const renameParam = (index, name) =>
     update({ params: form.params.map((param, i) => (i === index ? name : param)) })
@@ -308,7 +313,7 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
           <Field
             label="Tipo de retorno"
             htmlFor={`exercise-return-${id}`}
-            hint="Java e tipado: o aluno escreve so o metodo static, sem class."
+            hint={form.language === 'java' ? 'Java e tipado: o aluno escreve so o metodo static, sem class.' : 'Esta linguagem e tipada: cada parametro tem um tipo, na grafia da linguagem.'}
           >
             <Select
               id={`exercise-return-${id}`}
@@ -316,9 +321,9 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
               onChange={(event) => update({ returnType: event.target.value })}
               className="font-mono"
             >
-              {JAVA_TYPES.map((type) => (
+              {typeChoices.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {nativeType(form.language, type)}
                 </option>
               ))}
             </Select>
@@ -342,9 +347,9 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
                     onChange={(event) => changeParamType(index, event.target.value)}
                     className="cursor-pointer bg-transparent py-1 text-sky-300 outline-none"
                   >
-                    {JAVA_TYPES.map((type) => (
+                    {typeChoices.map((type) => (
                       <option key={type} value={type} className="bg-slate-900">
-                        {type}
+                        {nativeType(form.language, type)}
                       </option>
                     ))}
                   </select>

@@ -48,6 +48,12 @@ const (
 	maxStreamBytes    = 64 << 10
 )
 
+// pistonOnlyLanguages sao as linguagens que so rodam com RUNNER=piston: o executor Docker e o local
+// cobrem JavaScript, Python, Java, C e C++ (imagens leves, e a Render nem tem como instalar o resto).
+var pistonOnlyLanguages = map[string]bool{
+	"typescript": true, "php": true, "csharp": true, "go": true, "rust": true, "ruby": true, "kotlin": true,
+}
+
 // dockerSpec diz como rodar uma linguagem. A chave de dockerSpecs e languageInfo.pistonLanguage.
 type dockerSpec struct {
 	image string
@@ -202,7 +208,7 @@ func firstLine(s string) string {
 func (d *dockerRunner) run(lang languageInfo, code, stdin string) (*executeResponse, error) {
 	spec, ok := dockerSpecs[lang.pistonLanguage]
 	if !ok {
-		return nil, fmt.Errorf("linguagem sem imagem Docker configurada: %s", lang.pistonLanguage)
+		return nil, fmt.Errorf("linguagem sem imagem Docker configurada: %s (esta linguagem so roda com RUNNER=piston)", lang.pistonLanguage)
 	}
 
 	d.slots <- struct{}{}

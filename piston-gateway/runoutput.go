@@ -103,7 +103,7 @@ func isJavaCompileFailure(stderr string) bool {
 // tinha imprimido a resposta certa. Em linguagens interpretadas nao ha esse custo de partida.
 func concurrencyFor(lang languageInfo) int {
 	switch lang.pistonLanguage {
-	case "java", "c++":
+	case "java", "c++", "csharp", "go", "rust", "kotlin", "typescript":
 		return 2
 	}
 	return outputConcurrency
@@ -185,13 +185,24 @@ func runOutput(req runOutputRequest) (*runOutputResponse, error) {
 // runOutputTest executa um teste. O segundo retorno e a mensagem do compilador, preenchida so
 // quando o programa nao compilou.
 func runOutputTest(lang languageInfo, code string, test outputTest, index int) (outputResult, string, error) {
+	if lang.pistonLanguage == "typescript" {
+		code = tsLibDirective + code
+	}
 	piston, err := runCode(lang, code, test.Input)
 	if err != nil {
 		return outputResult{}, "", err
 	}
 
 	if piston.CompileFailed {
-		return outputResult{Index: index, ExitCode: piston.ExitCode}, piston.CompileOutput, nil
+		out := piston.CompileOutput
+		if lang.pistonLanguage == "typescript" {
+			out = shiftTSLines(out)
+		}
+		return outputResult{Index: index, ExitCode: piston.ExitCode}, strings.TrimLeft(out, "\r\n"), nil
+	}
+	// `go run` compila e roda numa etapa so; o erro de compilacao comeca com esta linha.
+	if lang.pistonLanguage == "go" && strings.HasPrefix(piston.Stderr, "# command-line-arguments") {
+		return outputResult{Index: index, ExitCode: piston.ExitCode}, piston.Stderr, nil
 	}
 	// Java compila na mesma etapa em que roda, entao o erro vem como falha de execucao; o launcher
 	// sempre termina a mensagem com esta linha, o que permite distinguir de um erro em tempo de execucao.

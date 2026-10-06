@@ -72,7 +72,7 @@ compilação aparece em `stderr`, porque o Piston compila e roda na mesma etapa.
 ### Testes de uma função (`/run-tests`) — base das atividades de código
 
 O usuário escreve só uma função; o gateway roda **todos os testes numa única execução** do Piston
-e devolve o resultado de cada um. Linguagens: `javascript`, `python` e `java` (veja a seção abaixo).
+e devolve o resultado de cada um. Linguagens: veja a tabela abaixo.
 
 ```bash
 curl -X POST http://localhost:8081/run-tests \
@@ -97,8 +97,8 @@ Resposta (`actual` é o que a função retornou; o `expected` nunca volta):
 
 Como funciona e o que esperar:
 - `args` e `expected` são valores JSON quaisquer (números, strings, listas, objetos, `null`). A
-  comparação é por valor JSON: `1` e `1.0` são iguais, mas `0.1 + 0.2` **não** é igual a `0.3`
-  (sem tolerância de float por enquanto).
+  comparação é por valor JSON: `1` e `1.0` são iguais, e números diferem só se a diferença passar de
+  1e-9 (relativa), então `0.1 + 0.2` é igual a `0.3`.
 - O que o usuário imprime (`console.log`/`print`) volta separado em `output`.
 - Exceção em um teste: aquele teste falha com `error` (ex. `ZeroDivisionError: ...`) e os outros
   seguem. Erro de sintaxe: todos falham com "o programa terminou antes..." e o detalhe vai em
@@ -110,6 +110,39 @@ Como funciona e o que esperar:
 - Limites: até 100 testes e 50 KB de código por requisição.
 - O Piston aborta o sandbox se a saída passar de 1 KB; por isso o `docker-compose.yml` define
   `PISTON_OUTPUT_MAX_SIZE=65536` (o harness imprime uma linha por teste).
+
+### Linguagens
+
+Todas rodam no Piston (`RUNNER=piston`); o executor Docker e o local (Render) cobrem só as cinco primeiras
+(JavaScript, Python, Java, C, C++) e respondem 502 "só roda com RUNNER=piston" para as outras.
+
+| Linguagem (`language`) | Pacote do Piston | Modo função | Como o harness chama a função |
+|---|---|---|---|
+| `javascript` | `node` 20.11.1 | sim | lê os argumentos em JSON no stdin |
+| `python` | `python` 3.12.0 | sim | idem |
+| `typescript` | `typescript` 5.0.3 (tsc + node) | sim | idem; erros de tipo do `tsc` aparecem como erro de compilação |
+| `php` | `php` 8.2.3 | sim | idem |
+| `ruby` | `ruby` 3.0.1 | sim | idem |
+| `java` | `java` 15.0.2 | sim, tipado | gera `Main.java` com literais |
+| `csharp` | `mono` 6.12.0 | sim, tipado | gera o programa com literais (o código do aluno vai dentro de `class Program`) |
+| `cpp` | `gcc` 10.2.0 | sim, tipado | gera o `main` (`vector`, `string`, `long long`) |
+| `c` | `gcc` 10.2.0 | sim, só escalares e `String` | gera o `main` (`_Generic` serializa o retorno) |
+| `go` | `go` 1.16.2 | sim, tipado | gera o `main`; `import`s do aluno sobem para o topo |
+| `rust` | `rust` 1.68.2 | sim, tipado | gera o `main` (`Vec<T>`, `String`) |
+| `kotlin` | `kotlin` 1.8.20 | sim, tipado | gera o `main` (`IntArray`, `List<T>`) |
+
+Linguagens tipadas usam um vocabulário único de tipos (os nomes do Java: `int`, `long`, `double`, `boolean`,
+`String`, `int[]`, `List<Integer>`...) e cada uma os traduz para os seus (`[]int` em Go, `Vec<i32>` em Rust,
+`std::vector<int>` em C++). C não aceita arrays: eles precisariam de um tamanho a parte na assinatura.
+O aluno escreve **só a função** (sem `main`, e em Java/C# sem classe); os números de linha dos erros batem com o
+editor (prefixo na mesma linha, ou `#line`/`//line` em C, C++ e Go). O tsc compila com alvo antigo (ES5); a diretiva
+`/// <reference lib="es2022" />` liberta `Map`, `includes` etc., mas iterar `Map`/`Set` com `for...of` ainda pede
+`downlevelIteration`.
+
+Compilação lenta: Kotlin leva ~4 s por compilação (mais de 10 s de CPU), C# e Rust ~1-2 s. O `docker-compose.yml`
+sobe o Piston com `PISTON_COMPILE_TIMEOUT=60000` e `PISTON_COMPILE_CPU_TIME=60000` (o padrão é 10 s) e o gateway
+pede esse limite em cada execução (`PISTON_COMPILE_TIMEOUT` no ambiente do gateway). No `/run-output` cada teste
+compila de novo, então 20 testes em Kotlin levam ~35 s (2 em paralelo).
 
 #### Java no modo função
 

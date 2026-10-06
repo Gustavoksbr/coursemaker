@@ -20,16 +20,23 @@ export const MAX_VALUE_CHARS = 10_000
 
 /** Languages per mode when the API has not answered yet (the API's list wins once it does). */
 export const FALLBACK_LANGUAGES = {
-  function: ['javascript', 'python', 'java'],
-  output: ['javascript', 'python', 'java', 'c', 'cpp'],
+  function: ['javascript', 'python', 'typescript', 'php', 'ruby', 'java', 'csharp', 'cpp', 'c', 'go', 'rust', 'kotlin'],
+  output: ['javascript', 'python', 'typescript', 'php', 'ruby', 'java', 'csharp', 'cpp', 'c', 'go', 'rust', 'kotlin'],
 }
 
 export const LANGUAGE_LABELS = {
   javascript: 'JavaScript',
   python: 'Python',
+  typescript: 'TypeScript',
+  php: 'PHP',
+  ruby: 'Ruby',
   java: 'Java',
-  c: 'C',
+  csharp: 'C#',
   cpp: 'C++',
+  c: 'C',
+  go: 'Go',
+  rust: 'Rust',
+  kotlin: 'Kotlin',
 }
 
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
@@ -41,12 +48,23 @@ function nextKey() {
   return `t${keyCounter}`
 }
 
-// ---------------------------------------------------------------- java types
+// ----------------------------------------------------------- typed languages
 
 /**
- * Java is typed, so a function-mode exercise in Java declares a type per parameter and for the
- * return value, from this closed set (the gateway builds Java literals from it; the backend checks
- * the same list). Everything else - how a test's JSON is read - stays the same.
+ * Statically typed languages: a function-mode exercise declares a type per parameter and for the
+ * return value, from one closed set (named like Java's, below). The gateway turns each value into a
+ * literal of the language's own type and the editor shows the language's own spelling (`[]int` in
+ * Go, `Vec<i32>` in Rust...), but what is stored is always the name from the set.
+ */
+export const TYPED_LANGUAGES = ['java', 'csharp', 'cpp', 'c', 'go', 'rust', 'kotlin']
+
+export function isTypedLanguage(language) {
+  return TYPED_LANGUAGES.includes(language)
+}
+
+/**
+ * The closed set of types (Java's names). The gateway builds Java literals from it; the backend checks
+ * the same list.
  */
 export const JAVA_TYPES = [
   'int',
@@ -112,39 +130,163 @@ export function javaValueProblem(type, value) {
   return null
 }
 
-function javaDefaultReturn(type) {
-  if (type === 'int' || type === 'long') return '0'
-  if (type === 'double') return '0.0'
-  if (type === 'boolean') return 'false'
-  return 'null'
+const NATIVE_SCALARS = {
+  java: { int: 'int', long: 'long', double: 'double', boolean: 'boolean', String: 'String' },
+  csharp: { int: 'int', long: 'long', double: 'double', boolean: 'bool', String: 'string' },
+  cpp: { int: 'int', long: 'long long', double: 'double', boolean: 'bool', String: 'std::string' },
+  c: { int: 'int', long: 'long long', double: 'double', boolean: 'bool', String: 'const char*' },
+  go: { int: 'int', long: 'int64', double: 'float64', boolean: 'bool', String: 'string' },
+  rust: { int: 'i32', long: 'i64', double: 'f64', boolean: 'bool', String: 'String' },
+  kotlin: { int: 'Int', long: 'Long', double: 'Double', boolean: 'Boolean', String: 'String' },
+}
+
+/** How `type` (a name from the closed set) is spelled in `language`: `int[]` -> `[]int` in Go. */
+export function nativeType(language, type) {
+  const scalar = javaScalarOf(type)
+  const names = NATIVE_SCALARS[language]
+  if (!scalar || !names || language === 'java') return type
+  const name = names[scalar]
+  const array = type.endsWith('[]')
+  const list = type.startsWith('List<')
+  if (!array && !list) return name
+  switch (language) {
+    case 'csharp':
+      return array ? `${name}[]` : `List<${name}>`
+    case 'cpp':
+      return `std::vector<${name}>`
+    case 'go':
+      return `[]${name}`
+    case 'rust':
+      return `Vec<${name}>`
+    case 'kotlin':
+      if (list) return `List<${name}>`
+      return scalar === 'String' ? 'Array<String>' : `${name}Array`
+    default:
+      return type
+  }
+}
+
+/** One parameter as the language declares it: `int a`, `a int` (Go), `a: i32` (Rust, Kotlin). */
+export function typedParam(language, type, name) {
+  const native = nativeType(language, type)
+  if (language === 'go') return `${name} ${native}`
+  if (language === 'rust' || language === 'kotlin') return `${name}: ${native}`
+  return `${native} ${name}`
+}
+
+/**
+ * The types a function-mode exercise may use in `language`. C has only scalars and text (an array
+ * needs a separate length); C++, Go and Rust spell arrays and lists the same, so only the array form
+ * is offered.
+ */
+export function typeOptions(language) {
+  if (language === 'c') return JAVA_TYPES.filter((type) => !isJavaCollection(type))
+  if (['cpp', 'go', 'rust'].includes(language)) return JAVA_TYPES.filter((type) => !type.startsWith('List<'))
+  return JAVA_TYPES
+}
+
+/** Keeps `type` when `language` accepts it, else the closest one it does (a list becomes an array...). */
+export function coerceType(language, type) {
+  const options = typeOptions(language)
+  if (options.includes(type)) return type
+  const scalar = javaScalarOf(type) ?? 'int'
+  const array = `${scalar}[]`
+  return options.includes(array) && type.startsWith('List<') ? array : scalar
+}
+
+const EMPTY_SCALARS = { int: '0', long: '0', double: '0.0', boolean: 'false', String: '""' }
+
+const EMPTY_RETURN = {
+  java: { scalar: { ...EMPTY_SCALARS, String: 'null' }, collection: 'null' },
+  csharp: {
+    scalar: EMPTY_SCALARS,
+    array: (name) => `new ${name}[0]`,
+    list: (name) => `new List<${name}>()`,
+  },
+  cpp: { scalar: EMPTY_SCALARS, collection: '{}' },
+  c: { scalar: EMPTY_SCALARS, collection: 'NULL' },
+  go: { scalar: EMPTY_SCALARS, collection: 'nil' },
+  rust: { scalar: { ...EMPTY_SCALARS, String: 'String::new()' }, collection: 'Vec::new()' },
+  kotlin: {
+    scalar: { ...EMPTY_SCALARS, long: '0L' },
+    array: (name, scalar) =>
+      ({ int: 'intArrayOf()', long: 'longArrayOf()', double: 'doubleArrayOf()', boolean: 'booleanArrayOf()' })[scalar] ??
+      'arrayOf()',
+    list: () => 'emptyList()',
+  },
+}
+
+/** A placeholder `return` value of `type` in `language` so the starter code compiles. */
+function defaultReturn(language, type) {
+  const scalar = javaScalarOf(type) ?? 'int'
+  const table = EMPTY_RETURN[language]
+  if (!isJavaCollection(type)) return table.scalar[scalar]
+  if (type.endsWith('[]') && table.array) return table.array(NATIVE_SCALARS[language][scalar], scalar)
+  if (type.startsWith('List<') && table.list) return table.list(NATIVE_SCALARS[language][scalar], scalar)
+  return table.collection
+}
+
+/** The signature of the function the student writes, in `language`'s own syntax. */
+function typedStarter(language, functionName, params, paramTypes, returnType) {
+  const ret = returnType || 'int'
+  const typeOf = (index) => paramTypes[index] ?? 'int'
+  const body = (value) => `    // seu codigo aqui\n    ${value}\n`
+  const fallback = defaultReturn(language, ret)
+  const cStyle = () => params.map((param, index) => `${nativeType(language, typeOf(index))} ${param}`).join(', ')
+  const nameFirst = (separator) =>
+    params.map((param, index) => `${param}${separator}${nativeType(language, typeOf(index))}`).join(', ')
+  switch (language) {
+    case 'java':
+      // Only the method(s), no class: the gateway puts them inside its own Main class.
+      return `static ${ret} ${functionName}(${cStyle()}) {\n${body(`return ${fallback};`)}}\n`
+    case 'csharp':
+      return `static ${nativeType(language, ret)} ${functionName}(${cStyle()}) {\n${body(`return ${fallback};`)}}\n`
+    case 'cpp':
+    case 'c':
+      return `${nativeType(language, ret)} ${functionName}(${cStyle()}) {\n${body(`return ${fallback};`)}}\n`
+    case 'go':
+      return `func ${functionName}(${nameFirst(' ')}) ${nativeType(language, ret)} {\n${body(`return ${fallback}`)}}\n`
+    case 'rust':
+      return `fn ${functionName}(${nameFirst(': ')}) -> ${nativeType(language, ret)} {\n${body(fallback)}}\n`
+    default:
+      // kotlin
+      return `fun ${functionName}(${nameFirst(': ')}): ${nativeType(language, ret)} {\n${body(`return ${fallback}`)}}\n`
+  }
 }
 
 // ------------------------------------------------------------------ starters
 
+const OUTPUT_STARTERS = {
+  python: '# leia a entrada com input() e imprima o resultado com print()\n',
+  javascript: '// leia a entrada de process.stdin e imprima com console.log()\n',
+  typescript: "// leia a entrada com require('fs').readFileSync(0, 'utf8') e imprima com console.log()\n",
+  php: '<?php\n// leia a entrada com fgets(STDIN) e imprima com echo\n',
+  ruby: '# leia a entrada com gets e imprima com puts\n',
+  java: 'import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // seu codigo aqui\n    }\n}\n',
+  csharp: 'using System;\n\nclass Program {\n    static void Main() {\n        // leia com Console.ReadLine() e imprima com Console.WriteLine()\n    }\n}\n',
+  c: '#include <stdio.h>\n\nint main() {\n    // seu codigo aqui\n    return 0;\n}\n',
+  cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    // seu codigo aqui\n    return 0;\n}\n',
+  go: 'package main\n\nimport "fmt"\n\nfunc main() {\n    var n int\n    fmt.Scan(&n)\n    // seu codigo aqui\n}\n',
+  rust: 'use std::io;\n\nfn main() {\n    let mut line = String::new();\n    io::stdin().read_line(&mut line).unwrap();\n    // seu codigo aqui\n}\n',
+  kotlin: 'fun main() {\n    val line = readLine()\n    // seu codigo aqui\n}\n',
+}
+
 /** What the student starts from when the creator did not write anything. */
 export function defaultStarter(mode, language, functionName, params, paramTypes = [], returnType = 'int') {
   const names = params.join(', ')
-  if (mode === EXERCISE_MODE.OUTPUT) {
-    switch (language) {
-      case 'python':
-        return '# leia a entrada com input() e imprima o resultado com print()\n'
-      case 'java':
-        return 'import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // seu codigo aqui\n    }\n}\n'
-      case 'c':
-        return '#include <stdio.h>\n\nint main() {\n    // seu codigo aqui\n    return 0;\n}\n'
-      case 'cpp':
-        return '#include <iostream>\nusing namespace std;\n\nint main() {\n    // seu codigo aqui\n    return 0;\n}\n'
-      default:
-        return '// leia a entrada de process.stdin e imprima com console.log()\n'
-    }
+  if (mode === EXERCISE_MODE.OUTPUT) return OUTPUT_STARTERS[language] ?? OUTPUT_STARTERS.javascript
+  if (isTypedLanguage(language)) return typedStarter(language, functionName, params, paramTypes, returnType)
+  switch (language) {
+    case 'python':
+      return `def ${functionName}(${names}):\n    # seu codigo aqui\n    pass\n`
+    case 'php':
+      return `function ${functionName}(${params.map((param) => `$${param}`).join(', ')}) {\n    // seu codigo aqui\n}\n`
+    case 'ruby':
+      return `def ${functionName}(${names})\n  # seu codigo aqui\nend\n`
+    default:
+      // javascript and typescript
+      return `function ${functionName}(${names}) {\n  // seu codigo aqui\n}\n`
   }
-  if (language === 'java') {
-    // Only the method(s), no class: the gateway puts them inside its own Main class.
-    const signature = params.map((param, index) => `${paramTypes[index] ?? 'int'} ${param}`).join(', ')
-    return `static ${returnType || 'int'} ${functionName}(${signature}) {\n    // seu codigo aqui\n    return ${javaDefaultReturn(returnType || 'int')};\n}\n`
-  }
-  if (language === 'python') return `def ${functionName}(${names}):\n    # seu codigo aqui\n    pass\n`
-  return `function ${functionName}(${names}) {\n  // seu codigo aqui\n}\n`
 }
 
 export function emptyTest(mode, paramCount) {
@@ -157,7 +299,7 @@ export function emptyTest(mode, paramCount) {
 export function emptyExercise(mode = EXERCISE_MODE.FUNCTION, language = 'python') {
   const functionName = 'soma'
   const params = mode === EXERCISE_MODE.FUNCTION ? ['a', 'b'] : []
-  const typed = mode === EXERCISE_MODE.FUNCTION && language === 'java'
+  const typed = mode === EXERCISE_MODE.FUNCTION && isTypedLanguage(language)
   const paramTypes = typed ? params.map(() => 'int') : []
   const returnType = typed ? 'int' : ''
   return {
@@ -194,7 +336,7 @@ export function formatJsonCell(value) {
 /** The form -> the body of `exercise` in the block request. Call only on a form without problems. */
 export function exerciseToPayload(form) {
   const isFunction = form.mode === EXERCISE_MODE.FUNCTION
-  const typed = isFunction && form.language === 'java'
+  const typed = isFunction && isTypedLanguage(form.language)
   return {
     mode: form.mode,
     title: form.title.trim() || null,
@@ -252,15 +394,16 @@ function cellProblem(text, label, javaType) {
 export function exerciseProblems(form) {
   const problems = []
   const isFunction = form.mode === EXERCISE_MODE.FUNCTION
-  const typed = isFunction && form.language === 'java'
+  const typed = isFunction && isTypedLanguage(form.language)
+  const allowedTypes = typeOptions(form.language)
 
   if (isFunction) {
     if (!IDENTIFIER.test(form.functionName.trim())) problems.push('o nome da funcao e invalido')
     if (typed) {
-      if (form.paramTypes.length !== form.params.length || form.paramTypes.some((type) => !JAVA_TYPES.includes(type))) {
+      if (form.paramTypes.length !== form.params.length || form.paramTypes.some((type) => !allowedTypes.includes(type))) {
         problems.push('escolha o tipo de cada parametro')
       }
-      if (!JAVA_TYPES.includes(form.returnType)) problems.push('escolha o tipo de retorno')
+      if (!allowedTypes.includes(form.returnType)) problems.push('escolha o tipo de retorno')
     }
     const seen = new Set()
     for (const param of form.params) {

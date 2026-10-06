@@ -9,8 +9,14 @@ import {
   exerciseToPayload,
   formatCall,
   javaScalarOf,
+  coerceType,
+  defaultStarter,
+  isTypedLanguage,
   javaValueProblem,
+  nativeType,
   testCounts,
+  typedParam,
+  typeOptions,
 } from './codeExercise'
 
 function functionForm(overrides = {}) {
@@ -272,5 +278,83 @@ describe('javaValueProblem', () => {
     ['List<Integer>', [1, null], 'item 2: null so vale para String, array e lista'],
   ])('%s with %j', (type, value, expected) => {
     expect(javaValueProblem(type, value)).toBe(expected)
+  })
+})
+
+
+describe('typed languages beyond Java', () => {
+  it('knows which languages are typed', () => {
+    for (const language of ['java', 'csharp', 'cpp', 'c', 'go', 'rust', 'kotlin']) expect(isTypedLanguage(language)).toBe(true)
+    for (const language of ['javascript', 'python', 'typescript', 'php', 'ruby']) expect(isTypedLanguage(language)).toBe(false)
+  })
+
+  it('spells each type the way the language does', () => {
+    expect(nativeType('go', 'int[]')).toBe('[]int')
+    expect(nativeType('go', 'long')).toBe('int64')
+    expect(nativeType('rust', 'double[]')).toBe('Vec<f64>')
+    expect(nativeType('cpp', 'String[]')).toBe('std::vector<std::string>')
+    expect(nativeType('csharp', 'List<Integer>')).toBe('List<int>')
+    expect(nativeType('csharp', 'boolean')).toBe('bool')
+    expect(nativeType('kotlin', 'int[]')).toBe('IntArray')
+    expect(nativeType('kotlin', 'String[]')).toBe('Array<String>')
+    expect(nativeType('c', 'String')).toBe('const char*')
+    expect(nativeType('java', 'List<Integer>')).toBe('List<Integer>')
+  })
+
+  it('offers only the types a language can express', () => {
+    expect(typeOptions('c')).toEqual(['int', 'long', 'double', 'boolean', 'String'])
+    expect(typeOptions('go').some((type) => type.startsWith('List<'))).toBe(false)
+    expect(typeOptions('java')).toContain('List<Integer>')
+    expect(typeOptions('kotlin')).toContain('List<Integer>')
+  })
+
+  it('moves a type to the closest one the new language accepts', () => {
+    expect(coerceType('go', 'List<Integer>')).toBe('int[]')
+    expect(coerceType('c', 'int[]')).toBe('int')
+    expect(coerceType('c', 'List<String>')).toBe('String')
+    expect(coerceType('java', 'List<Integer>')).toBe('List<Integer>')
+  })
+
+  it('writes the parameter in the language order', () => {
+    expect(typedParam('go', 'int', 'a')).toBe('a int')
+    expect(typedParam('rust', 'int', 'a')).toBe('a: i32')
+    expect(typedParam('kotlin', 'String', 'a')).toBe('a: String')
+    expect(typedParam('csharp', 'boolean', 'a')).toBe('bool a')
+  })
+
+  it('writes a starter with the right signature for each language', () => {
+    const starter = (language) => defaultStarter(EXERCISE_MODE.FUNCTION, language, 'soma', ['a', 'b'], ['int', 'int'], 'int')
+    expect(starter('csharp')).toContain('static int soma(int a, int b) {')
+    expect(starter('cpp')).toContain('int soma(int a, int b) {')
+    expect(starter('go')).toContain('func soma(a int, b int) int {')
+    expect(starter('rust')).toContain('fn soma(a: i32, b: i32) -> i32 {')
+    expect(starter('kotlin')).toContain('fun soma(a: Int, b: Int): Int {')
+    expect(defaultStarter(EXERCISE_MODE.FUNCTION, 'php', 'soma', ['a', 'b'])).toContain('function soma($a, $b)')
+    expect(defaultStarter(EXERCISE_MODE.FUNCTION, 'ruby', 'soma', ['a', 'b'])).toContain('def soma(a, b)')
+    expect(defaultStarter(EXERCISE_MODE.FUNCTION, 'typescript', 'soma', ['a', 'b'])).toContain('function soma(a, b)')
+  })
+
+  it('returns an empty value of the right kind in the starter', () => {
+    const arrays = (language, type, returnType) =>
+      defaultStarter(EXERCISE_MODE.FUNCTION, language, 'f', ['xs'], [type], returnType)
+    expect(arrays('go', 'int[]', 'int[]')).toContain('return nil')
+    expect(arrays('rust', 'int[]', 'int[]')).toContain('Vec::new()')
+    expect(arrays('csharp', 'int[]', 'int[]')).toContain('new int[0]')
+    expect(arrays('kotlin', 'int[]', 'List<Integer>')).toContain('emptyList()')
+  })
+
+  it('sends the types for every typed language and none for dynamic ones', () => {
+    for (const language of ['csharp', 'cpp', 'go', 'rust', 'kotlin']) {
+      const form = { ...emptyExercise(EXERCISE_MODE.FUNCTION, language), title: 'x', solutionCode: 's', tests: [{ key: 'a', visible: true, args: ['1', '2'], expected: '3' }] }
+      expect(exerciseToPayload(form)).toMatchObject({ paramTypes: ['int', 'int'], returnType: 'int' })
+      expect(exerciseProblems(form)).toEqual([])
+    }
+    const php = { ...emptyExercise(EXERCISE_MODE.FUNCTION, 'php'), title: 'x', solutionCode: 's', tests: [{ key: 'a', visible: true, args: ['1', '2'], expected: '3' }] }
+    expect(exerciseToPayload(php)).toMatchObject({ paramTypes: null, returnType: null })
+  })
+
+  it('rejects an array type in C', () => {
+    const form = { ...emptyExercise(EXERCISE_MODE.FUNCTION, 'c'), title: 'x', solutionCode: 's', paramTypes: ['int[]', 'int'], tests: [{ key: 'a', visible: true, args: ['[1]', '2'], expected: '3' }] }
+    expect(exerciseProblems(form)).toContain('escolha o tipo de cada parametro')
   })
 })
