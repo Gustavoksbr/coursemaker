@@ -4,8 +4,26 @@
     {
       "name": "coursemaker-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5173"],
+      "runtimeArgs": ["--prefix", "web", "run", "dev", "--", "--port", "5173"],
       "port": 5173
+    },
+    {
+      "name": "backend-dev",
+      "runtimeExecutable": "mvn",
+      "runtimeArgs": ["-f", "backend/pom.xml", "spring-boot:run", "-Dspring-boot.run.profiles=dev"],
+      "port": 8080
+    },
+    {
+      "name": "piston-gateway",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "-f", "piston-gateway/docker-compose.yml", "up", "--build"],
+      "port": 8081
+    },
+    {
+      "name": "gateway-executor-docker",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "-p", "cmdocker", "-f", "piston-gateway/docker-compose.docker-runner.yml", "up", "--build"],
+      "port": 8081
     }
   ]
 }

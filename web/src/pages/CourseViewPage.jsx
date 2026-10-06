@@ -26,6 +26,8 @@ import { BlockList } from '@/components/blocks/BlockRenderer'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { CurriculumNav, flattenLessons } from '@/components/course/CurriculumNav'
 import { CourseSidebar } from '@/components/course/CourseSidebar'
+import { SidebarDrawer } from '@/components/course/SidebarDrawer'
+import { CourseRail } from '@/components/course/CourseRail'
 import { CertificateButton } from '@/components/shared/CertificateButton'
 import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
@@ -89,6 +91,16 @@ function patchExercisePassed(queryClient, queryKey, blockId) {
   })
 }
 
+const SIDEBAR_PREFERENCE_KEY = 'coursemaker:lesson-sidebar-open'
+
+function readSidebarPreference() {
+  try {
+    return localStorage.getItem(SIDEBAR_PREFERENCE_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
 export default function CourseViewPage() {
   const { nickname, slug } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -97,7 +109,19 @@ export default function CourseViewPage() {
   const toast = useToast()
   const navigate = useNavigate()
 
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  // Telas largas: a barra fixa pode ser recolhida (lembramos a escolha). Telas estreitas: o mesmo menu
+  // abre numa gaveta, pelo botao "Aulas" da propria aula.
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarPreference)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const toggleSidebar = () => {
+    const next = !sidebarOpen
+    setSidebarOpen(next)
+    try {
+      localStorage.setItem(SIDEBAR_PREFERENCE_KEY, next ? '1' : '0')
+    } catch {
+      // Sem armazenamento (janela privada etc.): a barra so nao lembra a escolha.
+    }
+  }
   const [passwordOpen, setPasswordOpen] = useState(false)
   // Set when the "Atividades" tab sends the student to a block; the lesson view scrolls to it once rendered.
   const [scrollTargetBlockId, setScrollTargetBlockId] = useState(null)
@@ -134,6 +158,7 @@ export default function CourseViewPage() {
     if (lessonId) params.set('lesson', lessonId)
     else params.delete('lesson')
     setSearchParams(params)
+    setDrawerOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -207,33 +232,57 @@ export default function CourseViewPage() {
     toggleEnrollment()
   }
 
+  const hasSidebar = detail.canViewContent && detail.modules.length > 0
+  const sidebarBody = (
+    <>
+      {!detail.isOwner && detail.progress && (
+        <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+          <ProgressBar
+            completed={detail.progress.completedLessons}
+            total={detail.progress.totalLessons}
+            percentage={detail.progress.percentage}
+            ariaLabel="Progresso no curso"
+          />
+        </div>
+      )}
+      <CourseSidebar
+        modules={detail.modules}
+        activeLessonId={activeLessonId}
+        onSelectLesson={selectLesson}
+        onSelectActivity={selectActivity}
+        answeredQuestionBlockIds={answeredQuestionBlockIds}
+        passedExerciseBlockIds={passedExerciseBlockIds}
+        showProgress={isAuthenticated && !detail.isOwner}
+      />
+    </>
+  )
+
   return (
     <>
       <div className="flex flex-1">
-        {detail.canViewContent && detail.modules.length > 0 && sidebarOpen && (
-          <aside className="hidden w-72 shrink-0 border-r border-slate-800 lg:block">
-            <div className="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto p-3">
-              {!detail.isOwner && detail.progress && (
-                <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/60 p-3">
-                  <ProgressBar
-                    completed={detail.progress.completedLessons}
-                    total={detail.progress.totalLessons}
-                    percentage={detail.progress.percentage}
-                    ariaLabel="Progresso no curso"
-                  />
-                </div>
-              )}
-              <CourseSidebar
-                modules={detail.modules}
-                activeLessonId={activeLessonId}
-                onSelectLesson={selectLesson}
-                onSelectActivity={selectActivity}
-                answeredQuestionBlockIds={answeredQuestionBlockIds}
-                passedExerciseBlockIds={passedExerciseBlockIds}
-                showProgress={isAuthenticated && !detail.isOwner}
-              />
-            </div>
+        {/* Minimizado: faixa de icones sempre a mostra (em telas largas so quando o menu esta recolhido). */}
+        {hasSidebar && (
+          <div className={cn('sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start', sidebarOpen && 'md:hidden')}>
+            <CourseRail
+              modules={detail.modules}
+              activeLessonId={activeLessonId}
+              onSelectLesson={selectLesson}
+              onExpand={toggleSidebar}
+              onExpandDrawer={() => setDrawerOpen(true)}
+              showProgress={isAuthenticated && !detail.isOwner}
+            />
+          </div>
+        )}
+        {/* Maximizado em telas largas: barra completa ao lado. Em telas estreitas vira a gaveta abaixo. */}
+        {hasSidebar && sidebarOpen && (
+          <aside className="hidden w-72 shrink-0 border-r border-slate-800 md:block">
+            <div className="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto p-3">{sidebarBody}</div>
           </aside>
+        )}
+        {hasSidebar && (
+          <SidebarDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+            {sidebarBody}
+          </SidebarDrawer>
         )}
 
         <div className="min-w-0 flex-1">
@@ -246,7 +295,7 @@ export default function CourseViewPage() {
               onSelectLesson={selectLesson}
               onBackToLanding={() => selectLesson(null)}
               sidebarOpen={sidebarOpen}
-              onToggleSidebar={() => setSidebarOpen((open) => !open)}
+              onToggleSidebar={toggleSidebar}
               onCompleteLesson={markLessonComplete}
               canTrackProgress={isAuthenticated && !detail.isOwner}
               answeredQuestionBlockIds={answeredQuestionBlockIds}
@@ -566,7 +615,7 @@ export function LessonView({
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="btn-ghost hidden px-2 lg:inline-flex"
+            className="btn-ghost hidden px-2 md:inline-flex"
             aria-label={sidebarOpen ? 'Recolher menu' : 'Expandir menu'}
           >
             {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
@@ -615,7 +664,7 @@ export function LessonView({
             {pendingText(pendingQuestions, pendingExercises)}
           </button>
         )}
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 py-3 pl-4 pr-20 sm:px-6">
           <button
             type="button"
             onClick={() => previous && onSelectLesson(previous.id)}

@@ -3,8 +3,8 @@ import { BookOpen, CheckCircle2, ChevronDown, CirclePlay, ClipboardList } from '
 import { lessonActivityCounts, lessonKind } from '@/lib/lessonActivities'
 import { cn } from '@/lib/cn'
 
-const KIND_ICON = { reading: BookOpen, video: CirclePlay, activity: ClipboardList }
-const KIND_LABEL = { reading: 'Leitura', video: 'Video', activity: 'Atividade' }
+export const KIND_ICON = { reading: BookOpen, video: CirclePlay, activity: ClipboardList }
+export const KIND_LABEL = { reading: 'Leitura', video: 'Video', activity: 'Atividade' }
 
 /**
  * Read-only curriculum navigation for the course viewer: modules collapse, the active lesson is
