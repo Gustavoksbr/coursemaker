@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -38,4 +40,35 @@ func handOverTo(dir string) error {
 		}
 		return os.Chown(path, nobody, nobody)
 	})
+}
+
+// groupRSS soma a memoria residente de todos os processos do grupo `pgid` (le /proc; 0 se nao der).
+func groupRSS(pgid int) int64 {
+	entries, err := filepath.Glob("/proc/[0-9]*/stat")
+	if err != nil {
+		return 0
+	}
+	var total int64
+	for _, path := range entries {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		// "pid (comm) state ppid pgrp ... rss ...": o nome pode ter espacos, entao corta no ultimo ')'.
+		text := string(data)
+		i := strings.LastIndexByte(text, ')')
+		if i < 0 {
+			continue
+		}
+		f := strings.Fields(text[i+1:])
+		if len(f) < 22 {
+			continue
+		}
+		if group, _ := strconv.Atoi(f[2]); group != pgid {
+			continue
+		}
+		pages, _ := strconv.ParseInt(f[21], 10, 64)
+		total += pages * int64(os.Getpagesize())
+	}
+	return total
 }

@@ -14,3 +14,5 @@ func killGroup(cmd *exec.Cmd) {
 }
 
 func handOverTo(dir string) error { return nil }
+
+func groupRSS(pgid int) int64 { return 0 }

@@ -19,7 +19,12 @@ import (
 // O QUE ESTE EXECUTOR NAO FAZ: nao isola a rede (o codigo do aluno consegue abrir conexoes) e nao limita
 // memoria alem do que cada runtime aceita por flag. E adequado para testar, nao para alunos de verdade.
 
-const maxLocalOutput = 64 << 10
+const (
+	maxLocalOutput = 64 << 10
+	// maxQueueWait: quanto um pedido espera por uma vaga. Passou disso, devolve erro em vez de ficar
+	// pendurado (e de acumular fila de clientes que ja desistiram).
+	maxQueueWait = 20 * time.Second
+)
 
 type localRunner struct {
 	slots chan struct{}
@@ -72,14 +77,26 @@ func localCommand(command string) string {
 	return strings.ReplaceAll(command, "/tmp/", "./")
 }
 
+// localMemoryLimit e o teto de memoria (RSS somado) por execucao; LOCAL_MEMORY_MB muda o padrao de 350.
+func localMemoryLimit() int64 {
+	if v, err := strconv.Atoi(os.Getenv("LOCAL_MEMORY_MB")); err == nil && v > 0 {
+		return int64(v) << 20
+	}
+	return 350 << 20
+}
+
 func (l *localRunner) run(lang languageInfo, code, stdin string) (*executeResponse, error) {
 	spec, ok := dockerSpecs[lang.pistonLanguage]
 	if !ok {
 		return nil, fmt.Errorf("linguagem sem receita de execucao: %s", lang.pistonLanguage)
 	}
 
-	l.slots <- struct{}{}
-	defer func() { <-l.slots }()
+	select {
+	case l.slots <- struct{}{}:
+		defer func() { <-l.slots }()
+	case <-time.After(maxQueueWait):
+		return nil, fmt.Errorf("o executor esta ocupado no momento, tente de novo em instantes")
+	}
 
 	dir, err := os.MkdirTemp("", "run-")
 	if err != nil {
@@ -117,13 +134,29 @@ func (l *localRunner) run(lang languageInfo, code, stdin string) (*executeRespon
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
 
-	timedOut := false
-	select {
-	case <-done:
-	case <-time.After(spec.timeout):
-		timedOut = true
-		killGroup(cmd)
-		<-done
+	// Vigia: mata o grupo se estourar o tempo ou a memoria (soma do RSS de todos os processos dele).
+	timedOut, outOfMemory := false, false
+	deadline := time.After(spec.timeout)
+	tick := time.NewTicker(150 * time.Millisecond)
+	defer tick.Stop()
+watch:
+	for {
+		select {
+		case <-done:
+			break watch
+		case <-deadline:
+			timedOut = true
+			killGroup(cmd)
+			<-done
+			break watch
+		case <-tick.C:
+			if groupRSS(cmd.Process.Pid) > localMemoryLimit() {
+				outOfMemory = true
+				killGroup(cmd)
+				<-done
+				break watch
+			}
+		}
 	}
 
 	exitCode := 0
@@ -134,7 +167,11 @@ func (l *localRunner) run(lang languageInfo, code, stdin string) (*executeRespon
 		}
 	}
 
-	if spec.compiled && exitCode == compileExitCode && !timedOut {
+	if outOfMemory {
+		stderr.Write([]byte("\nMemoria excedida (limite de " + strconv.FormatInt(localMemoryLimit()>>20, 10) + " MB).\n"))
+	}
+
+	if spec.compiled && exitCode == compileExitCode && !timedOut && !outOfMemory {
 		return &executeResponse{
 			ExitCode:      exitCode,
 			CompileOutput: cleanCompilerOutput(stderr.String()),
