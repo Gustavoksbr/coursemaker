@@ -1,0 +1,17 @@
+# Gateway com o executor local (RUNNER=local) e as linguagens instaladas na propria imagem. Pensado para
+# o Render (que nao permite conteiner privilegiado nem Docker). O gateway roda como root so para poder
+# entregar cada execucao ao usuario "nobody"; o codigo do aluno nunca roda como root.
+FROM golang:1.22-alpine AS build
+WORKDIR /app
+COPY go.mod .
+COPY *.go .
+RUN go build -o gateway .
+
+FROM alpine:3.20
+# tini: PID 1 que recolhe processos orfaos. Sem ele, os filhos de uma bomba de fork viram zumbis, contam
+# no limite de processos do usuario e acabam bloqueando todas as execucoes seguintes.
+RUN apk add --no-cache tini nodejs python3 openjdk21-jdk build-base
+COPY --from=build /app/gateway /gateway
+ENV RUNNER=local
+EXPOSE 10000
+ENTRYPOINT ["/sbin/tini", "--", "/gateway"]

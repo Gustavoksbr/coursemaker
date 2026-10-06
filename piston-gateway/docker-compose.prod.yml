@@ -1,0 +1,75 @@
+# Producao: o mesmo Piston + gateway do docker-compose.yml, mas com um Caddy na frente fazendo HTTPS
+# e SEM publicar a porta 8081. So as portas 80 e 443 do Caddy ficam abertas para a internet.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Precisa do .env com AUTH_TOKEN e DOMAIN (veja .env.example).
+services:
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: piston_api
+    privileged: true
+    environment:
+      # O padrao do Piston e 1024 bytes de saida; passou disso o sandbox aborta ("fatal signal 6").
+      - PISTON_OUTPUT_MAX_SIZE=65536
+    volumes:
+      - piston_data:/piston
+    networks:
+      - internal
+    restart: unless-stopped
+
+  piston-init:
+    image: curlimages/curl:8.8.0
+    container_name: piston_init
+    depends_on:
+      - piston
+    networks:
+      - internal
+    environment:
+      # "linguagem:versao" separados por espaco. Numa VM pequena (ex.: AMD Micro do Always Free, 1 GB de RAM)
+      # use so "node:20.11.1 python:3.12.0": o gcc sozinho ocupa 2,8 GB e Java/C++ pedem mais memoria.
+      - "PISTON_PACKAGES=${PISTON_PACKAGES:-node:20.11.1 python:3.12.0 java:15.0.2 gcc:10.2.0}"
+    volumes:
+      - ./piston-init.sh:/piston-init.sh:ro
+    entrypoint: ["sh", "/piston-init.sh"]
+
+  gateway:
+    build: .
+    container_name: piston_gateway
+    environment:
+      - PISTON_URL=http://piston:2000/api/v2
+      - AUTH_TOKEN=${AUTH_TOKEN:?defina AUTH_TOKEN no arquivo .env}
+      - PORT=8081
+    # Sem "ports:": so o Caddy (mesma rede interna) alcanca o gateway.
+    depends_on:
+      - piston
+    networks:
+      - internal
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    container_name: piston_caddy
+    environment:
+      - "DOMAIN=${DOMAIN:?defina DOMAIN no arquivo .env, ex. meu-runner.duckdns.org}"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # guarda o certificado: sem isso cada reinicio pediria um novo
+      - caddy_config:/config
+    depends_on:
+      - gateway
+    networks:
+      - internal
+    restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  piston_data:
+  caddy_data:
+  caddy_config:

@@ -191,7 +191,7 @@ func runTests(req runTestsRequest) (*runTestsResponse, error) {
 		lang = languages[harness.language]
 	}
 
-	piston, err := runOnPiston(lang, program, stdin)
+	piston, err := runCode(lang, program, stdin)
 	if err != nil {
 		return nil, err
 	}

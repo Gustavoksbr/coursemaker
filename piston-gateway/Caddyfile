@@ -1,0 +1,12 @@
+# HTTPS automatico (Let's Encrypt) para o dominio definido em DOMAIN no .env.
+# O Caddy so repassa para o gateway; quem autentica e o gateway (Bearer token).
+{$DOMAIN} {
+	encode zstd gzip
+
+	# O gateway ja limita o corpo a 1 MB; aqui o corte acontece antes de chegar nele.
+	request_body {
+		max_size 2MB
+	}
+
+	reverse_proxy gateway:8081
+}

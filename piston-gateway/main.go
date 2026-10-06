@@ -92,6 +92,24 @@ func main() {
 		log.Fatal("AUTH_TOKEN precisa estar configurado - sem ele qualquer um na internet executaria codigo de graca nesta maquina")
 	}
 
+	// RUNNER escolhe quem executa o codigo: "piston" (padrao) ou "docker" (conteiner efemero por execucao,
+	// para onde o Piston nao roda, como ARM).
+	executor := envOrDefault("RUNNER", "piston")
+	switch executor {
+	case "piston":
+	case "docker":
+		runner, err := newDockerRunner()
+		if err != nil {
+			log.Fatal(err)
+		}
+		docker = runner
+		go docker.ensureImages()
+	case "local":
+		local = newLocalRunner()
+	default:
+		log.Fatalf("RUNNER invalido: %q (use piston, docker ou local)", executor)
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/execute", withAuth(handleExecute))
 	mux.HandleFunc("/run-tests", withAuth(handleRunTests))
@@ -99,7 +117,13 @@ func main() {
 	mux.HandleFunc("/exercises/square/run", withAuth(handleSquareExercise))
 	mux.HandleFunc("/health", handleHealth)
 
-	log.Printf("piston-gateway ouvindo na porta %s (Piston em %s)", port, pistonURL)
+	if executor == "docker" {
+		log.Printf("piston-gateway ouvindo na porta %s (executor: conteineres Docker)", port)
+	} else if executor == "local" {
+		log.Printf("piston-gateway ouvindo na porta %s (executor: processos locais)", port)
+	} else {
+		log.Printf("piston-gateway ouvindo na porta %s (Piston em %s)", port, pistonURL)
+	}
 	log.Fatal(http.ListenAndServe(":"+port, mux))
 }
 
@@ -148,7 +172,7 @@ func handleExecute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := runOnPiston(lang, req.Code, req.Stdin)
+	result, err := runCode(lang, req.Code, req.Stdin)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"message": err.Error()})
 		return
@@ -186,7 +210,7 @@ func handleSquareExercise(w http.ResponseWriter, r *http.Request) {
 	// O usuario escreve so "function square(n) { ... }" - a gente completa com a chamada.
 	harness := fmt.Sprintf("%s\nconsole.log(square(%d))", req.Code, input)
 
-	result, err := runOnPiston(languages["javascript"], harness, "")
+	result, err := runCode(languages["javascript"], harness, "")
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"message": err.Error()})
 		return
@@ -204,6 +228,18 @@ func handleSquareExercise(w http.ResponseWriter, r *http.Request) {
 		"stderr":   result.Stderr,
 		"exitCode": result.ExitCode,
 	})
+}
+
+// runCode executa o codigo no executor escolhido por RUNNER. Todo o resto do gateway (harnesses,
+// comparacao, limites) fala so com esta funcao e nao sabe quem roda o codigo.
+func runCode(lang languageInfo, code string, stdin string) (*executeResponse, error) {
+	if docker != nil {
+		return docker.run(lang, code, stdin)
+	}
+	if local != nil {
+		return local.run(lang, code, stdin)
+	}
+	return runOnPiston(lang, code, stdin)
 }
 
 func runOnPiston(lang languageInfo, code string, stdin string) (*executeResponse, error) {

@@ -172,7 +172,7 @@ func runOutput(req runOutputRequest) (*runOutputResponse, error) {
 // runOutputTest executa um teste. O segundo retorno e a mensagem do compilador, preenchida so
 // quando o programa nao compilou.
 func runOutputTest(lang languageInfo, code string, test outputTest, index int) (outputResult, string, error) {
-	piston, err := runOnPiston(lang, code, test.Input)
+	piston, err := runCode(lang, code, test.Input)
 	if err != nil {
 		return outputResult{}, "", err
 	}

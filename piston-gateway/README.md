@@ -224,6 +224,31 @@ curl -i -X POST http://localhost:8081/execute \
   -d '{"language":"javascript","code":"console.log(1)"}'
 ```
 
+## Executores (`RUNNER`)
+
+O gateway escolhe quem executa o código pela variável `RUNNER`:
+
+| `RUNNER` | O que é | Onde usar |
+|---|---|---|
+| `piston` (padrão) | Piston em contêiner privilegiado | VM x86 com Docker (`docker-compose.yml` / `docker-compose.prod.yml`) |
+| `docker` | um contêiner efêmero por execução, de imagens oficiais (node, python, temurin) | VM com Docker, inclusive **ARM** (`docker-compose.docker-runner.yml`) |
+| `local` | processo sem privilégios dentro do próprio contêiner do gateway | plataformas sem Docker nem privilégios, como o **Render** (`Dockerfile.render`). **Só para testes** |
+
+- `docker`: sem rede, sem capabilities, `no-new-privileges`, usuário `nobody`, 512 MB sem swap, 1 CPU, 128
+  processos, tempo máximo por linguagem. Quem controla o socket do Docker controla a máquina; em produção use um
+  daemon rootless (`DOCKER_HOST`). `DOCKER_MAX_PARALLEL` (padrão 4).
+- `local`: roda como `nobody` com ambiente limpo (sem `AUTH_TOKEN`), em diretório temporário próprio, com limites de
+  arquivo e processos e tempo máximo. **Não isola a rede** nem limita memória (só flags do Node e da JVM). `tini` é
+  o PID 1 para recolher processos órfãos. `LOCAL_MAX_PARALLEL` (padrão 2).
+
+### Testando no Render (executor `local`)
+
+Serviço Web novo → Language **Docker**, Root Directory `piston-gateway`, Dockerfile Path `./Dockerfile.render`
+(se o build não achar o arquivo, tente `piston-gateway/Dockerfile.render`), Health Check Path `/health`, variável
+`AUTH_TOKEN`. O Render define a `PORT` sozinho. No backend principal: `CODE_RUNNER_URL=https://<servico>.onrender.com`
+e `CODE_RUNNER_TOKEN=<o mesmo AUTH_TOKEN>`. No plano gratuito o serviço dorme após 15 min parado (a primeira
+execução depois disso demora) e tem 512 MB de RAM.
+
 ## Parando tudo
 
 ```bash
@@ -242,6 +267,63 @@ Internet ──HTTPS + Bearer token──> piston_gateway (Go, porta 8081)
                                       piston_api
 ```
 
-Em produção (Oracle Cloud), o `docker-compose.yml` é o mesmo — só muda quem está do outro lado do
-`AUTH_TOKEN`: em vez do seu curl de teste, é o backend Spring Boot do CourseMaker (rodando no
-Render) chamando `https://<ip-da-vm>:8081/execute`.
+Em produção, o `docker-compose.prod.yml` acrescenta um Caddy na frente (HTTPS automático) e **não** publica a
+porta 8081: só as 80 e 443 do Caddy ficam abertas. O backend (no Render) chama `https://<seu-dominio>`.
+
+## Produção (VM com Docker)
+
+Requisitos da máquina:
+- **x86_64 (AMD/Intel).** A imagem oficial do Piston e os pacotes de linguagem são x86; em ARM só existem builds
+  não oficiais da comunidade.
+- **cgroup v2** (o README do Piston pede "cgroup v2 enabled, and cgroup v1 disabled"). Ubuntu 22.04 ou 24.04 já
+  vêm assim.
+- Docker com o plugin Compose, e permissão para rodar contêiner `privileged` (o Piston usa `isolate`).
+- Pelo menos 2 GB de RAM livres (a JVM e o compilador do C++ são o que mais pesa) e uns 5 GB de disco.
+
+Passo a passo (depois de criar a VM e abrir as portas 80/443, veja a conversa/guia do painel do provedor):
+
+```bash
+sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2 git
+sudo usermod -aG docker $USER   # sai e entra de novo na sessão SSH
+
+git clone https://github.com/Gustavoksbr/coursemaker.git
+cd coursemaker/piston-gateway
+
+cat > .env <<EOF
+AUTH_TOKEN=$(openssl rand -hex 32)
+DOMAIN=meu-runner.duckdns.org
+EOF
+
+docker compose -f docker-compose.prod.yml up -d --build
+docker logs -f piston_init      # espera aparecer "Pacotes prontos."
+```
+
+Teste de fora da VM (troque o domínio e o token):
+
+```bash
+curl https://meu-runner.duckdns.org/health
+curl -X POST https://meu-runner.duckdns.org/execute -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" -d '{"language":"python","code":"print(1+1)"}'
+```
+
+No Render, defina `CODE_RUNNER_URL=https://meu-runner.duckdns.org` e `CODE_RUNNER_TOKEN=<o mesmo AUTH_TOKEN>`.
+Para atualizar: `git pull && docker compose -f docker-compose.prod.yml up -d --build`.
+
+### Testando na máquina gratuita (Oracle Always Free, AMD Micro: 1 GB, 1/8 OCPU)
+
+Só JavaScript e Python, e é um **teste**: não foi medido ainda se os 3 s por execução do Piston bastam em uma CPU
+tão fraca. Na criação da VM use o shape `VM.Standard.E2.1.Micro` (x86, **não** a A1, que é ARM e não roda o Piston
+oficial) e a imagem Ubuntu 22.04. Antes de subir, crie uma área de troca (swap) e limite os pacotes:
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# no .env, alem de AUTH_TOKEN e DOMAIN:
+echo 'PISTON_PACKAGES=node:20.11.1 python:3.12.0' >> .env
+```
+
+Depois é o mesmo `docker compose -f docker-compose.prod.yml up -d --build`. Para medir, rode os curls de
+`/run-tests` deste README e olhe `docker stats` e `free -m` durante a execução. Sem Java, C e C++ nessa máquina:
+os exercícios dessas linguagens vão falhar com "runtime não encontrado".

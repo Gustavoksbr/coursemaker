@@ -1,0 +1,33 @@
+# Gateway com o executor Docker (RUNNER=docker): SEM Piston. Cada execucao roda num conteiner efemero a
+# partir de imagens oficiais (node, python, eclipse-temurin) e da imagem pequena de C/C++ deste repositorio.
+# Serve onde o Piston nao roda, como o ARM (Oracle Ampere A1). Funciona igual em x86.
+#
+#   docker compose -f docker-compose.docker-runner.yml up -d --build
+#
+# ATENCAO: o gateway recebe o socket do Docker. Quem controla o socket controla a maquina (pode criar um
+# conteiner privilegiado). Em producao, aponte DOCKER_HOST para um daemon rootless dedicado - veja o README.
+services:
+  gateway:
+    build: .
+    container_name: piston_gateway_docker
+    environment:
+      - AUTH_TOKEN=${AUTH_TOKEN:?crie o arquivo .env a partir do .env.example e defina AUTH_TOKEN}
+      - PORT=8081
+      - RUNNER=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_MAX_PARALLEL=${DOCKER_MAX_PARALLEL:-4}
+    ports:
+      - "${GATEWAY_PORT:-8081}:8081"
+    volumes:
+      - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock
+    depends_on:
+      runner-image-c:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Nao roda nada: so faz o `up --build` construir (e deixar disponivel localmente) a imagem de C/C++.
+  runner-image-c:
+    build: ./runner-images/c
+    image: coursemaker/runner-c:alpine
+    entrypoint: ["true"]
+    restart: "no"
