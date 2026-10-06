@@ -13,5 +13,7 @@ FROM alpine:3.20
 RUN apk add --no-cache tini nodejs python3 openjdk21-jdk build-base
 COPY --from=build /app/gateway /gateway
 ENV RUNNER=local
+# O plano gratuito do Render tem CPU minuscula: uma JVM leva ~5 s e duas em paralelo estouram o tempo limite.
+ENV LOCAL_MAX_PARALLEL=1
 EXPOSE 10000
 ENTRYPOINT ["/sbin/tini", "--", "/gateway"]

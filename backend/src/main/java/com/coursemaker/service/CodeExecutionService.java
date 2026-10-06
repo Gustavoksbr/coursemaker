@@ -46,7 +46,7 @@ public class CodeExecutionService {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5_000);
         factory.setReadTimeout(60_000);
-        this.restClient = RestClient.builder().baseUrl(runnerUrl).requestFactory(factory).build();
+        this.restClient = RestClient.builder().baseUrl(runnerUrl.replaceAll("/+$", "")).requestFactory(factory).build();
     }
 
     /** Roda a funcao do usuario contra varios testes (modo "funcao"). */
