@@ -113,8 +113,11 @@ func (l *localRunner) run(lang languageInfo, code, stdin string) (*executeRespon
 		return nil, err
 	}
 
-	script := "ulimit -f 10240; ulimit -n 256; ulimit -u 512; " + localCommand(spec.command)
-	cmd := exec.Command("sh", "-c", script)
+	// ulimit -t: o proprio kernel mata quem consumir CPU demais, sem depender do gateway ser escalonado.
+	script := "ulimit -t 25; ulimit -f 10240; ulimit -n 256; ulimit -u 512; " + localCommand(spec.command)
+	// nice 19: com CPU escassa (plano gratuito), o gateway sempre tem prioridade sobre o codigo do aluno,
+	// entao um laco infinito nao o deixa sem tempo para matar o processo.
+	cmd := exec.Command("nice", "-n", "19", "sh", "-c", script)
 	cmd.Dir = dir
 	cmd.Env = []string{
 		"PATH=" + os.Getenv("PATH"),
