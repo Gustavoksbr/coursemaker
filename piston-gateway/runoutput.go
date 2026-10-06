@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 )
 
@@ -72,7 +74,18 @@ func handleRunOutput(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	started := time.Now()
 	resp, err := runOutput(req)
+	if err == nil {
+		extra := ""
+		if resp.CompileError != "" {
+			extra = " (erro de compilacao)"
+		}
+		logRun("run-output", req.Language, resp.PassedCount, resp.Total, time.Since(started), extra)
+		logOutputDetail(req, resp)
+	} else {
+		log.Printf("[run-output] %s: falhou: %v", req.Language, err)
+	}
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"message": err.Error()})
 		return

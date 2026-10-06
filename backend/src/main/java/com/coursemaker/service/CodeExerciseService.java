@@ -46,6 +46,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -72,6 +74,7 @@ import java.util.regex.Pattern;
  * seconds, and a database transaction (and its pooled connection) has no reason to stay open across
  * it. Reads and writes use short {@link TransactionTemplate} blocks around it instead.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CodeExerciseService {
@@ -547,11 +550,52 @@ public class CodeExerciseService {
 
     // ---------------------------------------------------------------- gateway
 
+    /** Per-test inputs, expected and actual values in the log (dev only: hidden tests' expected values are in there). */
+    @Value("${code-runner.log-details:false}")
+    private boolean logDetails;
+
     private GatewayRun execute(ExerciseMode mode, String language, String functionName, List<String> paramTypes,
                                String code, List<TestData> tests) {
-        return mode == ExerciseMode.FUNCTION
+        long start = System.nanoTime();
+        GatewayRun result = mode == ExerciseMode.FUNCTION
                 ? executeFunction(language, functionName, paramTypes, code, tests)
                 : executeOutput(language, code, tests);
+        logRun(mode, language, functionName, tests, result, (System.nanoTime() - start) / 1_000_000);
+        return result;
+    }
+
+    /** One summary line per run; with code-runner.log-details also one line per test. Never logs the code itself. */
+    private void logRun(ExerciseMode mode, String language, String functionName, List<TestData> tests,
+                        GatewayRun result, long millis) {
+        log.info("[code-runner] {} {} {}: {}/{} testes passaram em {} ms{}{}", mode.getValue(), language,
+                functionName == null ? "" : functionName + "()", result.passedCount(), tests.size(), millis,
+                result.compileError() != null ? " (erro de compilacao)" : "",
+                result.timedOut() ? " (tempo limite)" : "");
+        if (!logDetails) {
+            return;
+        }
+        if (result.compileError() != null) {
+            log.info("[code-runner]   compilador: {}", shorten(result.compileError()));
+        }
+        for (int i = 0; i < tests.size(); i++) {
+            TestData test = tests.get(i);
+            TestOutcome outcome = i < result.outcomes().size() ? result.outcomes().get(i) : null;
+            String entrada = test.args() != null ? test.args().toString() : shorten(test.input());
+            log.info("[code-runner]   teste {} ({}) {}  entrada={}  esperado={}  obtido={}{}",
+                    i + 1, test.visible() ? "visivel" : "escondido",
+                    outcome != null && outcome.passed() ? "OK  " : "FALHA", entrada,
+                    shorten(test.expected().toString()),
+                    outcome == null || outcome.actual() == null ? "-" : shorten(outcome.actual().toString()),
+                    outcome != null && outcome.error() != null ? "  erro=" + shorten(outcome.error()) : "");
+        }
+    }
+
+    private static String shorten(String value) {
+        if (value == null) {
+            return "";
+        }
+        String oneLine = value.replace("\r", "").replace("\n", "\\n");
+        return oneLine.length() <= 200 ? oneLine : oneLine.substring(0, 200) + "...";
     }
 
     private GatewayRun executeFunction(String language, String functionName, List<String> paramTypes, String code,

@@ -120,7 +120,7 @@ func main() {
 	if executor == "docker" {
 		log.Printf("piston-gateway ouvindo na porta %s (executor: conteineres Docker)", port)
 	} else if executor == "local" {
-		log.Printf("piston-gateway ouvindo na porta %s (executor: processos locais)", port)
+		log.Printf("piston-gateway ouvindo na porta %s (executor: processos locais, LOG_DETAILS=%v)", port, logDetails)
 	} else {
 		log.Printf("piston-gateway ouvindo na porta %s (Piston em %s)", port, pistonURL)
 	}
@@ -172,7 +172,17 @@ func handleExecute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	started := time.Now()
 	result, err := runCode(lang, req.Code, req.Stdin)
+	if err == nil {
+		log.Printf("[execute] %s: codigo de saida %d em %d ms%s", req.Language, result.ExitCode, time.Since(started).Milliseconds(),
+			map[bool]string{true: " (tempo limite)", false: ""}[result.TimedOut])
+		if logDetails {
+			log.Printf("  entrada=%s  stdout=%s  stderr=%s", short(req.Stdin), short(result.Stdout), short(result.Stderr))
+		}
+	} else {
+		log.Printf("[execute] %s: falhou: %v", req.Language, err)
+	}
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"message": err.Error()})
 		return

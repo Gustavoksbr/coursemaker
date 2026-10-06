@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
@@ -130,7 +132,21 @@ func handleRunTests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	started := time.Now()
 	resp, err := runTests(req)
+	if err == nil {
+		extra := ""
+		if resp.TimedOut {
+			extra += " (tempo limite)"
+		}
+		if resp.CompileError != "" {
+			extra += " (erro de compilacao)"
+		}
+		logRun("run-tests", req.Language+" "+req.FunctionName+"()", resp.PassedCount, resp.Total, time.Since(started), extra)
+		logTestsDetail(req, resp)
+	} else {
+		log.Printf("[run-tests] %s: falhou: %v", req.Language, err)
+	}
 	if err != nil {
 		var bad *requestError
 		if errors.As(err, &bad) {
