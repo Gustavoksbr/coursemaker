@@ -151,7 +151,17 @@ public class CodeExerciseService {
     // ----------------------------------------------------------------- creator
 
     public LanguagesResponse languages() {
-        return new LanguagesResponse(FUNCTION_LANGUAGES, OUTPUT_LANGUAGES);
+        return new LanguagesResponse(allowedLanguages(ExerciseMode.FUNCTION), allowedLanguages(ExerciseMode.OUTPUT));
+    }
+
+    /** The languages for a mode: the fixed list, narrowed to what the configured runner can actually run. */
+    private List<String> allowedLanguages(ExerciseMode mode) {
+        List<String> all = mode == ExerciseMode.FUNCTION ? FUNCTION_LANGUAGES : OUTPUT_LANGUAGES;
+        return gateway.runnerLanguages()
+                .map(known -> all.stream()
+                        .filter((mode == ExerciseMode.FUNCTION ? known.function() : known.output())::contains)
+                        .toList())
+                .orElse(all);
     }
 
     /**
@@ -430,7 +440,7 @@ public class CodeExerciseService {
     private Normalized normalize(String rawLanguage, ExerciseSpec spec) {
         ExerciseMode mode = spec.mode();
         String language = rawLanguage == null ? "" : rawLanguage.trim().toLowerCase(Locale.ROOT);
-        List<String> allowed = mode == ExerciseMode.FUNCTION ? FUNCTION_LANGUAGES : OUTPUT_LANGUAGES;
+        List<String> allowed = allowedLanguages(mode);
         if (!allowed.contains(language)) {
             throw new BadRequestException("Linguagem nao suportada neste modo de correcao: " + rawLanguage
                     + " (use " + String.join(", ", allowed) + ")");

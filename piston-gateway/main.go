@@ -130,6 +130,7 @@ func main() {
 	mux.HandleFunc("/run-tests", withAuth(handleRunTests))
 	mux.HandleFunc("/run-output", withAuth(handleRunOutput))
 	mux.HandleFunc("/exercises/square/run", withAuth(handleSquareExercise))
+	mux.HandleFunc("/languages", withAuth(handleLanguages))
 	mux.HandleFunc("/health", handleHealth)
 
 	if executor == "docker" {

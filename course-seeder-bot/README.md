@@ -60,6 +60,38 @@ python seed_piston_demo.py
 Contas de demonstração (só para o banco local): `prof.piston@example.com` e `aluno.piston@example.com`,
 senha no cabeçalho do script.
 
+## Exercícios de código nos cursos da curadoria
+
+`seed_curadoria_exercicios.py` (só biblioteca padrão, sem Groq) acrescenta aos cursos da conta de curadoria módulos de
+**prática com exercícios de código corrigidos pelo Piston**, em 12 linguagens (JavaScript, TypeScript, Python, PHP, Ruby,
+Java, C#, C++, C, Go, Rust e Kotlin, nos dois modos de correção). Todo exercício segue o mesmo molde: um sistema
+do dia a dia (a padaria do Seu Zé, o mercadinho da Dona Lúcia, a cantina do colégio, o posto de combustível...), o
+arquivo e a função onde mexer e o código inicial de verdade, com um bug típico ou um TODO. O aluno conserta e envia.
+
+O conteúdo fica em `exercicios_curadoria/` (um arquivo por tema) e cada pacote diz em quais cursos entra (`match`, o
+primeiro nome que existir entre os cursos da curadoria; os nomes são os do `seed_production.py`, como "Lógica de
+Programação", "Python 3: Fundamentos", "Java Básico", "Go"...) e qual curso novo criar se nenhum existir (C#, PHP, Rust,
+Ruby e C/C++ ainda não têm curso na curadoria).
+
+```bash
+python check_exercicios.py                      # confere TODOS os exercicios no gateway (sem backend): a solucao passa em tudo e o codigo inicial falha
+python seed_curadoria_exercicios.py --dry-run   # mostra o que seria criado no backend local
+python seed_curadoria_exercicios.py             # cria (precisa do backend local apontando para o gateway local)
+python seed_curadoria_exercicios.py --so go,rust --sem-novos   # so alguns, sem criar cursos novos
+```
+
+- O script **não lê o `.env` do bot**: o `API_BASE_URL` de lá costuma apontar para a produção. O backend é sempre o
+  `--base-url` (padrão `http://localhost:8080`) e a conta é `curadoria@email.com` (`--curator-email` / `--curator-password`
+  ou `CURATOR_EMAIL` / `CURATOR_PASSWORD`). Para a produção: `--base-url https://coursemaker-rawh.onrender.com`, com a conta da
+  curadoria de lá, depois de um `--dry-run`. O backend de produção precisa apontar para um executor com as linguagens usadas
+  (o da Render, `RUNNER=local`, só roda JavaScript, Python, Java, C e C++; as demais exigem `RUNNER=piston`).
+- Idempotente: módulo e aula que já existem (mesmo título) são pulados; rodar de novo completa o que faltou. Os cursos
+  novos são publicados no fim, se nenhuma aula falhou.
+- O backend limita as execuções de código a 30 por minuto (salvar um exercício conta); o script espera a janela passar
+  quando recebe 429.
+- Cada exercício é validado pelo backend ao salvar (a solução de referência roda de verdade), então um erro aparece no
+  próprio script. Para só testar o conteúdo, use `check_exercicios.py`.
+
 ## Configuração (`.env`)
 
 | Variável | Descrição | Padrão |

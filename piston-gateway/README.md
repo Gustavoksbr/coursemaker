@@ -131,6 +131,10 @@ Todas rodam no Piston (`RUNNER=piston`); o executor Docker e o local (Render) co
 | `rust` | `rust` 1.68.2 | sim, tipado | gera o `main` (`Vec<T>`, `String`) |
 | `kotlin` | `kotlin` 1.8.20 | sim, tipado | gera o `main` (`IntArray`, `List<T>`) |
 
+`GET /languages` (com o token) devolve `{"function": [...], "output": [...]}` com as linguagens que o executor **em uso**
+roda de verdade (o executor local da Render devolve só as cinco primeiras). O backend pergunta isso, guarda a resposta por
+alguns minutos e só oferece ao criador de exercícios o que o executor sabe rodar; se o gateway não responder, usa a lista fixa.
+
 Linguagens tipadas usam um vocabulário único de tipos (os nomes do Java: `int`, `long`, `double`, `boolean`,
 `String`, `int[]`, `List<Integer>`...) e cada uma os traduz para os seus (`[]int` em Go, `Vec<i32>` em Rust,
 `std::vector<int>` em C++). C não aceita arrays: eles precisariam de um tamanho a parte na assinatura.

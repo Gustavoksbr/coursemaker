@@ -33,3 +33,22 @@ func TestLocalCommandUsesTheRunDirectory(t *testing.T) {
 		t.Errorf("comando: %s", got)
 	}
 }
+
+func TestSupportedLanguagesFollowTheExecutor(t *testing.T) {
+	function, output := supportedLanguages()
+	if len(function) < 12 || len(output) < 12 {
+		t.Fatalf("o Piston deveria rodar todas as linguagens: funcao=%v saida=%v", function, output)
+	}
+
+	local = &localRunner{}
+	defer func() { local = nil }()
+	function, output = supportedLanguages()
+	for _, key := range append(append([]string{}, function...), output...) {
+		if pistonOnlyLanguages[key] {
+			t.Errorf("%s so roda no Piston, mas aparece para o executor local", key)
+		}
+	}
+	if len(output) != 5 || len(function) != 5 {
+		t.Errorf("o executor local deveria rodar 5 linguagens: funcao=%v saida=%v", function, output)
+	}
+}

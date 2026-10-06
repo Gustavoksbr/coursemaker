@@ -360,6 +360,29 @@ class CodeExerciseIT extends IntegrationTest {
     }
 
     @Test
+    @DisplayName("so oferece e aceita as linguagens que o executor em uso sabe rodar")
+    void languagesFollowTheRunner() throws Exception {
+        TestUser owner = fixtures.user("ana");
+        Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        String path = "/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/blocks";
+
+        // Sem resposta do gateway: vale a lista fixa, com todas as linguagens.
+        JsonNode all = getOk("/api/v1/code-exercises/languages", owner.caller());
+        assertThat(all.get("function").toString()).contains("go", "rust", "kotlin");
+
+        // Executor que so roda Python e Java (como o local da Render roda 5): o resto some e e recusado.
+        given(gateway.runnerLanguages()).willReturn(java.util.Optional.of(
+                new com.coursemaker.dto.code.CodeExerciseDtos.LanguagesResponse(List.of("python", "java"), List.of("python"))));
+        JsonNode narrowed = getOk("/api/v1/code-exercises/languages", owner.caller());
+        assertThat(narrowed.get("function")).hasSize(2);
+        assertThat(narrowed.get("output")).hasSize(1);
+
+        Map<String, Object> go = javaFunctionSpec("func soma(a int, b int) int {\n  return a + b\n}\n");
+        post(path, exerciseBlockBody("go", go), owner.caller()).andExpect(status().isBadRequest());
+        post(path, exerciseBlockBody("python", functionSpec(SUM_SOLUTION)), owner.caller()).andExpect(status().isCreated());
+    }
+
+    @Test
     @DisplayName("linguagens dinamicas novas (TypeScript, PHP, Ruby) nao levam tipos e linguagens fora da lista sao recusadas")
     void dynamicLanguagesAndUnknownLanguages() throws Exception {
         TestUser owner = fixtures.user("ana");

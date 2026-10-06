@@ -1,5 +1,6 @@
 package com.coursemaker.service;
 
+import com.coursemaker.dto.code.CodeExerciseDtos.LanguagesResponse;
 import com.coursemaker.dto.code.CodeExecutionDtos.ExecuteRequest;
 import com.coursemaker.dto.code.CodeExecutionDtos.ExecuteResponse;
 import com.coursemaker.dto.code.CodeExecutionDtos.ExerciseRequest;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -74,6 +76,39 @@ public class CodeExecutionService {
             throw new BadRequestException("Linguagem nao suportada neste prototipo: " + language
                     + " (use " + String.join(", ", LANGUAGES) + ")");
         }
+    }
+
+    private record CachedLanguages(LanguagesResponse value, long expiresAt) {
+    }
+
+    private volatile CachedLanguages cachedLanguages;
+
+    /**
+     * As linguagens que o executor configurado sabe rodar (o gateway responde em /languages), guardadas por alguns
+     * minutos. Vazio quando nao da para perguntar (gateway antigo, fora do ar, sem token): quem chama usa a lista fixa.
+     * Evita oferecer, ex., Go ou Rust quando o executor em producao e o de processos locais da Render.
+     */
+    public Optional<LanguagesResponse> runnerLanguages() {
+        long now = System.currentTimeMillis();
+        CachedLanguages cached = cachedLanguages;
+        if (cached != null && cached.expiresAt() > now) {
+            return Optional.ofNullable(cached.value());
+        }
+        LanguagesResponse fetched = null;
+        if (runnerToken != null && !runnerToken.isBlank()) {
+            try {
+                fetched = restClient.get()
+                        .uri("/languages")
+                        .header("Authorization", "Bearer " + runnerToken)
+                        .retrieve()
+                        .body(LanguagesResponse.class);
+            } catch (RestClientException ex) {
+                log.warn("Nao foi possivel perguntar as linguagens ao piston-gateway: {}", ex.getMessage());
+            }
+        }
+        // Acerto vale 5 minutos; falha, so 30 segundos (para tentar de novo logo, sem martelar um gateway fora do ar).
+        cachedLanguages = new CachedLanguages(fetched, now + (fetched != null ? 300_000L : 30_000L));
+        return Optional.ofNullable(fetched);
     }
 
     private <T> T call(String path, Object body, Class<T> responseType) {
