@@ -53,7 +53,7 @@ const NOTIFICATION_TEXT = {
 export function Navbar() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth()
   const { notifications, loading: notificationsLoading, unreadCount, markRead, markAllRead } = useNotifications()
-  const { unreadCount: messagesUnreadCount } = useMessaging()
+  const { unreadCount: messagesUnreadCount, openMessages } = useMessaging()
   const navigate = useNavigate()
   const { requireNickname, nicknameModalProps } = useNicknameGate()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -142,8 +142,9 @@ export function Navbar() {
                 <Plus size={16} /> <span className="hidden sm:inline">Criar</span>
               </button>
 
-              <Link
-                to="/mensagens"
+              <button
+                type="button"
+                onClick={() => openMessages()}
                 className="btn-ghost relative px-2"
                 aria-label="Mensagens"
                 title="Mensagens"
@@ -154,7 +155,7 @@ export function Navbar() {
                     {messagesUnreadCount > 9 ? '9+' : messagesUnreadCount}
                   </span>
                 )}
-              </Link>
+              </button>
 
               <div className="relative" ref={notificationsRef}>
                 <button

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { OpenMessagesButton } from '@/components/messages/MessagesModal'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -422,13 +423,12 @@ export function Landing({
                   equipe para mais informações.
                 </p>
               </div>
-              <Link
-                to="/mensagens/admin"
+              <OpenMessagesButton nickname="admin"
                 className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm"
               >
                 <Mail size={16} />
                 Falar com admin
-              </Link>
+              </OpenMessagesButton>
             </div>
           </div>
         )}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useMessaging } from '@/context/MessagingContext'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, CalendarDays, GraduationCap, Mail, UserX, Waypoints } from 'lucide-react'
@@ -18,6 +19,7 @@ export default function PublicProfilePage() {
   const { nickname } = useParams()
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const { openMessages } = useMessaging()
   const [tab, setTab] = useState('courses')
   const [areaFilter, setAreaFilter] = useState('')
 
@@ -99,7 +101,7 @@ export default function PublicProfilePage() {
                 navigate('/login')
                 return
               }
-              navigate(`/mensagens/${profile.nickname}`)
+              openMessages(profile.nickname)
             }}
           >
             <Mail size={16} /> Enviar mensagem

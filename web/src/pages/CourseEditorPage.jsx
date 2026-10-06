@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { OpenMessagesButton } from '@/components/messages/MessagesModal'
 import { Navigate, useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Eye, Mail, Pencil, Save, X, TriangleAlert } from 'lucide-react'
@@ -217,10 +218,10 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
                   informações.
                 </p>
               </div>
-              <Link to="/mensagens/admin" className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm">
+              <OpenMessagesButton nickname="admin" className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm">
                 <Mail size={16} />
                 Falar com admin
-              </Link>
+              </OpenMessagesButton>
             </div>
           </div>
         )}

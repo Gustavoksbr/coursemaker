@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CornerUpLeft, Pencil, Trash2, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { CharCounter, Textarea } from '@/components/ui/Field'
 import { ConfirmModal } from '@/components/ui/Modal'
-import { ErrorState, PageLoader } from '@/components/ui/Feedback'
+import { ErrorState, Spinner } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { deleteMessage, editMessage, listThread, messageKeys, sendMessage } from '@/api/messages'
@@ -16,8 +16,8 @@ import { LIMITS } from '@/lib/constants'
 import { formatDateTime, formatTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
-export default function MessageThreadPage() {
-  const { nickname } = useParams()
+/** Uma conversa dentro da modal. `onNavigate` fecha a modal quando o usuario segue para o perfil. */
+export function MessageThread({ nickname, onNavigate }) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const toast = useToast()
@@ -90,7 +90,13 @@ export default function MessageThreadPage() {
     onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel excluir a mensagem.')),
   })
 
-  if (threadQuery.isPending || profileQuery.isPending) return <PageLoader label="Carregando conversa..." />
+  if (threadQuery.isPending || profileQuery.isPending) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size={26} />
+      </div>
+    )
+  }
 
   if (threadQuery.isError || profileQuery.isError) {
     return (
@@ -121,9 +127,9 @@ export default function MessageThreadPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col px-4 py-8 sm:px-6">
+    <div className="flex flex-col">
       <header className="mb-4 flex items-center gap-3 border-b border-slate-800 pb-4">
-        <Link to={`/users/${partner.nickname}`} className="flex items-center gap-3">
+        <Link to={`/users/${partner.nickname}`} onClick={onNavigate} className="flex items-center gap-3">
           <Avatar src={partner.image} name={partner.name} />
           <div>
             <p className="font-semibold text-slate-100">{partner.name}</p>
@@ -132,7 +138,7 @@ export default function MessageThreadPage() {
         </Link>
       </header>
 
-      <div className="flex max-h-[60vh] min-h-[40vh] flex-col space-y-4 overflow-y-auto py-2">
+      <div className="flex max-h-[45vh] min-h-[30vh] flex-col space-y-4 overflow-y-auto py-2">
         {messages.map((message) => {
           const mine = message.sender.id === user.id
           return (

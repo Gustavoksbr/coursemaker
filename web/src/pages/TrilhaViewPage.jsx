@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { OpenMessagesButton } from '@/components/messages/MessagesModal'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, UserMinus, UserPlus } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
@@ -194,13 +195,12 @@ export default function TrilhaViewPage() {
                   equipe para mais informações.
                 </p>
               </div>
-              <Link
-                to="/mensagens/admin"
+              <OpenMessagesButton nickname="admin"
                 className="btn-secondary flex items-center gap-2 whitespace-nowrap text-sm"
               >
                 <Mail size={16} />
                 Falar com admin
-              </Link>
+              </OpenMessagesButton>
             </div>
           </div>
         )}

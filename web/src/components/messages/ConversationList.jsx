@@ -1,19 +1,25 @@
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Mail } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
-import { EmptyState, ErrorState, PageLoader } from '@/components/ui/Feedback'
+import { EmptyState, ErrorState, Spinner } from '@/components/ui/Feedback'
 import { listConversations, messageKeys } from '@/api/messages'
 import { errorMessage } from '@/lib/api'
 import { formatRelative } from '@/lib/format'
 
-export default function ConversationListPage() {
+/** Lista de conversas dentro da modal de mensagens. `onSelect(nickname)` abre a conversa. */
+export function ConversationList({ onSelect }) {
   const { data: conversations, isPending, isError, error, refetch } = useQuery({
     queryKey: messageKeys.conversations,
     queryFn: listConversations,
   })
 
-  if (isPending) return <PageLoader label="Carregando conversas..." />
+  if (isPending) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size={26} />
+      </div>
+    )
+  }
 
   if (isError) {
     return (
@@ -26,12 +32,7 @@ export default function ConversationListPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-8 sm:px-6">
-      <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-100">
-        <Mail size={22} className="text-brand-400" />
-        Mensagens
-      </h1>
-
+    <div>
       {conversations.length === 0 ? (
         <EmptyState
           icon={Mail}
@@ -39,12 +40,13 @@ export default function ConversationListPage() {
           message="Mensagens que voce enviar ou receber aparecem aqui."
         />
       ) : (
-        <ul className="divide-y divide-slate-800 overflow-hidden rounded-xl border border-slate-800">
+        <ul className="max-h-[60vh] divide-y divide-slate-800 overflow-y-auto rounded-xl border border-slate-800">
           {conversations.map((conversation) => (
             <li key={conversation.partner.id}>
-              <Link
-                to={`/mensagens/${conversation.partner.nickname}`}
-                className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-800/60"
+              <button
+                type="button"
+                onClick={() => onSelect(conversation.partner.nickname)}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-800/60"
               >
                 <Avatar src={conversation.partner.image} name={conversation.partner.name} />
                 <div className="min-w-0 flex-1">
@@ -71,7 +73,7 @@ export default function ConversationListPage() {
                     {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
                   </span>
                 )}
-              </Link>
+              </button>
             </li>
           ))}
         </ul>

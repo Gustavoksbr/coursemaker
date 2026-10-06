@@ -18,8 +18,7 @@ import PostViewPage from '@/pages/PostViewPage'
 import TrilhaViewPage from '@/pages/TrilhaViewPage'
 import LibraryPage from '@/pages/LibraryPage'
 import LibraryFolderPage from '@/pages/LibraryFolderPage'
-import ConversationListPage from '@/pages/ConversationListPage'
-import MessageThreadPage from '@/pages/MessageThreadPage'
+import { MessagesRoute } from '@/components/messages/MessagesRoute'
 import ProfilePage from '@/pages/ProfilePage'
 import PublicProfilePage from '@/pages/PublicProfilePage'
 import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage'
@@ -110,8 +109,8 @@ const router = createBrowserRouter([
         // A DM conversation isn't content you publish under your own nickname, so no area either.
         element: <ProtectedRoute requireNickname={false} />,
         children: [
-          { path: '/mensagens', element: <ConversationListPage /> },
-          { path: '/mensagens/:nickname', element: <MessageThreadPage /> },
+          { path: '/mensagens', element: <MessagesRoute /> },
+          { path: '/mensagens/:nickname', element: <MessagesRoute /> },
         ],
       },
 

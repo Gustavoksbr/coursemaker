@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/context/AuthContext'
 import { useWebSocket } from '@/context/WebSocketContext'
@@ -19,6 +19,13 @@ export function MessagingProvider({ children }) {
   const { isAuthenticated } = useAuth()
   const { subscribe } = useWebSocket()
   const queryClient = useQueryClient()
+
+  // A caixa de mensagens e uma modal global: `nickname` null mostra a lista de conversas, preenchido abre
+  // direto a conversa com essa pessoa (ex.: "Enviar mensagem" no perfil, "Falar com admin").
+  const [modal, setModal] = useState({ open: false, nickname: null })
+  const openMessages = useCallback((nickname = null) => setModal({ open: true, nickname }), [])
+  const showConversation = useCallback((nickname) => setModal({ open: true, nickname }), [])
+  const closeMessages = useCallback(() => setModal({ open: false, nickname: null }), [])
 
   const { data: unread } = useQuery({
     queryKey: messageKeys.unreadCount,
@@ -53,7 +60,10 @@ export function MessagingProvider({ children }) {
     })
   }, [isAuthenticated, subscribe, queryClient])
 
-  const value = useMemo(() => ({ unreadCount: unread?.count ?? 0 }), [unread])
+  const value = useMemo(
+    () => ({ unreadCount: unread?.count ?? 0, modal, openMessages, showConversation, closeMessages }),
+    [unread, modal, openMessages, showConversation, closeMessages],
+  )
 
   return <MessagingContext.Provider value={value}>{children}</MessagingContext.Provider>
 }

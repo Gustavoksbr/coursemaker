@@ -2,6 +2,7 @@ import { Link, Outlet } from 'react-router-dom'
 import { Github } from 'lucide-react'
 import { AreaProvider } from '@/context/AreaContext'
 import { Navbar } from './Navbar'
+import { MessagesModal } from '@/components/messages/MessagesModal'
 
 const GITHUB_URL = 'https://github.com/Gustavoksbr/coursemaker'
 
@@ -11,6 +12,7 @@ export function Layout() {
     <AreaProvider>
       <div className="flex min-h-screen flex-col">
         <Navbar />
+        <MessagesModal />
         <main className="flex-1">
           <Outlet />
         </main>
@@ -45,6 +47,7 @@ export function FullHeightLayout() {
     <AreaProvider>
       <div className="flex min-h-screen flex-col">
         <Navbar />
+        <MessagesModal />
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>
