@@ -281,7 +281,11 @@ export function CodeExerciseEditor({ block, courseId, onChange, onCheck }) {
         <Field
           label="Linguagem"
           htmlFor={`exercise-language-${id}`}
-          hint={isFunction ? 'C e C++ por enquanto so no modo "Saida do programa".' : undefined}
+          hint={
+            isFunction && form.language === 'c'
+              ? 'Em C o modo funcao aceita so numeros e texto; para listas use C++ ou "Saida do programa".'
+              : undefined
+          }
         >
           <Select
             id={`exercise-language-${id}`}

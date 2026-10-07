@@ -38,8 +38,8 @@ public final class CodeExerciseDtos {
             @Size(max = 100) String title,
             @Size(max = 60) String functionName,
             @Size(max = 10) List<@Size(max = 60) String> params,
-            // Java only (it is typed): one type per parameter and the return type, from a closed set
-            // (see JavaTypes). Ignored for the dynamic languages.
+            // Typed languages only (Java, C#, C++, C, Go, Rust, Kotlin): one type per parameter and the return type,
+            // from a closed set (see JavaTypes). Ignored for the dynamic languages.
             @Size(max = 10) List<@Size(max = 30) String> paramTypes,
             @Size(max = 30) String returnType,
             @Size(max = MAX_CODE_LENGTH) String starterCode,
