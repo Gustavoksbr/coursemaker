@@ -13,7 +13,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "docs:screenshots": "node scripts/readme-screenshots.mjs"
+    "docs:screenshots": "node scripts/readme-screenshots/index.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

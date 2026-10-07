@@ -59,6 +59,44 @@ CORS para a origem definida em `FRONTEND_URL`; os dois precisam combinar.
 Com backend e web rodando, mas o banco vazio, use o [course-seeder-bot](./course-seeder-bot/README.md)
 para popular a plataforma com cursos, posts e trilhas de exemplo.
 
+## 🖼️ Conheça a plataforma
+
+> As imagens abaixo foram geradas com **dados inventados** (veja [como regerá-las](#atualizando-as-imagens-deste-readme)).
+
+### Descobrir e aprender
+
+![Página inicial: busca, números da plataforma, áreas, escolas e cursos](./docs/screenshots/01-inicio.png)
+
+| Explorar cursos, posts, trilhas e pessoas | Página de um curso |
+|---|---|
+| ![Explorar](./docs/screenshots/02-explorar.png) | ![Curso](./docs/screenshots/03-curso.png) |
+
+![Uma aula de leitura, com texto, código com realce de sintaxe e o menu das aulas](./docs/screenshots/04-aula.png)
+
+| Trilha: uma sequência de cursos em etapas | Post |
+|---|---|
+| ![Trilha](./docs/screenshots/05-trilha.png) | ![Post](./docs/screenshots/06-post.png) |
+
+### Sua conta
+
+| Biblioteca: o que continuar, status e pastas | Perfil público |
+|---|---|
+| ![Biblioteca](./docs/screenshots/07-biblioteca.png) | ![Perfil](./docs/screenshots/08-perfil.png) |
+
+| Mensagens diretas (em uma janela, sem sair da página) | Notificações |
+|---|---|
+| ![Mensagens](./docs/screenshots/09-mensagens.png) | ![Notificações](./docs/screenshots/10-notificacoes.png) |
+
+### Para quem ensina e administra
+
+| Editor do curso: módulos, aulas e blocos | Administração: áreas (liga os exercícios de código) |
+|---|---|
+| ![Editor do curso](./docs/screenshots/12-editor-do-curso.png) | ![Áreas](./docs/screenshots/11-admin-areas.png) |
+
+### No celular
+
+<img src="./docs/screenshots/13-celular-inicio.png" alt="Início no celular" width="260"> &nbsp; <img src="./docs/screenshots/13-celular-aula.png" alt="Aula no celular" width="260">
+
 ## 💻 Exercícios de código (Piston)
 
 Aulas podem ter **exercícios de código corrigidos automaticamente**, no estilo LeetCode/beecrowd: o aluno escreve a
@@ -66,9 +104,9 @@ solução num editor com realce de sintaxe, testa com os exemplos e envia; o res
 
 | O aluno vê o exercício e executa os exemplos | Acertou: a aula é concluída |
 |---|---|
-| ![Exercício de código na aula](./docs/screenshots/01-aluno-exercicio.png) | ![Exercício concluído](./docs/screenshots/03-aluno-acertou.png) |
+| ![Exercício de código na aula](./docs/screenshots/codigo-01-aluno-exercicio.png) | ![Exercício concluído](./docs/screenshots/codigo-03-aluno-acertou.png) |
 
-![Exemplos executados: um teste falhou, com o esperado e o recebido](./docs/screenshots/02-aluno-exemplos-falhando.png)
+![Exemplos executados: um teste falhou, com o esperado e o recebido](./docs/screenshots/codigo-02-aluno-exemplos-falhando.png)
 
 **Duas formas de correção**
 - **Função com testes** (`function`): o aluno escreve só a função e cada teste a chama com argumentos e confere o retorno.
@@ -83,7 +121,7 @@ solução num editor com realce de sintaxe, testa com os exemplos e envia; o res
 - Erros de compilação, exceções, tempo esgotado e saída excessiva aparecem para o aluno; o tempo é limitado por execução.
 - Comparação de decimais com tolerância de 1e-9; números inteiros e textos comparados exatamente.
 
-![Erro de compilação em Rust, com a dica sobre a chamada de teste](./docs/screenshots/04-aluno-erro-de-compilacao.png)
+![Erro de compilação em Rust, com a dica sobre a chamada de teste](./docs/screenshots/codigo-04-aluno-erro-de-compilacao.png)
 
 **12 linguagens**
 
@@ -97,12 +135,7 @@ As linguagens tipadas usam um vocabulário único de tipos (`int`, `long`, `doub
 cada uma mostra os seus (`[]int` em Go, `Vec<i32>` em Rust, `std::vector<int>` em C++). O aluno escreve **só a função**:
 o gateway acrescenta o `main`, e os números de linha dos erros batem com os do editor.
 
-<table>
-<tr>
-<td width="50%"><img src="./docs/screenshots/05-aluno-atividades.png" alt="Aba Atividades do curso, com o progresso"></td>
-<td width="50%"><img src="./docs/screenshots/06-aluno-celular.png" alt="Exercício no celular" width="260"></td>
-</tr>
-</table>
+![Aba Atividades do curso, com o progresso e o exercício aberto](./docs/screenshots/codigo-05-aluno-atividades.png)
 
 ### Para quem cria o curso
 
@@ -110,11 +143,11 @@ O bloco **Exercício de código** tem um editor próprio: modo de correção, li
 linguagens tipadas), código inicial, solução de referência e a tabela de testes, cada um **visível** (exemplo) ou **escondido**
 (caso de borda). O botão **Testar solução** roda a solução de referência sem salvar.
 
-![Editor do exercício, para o dono do curso](./docs/screenshots/07-dono-editor-do-exercicio.png)
+![Editor do exercício, para o dono do curso](./docs/screenshots/codigo-06-dono-editor-do-exercicio.png)
 
-![Testar solução: o teste 4 falha, com a opção de usar o valor obtido como esperado](./docs/screenshots/08-dono-testar-solucao.png)
+![Testar solução: o teste 4 falha, com a opção de usar o valor obtido como esperado](./docs/screenshots/codigo-07-dono-testar-solucao.png)
 
-![Exercício tipado em Go: um tipo por parâmetro e para o retorno](./docs/screenshots/09-dono-exercicio-tipado-go.png)
+![Exercício tipado em Go: um tipo por parâmetro e para o retorno](./docs/screenshots/codigo-08-dono-exercicio-tipado-go.png)
 
 ### Arquitetura
 
@@ -148,11 +181,12 @@ código inicial de verdade e um bug típico para o aluno consertar).
 ### Atualizando as imagens deste README
 
 As imagens de `docs/screenshots/` não vêm de dados reais: o Playwright intercepta toda chamada à API e responde com dados
-inventados (a padaria do Seu Zé), então basta o frontend rodando.
+inventados (pessoas, cursos, trilhas e a padaria do Seu Zé, em `web/scripts/readme-screenshots/data.mjs`), então basta o
+frontend rodando.
 
 ```bash
 cd web && npm run dev                          # em outro terminal
-npm run docs:screenshots                       # regrava docs/screenshots (script: web/scripts/readme-screenshots.mjs)
+npm run docs:screenshots                       # regrava docs/screenshots (web/scripts/readme-screenshots/)
 ```
 
 ## 🧪 Testes
