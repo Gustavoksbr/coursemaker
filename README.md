@@ -15,18 +15,28 @@ coursemaker/
 ├── web/                # SPA (React + Tailwind)
 ├── course-seeder-bot/  # bot Python de povoamento de conteúdo
 ├── piston-gateway/     # gateway (Go) na frente do Piston, p/ execução de código
-└── docs/screenshots/   # imagens deste README (geradas por `npm run docs:screenshots`)
+└── docs/screenshots/   # imagens deste README
 ```
 
-## ⚙️ Configuração
+## ⚙️ Rode na sua máquina
+
+Cada etapa tem duas versões: **com Docker** (só o Docker instalado) ou **sem Docker** (com as ferramentas na máquina:
+Java 21 + Maven, Node 22, PostgreSQL 16, Go 1.22 e Python 3.12). Pode misturar: por exemplo, banco em Docker e backend na máquina.
+
+> Nos comandos com Docker, `$(pwd)` é do bash/zsh. No PowerShell use `${PWD}`; no Git Bash do Windows, prefixe o comando
+> com `MSYS_NO_PATHCONV=1` e use `$(pwd -W)`.
 
 ### 1. Banco de dados
 
+**Com Docker**
+
 ```bash
-docker run -d --name coursemaker-postgres -e POSTGRES_DB=coursemaker -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
+docker network create coursemaker
+docker run -d --name coursemaker-postgres --network coursemaker -p 5432:5432 \
+  -e POSTGRES_DB=coursemaker -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres postgres:16
 ```
 
-Ou, com o PostgreSQL já instalado localmente:
+**Sem Docker** (PostgreSQL instalado)
 
 ```bash
 createdb coursemaker
@@ -37,13 +47,40 @@ As tabelas são criadas pelas migrations do Flyway na primeira execução do bac
 ### 2. Backend
 
 ```bash
-cd backend && cp .env.example .env && mvn spring-boot:run
+cd backend && cp .env.example .env
+```
+
+**Com Docker**
+
+```bash
+docker run --rm -it --name coursemaker-backend --network coursemaker -p 8080:8080 \
+  -v "$(pwd):/app" -v coursemaker-m2:/root/.m2 -w /app \
+  -e DATABASE_URL="jdbc:postgresql://coursemaker-postgres:5432/coursemaker?user=postgres&password=postgres" \
+  maven:3.9-eclipse-temurin-21 mvn spring-boot:run
+```
+
+**Sem Docker**
+
+```bash
+mvn spring-boot:run
 ```
 
 - API: `http://localhost:8080`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 
+A primeira subida baixa as dependências (cerca de 1 minuto com Docker). Com o banco em outro lugar, defina `DATABASE_URL` no `.env`.
+
 ### 3. Web
+
+**Com Docker**
+
+```bash
+cd web
+docker run --rm -it --name coursemaker-web -p 5173:5173 \
+  -v "$(pwd):/app" -v /app/node_modules -w /app node:22 sh -c "npm install && npm run dev -- --host"
+```
+
+**Sem Docker**
 
 ```bash
 cd web && npm install && npm run dev
@@ -54,14 +91,60 @@ cd web && npm install && npm run dev
 O app web usa `VITE_API_URL` (padrão `http://localhost:8080`) para achar a API. O backend libera
 CORS para a origem definida em `FRONTEND_URL`; os dois precisam combinar.
 
-### 4. Conteúdo (opcional)
+### 4. Executor de código (opcional, para os exercícios de código)
 
-Com backend e web rodando, mas o banco vazio, use o [course-seeder-bot](./course-seeder-bot/README.md)
-para popular a plataforma com cursos, posts e trilhas de exemplo.
+Sem esta etapa tudo funciona, menos rodar e corrigir exercícios de código. Detalhes em
+**[piston-gateway/README.md](./piston-gateway/README.md)**.
+
+**Com Docker** (todas as 12 linguagens)
+
+```bash
+cd piston-gateway && cp .env.example .env     # defina AUTH_TOKEN (ex.: openssl rand -hex 32)
+docker compose up -d --build                   # sobe o Piston, instala as linguagens e abre o gateway em :8081
+```
+
+A primeira subida baixa os pacotes de cada linguagem (alguns minutos).
+
+**Sem Docker** (executor `local`: JavaScript, Python, Java, C e C++, sem isolamento de rede; só para testes)
+
+```bash
+cd piston-gateway
+AUTH_TOKEN=<seu-token> RUNNER=local go run .   # precisa de Node, Python, JDK e gcc instalados
+```
+
+Nos dois casos, aponte o backend para o gateway no `.env` dele e reinicie:
+
+```properties
+CODE_RUNNER_URL=http://localhost:8081
+CODE_RUNNER_TOKEN=<o mesmo AUTH_TOKEN>
+```
+
+Com o backend em Docker, use `CODE_RUNNER_URL=http://host.docker.internal:8081` (passe com `-e`, como o `DATABASE_URL`).
+Para os exercícios aparecerem, ligue "Exercícios de código" na área (Admin → Áreas).
+
+### 5. Conteúdo (opcional)
+
+Com backend e web rodando, popule a plataforma. O curso de demonstração com exercícios de código (precisa da etapa 4) usa só a
+biblioteca padrão do Python:
+
+**Com Docker** (na raiz do repositório)
+
+```bash
+docker run --rm --network coursemaker -v "$(pwd)/course-seeder-bot:/app" -w /app python:3.12-slim \
+  python seed_piston_demo.py --base-url http://coursemaker-backend:8080
+```
+
+**Sem Docker**
+
+```bash
+cd course-seeder-bot && python seed_piston_demo.py
+```
+
+Para cursos, posts e trilhas de exemplo (e os 72 exercícios em 12 linguagens, com código inicial de verdade e um bug típico para o
+aluno consertar), veja o [course-seeder-bot](./course-seeder-bot/README.md#exercícios-de-código-nos-cursos-da-curadoria).
 
 ## 🖼️ Conheça a plataforma
 
-> As imagens abaixo foram geradas com **dados inventados** (veja [como regerá-las](#atualizando-as-imagens-deste-readme)).
 
 ### Descobrir e aprender
 
@@ -165,30 +248,6 @@ navegador ──► backend (Spring Boot) ──► piston-gateway (Go) ──�
   O endpoint `GET /languages` diz ao backend o que o executor em uso roda, e o seletor do criador mostra só isso.
 - Detalhes, endpoints, limites e como subir em produção: **[piston-gateway/README.md](./piston-gateway/README.md)**.
 
-### Rodando na sua máquina
-
-```bash
-cd piston-gateway && cp .env.example .env     # defina AUTH_TOKEN
-docker compose up -d --build                   # sobe o Piston, instala as linguagens e abre o gateway em :8081
-# no .env do backend: CODE_RUNNER_URL=http://localhost:8081 e CODE_RUNNER_TOKEN=<o mesmo AUTH_TOKEN>
-cd ../course-seeder-bot && python seed_piston_demo.py   # curso de demonstração com exercícios
-```
-
-A primeira subida baixa os pacotes de cada linguagem (alguns minutos). Para ver como os exercícios foram escritos:
-[course-seeder-bot](./course-seeder-bot/README.md#exercícios-de-código-nos-cursos-da-curadoria) (72 exercícios em 12 linguagens, com
-código inicial de verdade e um bug típico para o aluno consertar).
-
-### Atualizando as imagens deste README
-
-As imagens de `docs/screenshots/` não vêm de dados reais: o Playwright intercepta toda chamada à API e responde com dados
-inventados (pessoas, cursos, trilhas e a padaria do Seu Zé, em `web/scripts/readme-screenshots/data.mjs`), então basta o
-frontend rodando.
-
-```bash
-cd web && npm run dev                          # em outro terminal
-npm run docs:screenshots                       # regrava docs/screenshots (web/scripts/readme-screenshots/)
-```
-
 ## 🧪 Testes
 
 ```bash
@@ -198,20 +257,7 @@ cd backend && mvn test
 Os testes de integração sobem um PostgreSQL 16 real e efêmero (`io.zonky.test:embedded-postgres`),
 sem precisar de Docker nem do banco de desenvolvimento.
 
-## 📖 Documentação
 
-Cada parte do projeto tem seu próprio README, com stack, arquitetura, variáveis de ambiente e
-decisões técnicas detalhadas:
-
-- 📗 **[Backend](./backend/README.md)** — API REST em Java/Spring Boot: autenticação, endpoints,
-  banco de dados, WebSocket, migrations.
-- 📘 **[Web](./web/README.md)** — SPA em React/Vite: rotas, estrutura de componentes,
-  variáveis de ambiente, decisões de UI.
-- 🐳 **[piston-gateway](./piston-gateway/README.md)** — gateway em Go na frente do Piston: endpoints
-  (`/run-tests`, `/run-output`, `/languages`), as 12 linguagens, executores, limites e produção.
-- 🤖 **[course-seeder-bot](./course-seeder-bot/README.md)** — bot em Python usado para popular a
-  plataforma com cursos, posts e trilhas reais, tanto gerados do zero (via LLM) quanto extraídos de
-  playlists reais do YouTube com atribuição de origem.
 
 ## 🔑 Funcionalidades
 
