@@ -1,6 +1,7 @@
 package com.coursemaker.controller;
 
 import com.coursemaker.config.AuthenticatedUser;
+import com.coursemaker.config.ClientIpResolver;
 import com.coursemaker.dto.auth.AuthDtos.AuthResponse;
 import com.coursemaker.dto.auth.AuthDtos.ConfirmPasswordResetRequest;
 import com.coursemaker.dto.auth.AuthDtos.GoogleLoginRequest;
@@ -32,18 +33,19 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final ClientIpResolver clientIpResolver;
 
     @Operation(summary = "Cria uma conta e devolve o JWT")
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request,
                                                  HttpServletRequest http) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request, http.getRemoteAddr()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request, clientIpResolver.resolve(http)));
     }
 
     @Operation(summary = "Autentica com email ou nickname e senha. Limita falhas por IP + identificador (configuravel via .env)")
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
-        return authService.login(request, http.getRemoteAddr());
+        return authService.login(request, clientIpResolver.resolve(http));
     }
 
     @Operation(summary = "Autentica com um ID token do Google Identity Services")
@@ -62,7 +64,7 @@ public class AuthController {
     @PostMapping("/password-reset/request")
     public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody RequestPasswordResetRequest request,
                                                      HttpServletRequest http) {
-        passwordResetService.requestReset(request.email(), http.getRemoteAddr());
+        passwordResetService.requestReset(request.email(), clientIpResolver.resolve(http));
         return ResponseEntity.noContent().build();
     }
 
