@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { KeyRound, Lock } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { validatePrivateAccess } from '@/api/courses'
 import { validatePostPrivateAccess } from '@/api/posts'
 import { errorMessage, statusOf } from '@/lib/api'
@@ -27,7 +27,7 @@ const LABEL_BY_KIND = {
  */
 export function PrivatePasswordModal({ open, onClose, kind, contentId, contentName, onUnlocked }) {
   const { isAuthenticated } = useAuth()
-  const navigate = useNavigate()
+  const { openLogin } = useAuthModal()
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [blocked, setBlocked] = useState(false)
@@ -65,7 +65,7 @@ export function PrivatePasswordModal({ open, onClose, kind, contentId, contentNa
               Entre na sua conta para informa-la.
             </span>
           </p>
-          <Button className="w-full" onClick={() => navigate('/login')}>
+          <Button className="w-full" onClick={openLogin}>
             Entrar
           </Button>
         </div>
@@ -91,6 +91,7 @@ export function PrivatePasswordModal({ open, onClose, kind, contentId, contentNa
             <Input
               id="private-content-password"
               type="password"
+              secret
               autoFocus
               required
               disabled={blocked}

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { GraduationCap } from 'lucide-react'
 
-/** Centred card used by login, register and the nickname setup step. */
+/** Centred card used by the nickname setup step. */
 export function AuthShell({ title, subtitle, children, footer }) {
   return (
     <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center px-4 py-10">

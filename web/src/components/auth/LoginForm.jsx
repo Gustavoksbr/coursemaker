@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { AlertCircle } from 'lucide-react'
-import { AuthShell } from '@/components/auth/AuthShell'
 import { GoogleButton, googleLoginEnabled } from '@/components/auth/GoogleButton'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { errorMessage, fieldErrors } from '@/lib/api'
 import { LIMITS } from '@/lib/constants'
 import { loginFailureMessage, rateLimitOf } from '@/lib/rateLimit'
+import { FormError, OrDivider, SwitchLink, useAutoFocus } from './authFormParts'
 
-export default function LoginPage() {
-  const { login, loginWithGoogle, isAuthenticated, loading: bootstrapping } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
+export function LoginForm() {
+  const { login, loginWithGoogle } = useAuth()
+  const { close, openRegister, openForgot } = useAuthModal()
+  const firstField = useAutoFocus()
   const [form, setForm] = useState({ identifier: '', password: '' })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
@@ -41,18 +40,8 @@ export default function LoginPage() {
     }
   }, [blockedUntil, secondsLeft])
 
-  const redirectTo = location.state?.from?.pathname ?? '/biblioteca'
-
-  if (!bootstrapping && isAuthenticated) {
-    return <Navigate to={redirectTo} replace />
-  }
-
-  // A missing nickname does not block navigation: it only blocks creating content, and that is
-  // handled by the nickname gate wherever a "create" action lives (see useNicknameGate).
-  const afterAuth = () => {
-    navigate(redirectTo, { replace: true })
-  }
-
+  // Signing in changes nothing about where the user is: the dialog just closes over the same page.
+  // A missing nickname only blocks creating content, and that is handled by useNicknameGate.
   const handleSubmit = async (event) => {
     event.preventDefault()
     setSubmitting(true)
@@ -60,7 +49,8 @@ export default function LoginPage() {
     setFormError('')
     setLimit(null)
     try {
-      afterAuth(await login(form.identifier.trim(), form.password))
+      await login(form.identifier.trim(), form.password)
+      close()
     } catch (error) {
       setErrors(fieldErrors(error))
       const info = rateLimitOf(error)
@@ -70,7 +60,6 @@ export default function LoginPage() {
         setBlockedUntil(Date.now() + info.retryAfterSeconds * 1000)
       }
       setFormError(errorMessage(error, 'Nao foi possivel entrar.'))
-    } finally {
       setSubmitting(false)
     }
   }
@@ -79,47 +68,31 @@ export default function LoginPage() {
     setFormError('')
     setSubmitting(true)
     try {
-      afterAuth(await loginWithGoogle(idToken))
+      await loginWithGoogle(idToken)
+      close()
     } catch (error) {
       setFormError(errorMessage(error, 'Nao foi possivel entrar com o Google.'))
-    } finally {
       setSubmitting(false)
     }
   }
 
+  const rateLimitText = loginFailureMessage(limit, secondsLeft)
+
   return (
-    <AuthShell
-      title="Entrar"
-      subtitle="Acesse sua conta para criar cursos e acompanhar seu progresso."
-      footer={
-        <>
-          Ainda nao tem conta?{' '}
-          <Link to="/register" className="font-semibold text-brand-400 hover:text-brand-300">
-            Criar conta
-          </Link>
-        </>
-      }
-    >
+    <>
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         {formError && (
-          <div
-            role="alert"
-            className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-300"
-          >
-            <AlertCircle size={16} className="mt-0.5 shrink-0" />
-            <div className="space-y-1">
-              <p>{formError}</p>
-              {/* Always tell the user where they stand: tries left, or how long the block lasts. */}
-              {loginFailureMessage(limit, secondsLeft) && (
-                <p className="font-medium text-red-200">{loginFailureMessage(limit, secondsLeft)}</p>
-              )}
-            </div>
-          </div>
+          <FormError>
+            <p>{formError}</p>
+            {/* Always tell the user where they stand: tries left, or how long the block lasts. */}
+            {rateLimitText && <p className="font-medium text-red-200">{rateLimitText}</p>}
+          </FormError>
         )}
 
-        <Field label="Email ou usuario" htmlFor="identifier" error={errors.identifier} required>
+        <Field label="Email ou usuario" htmlFor="auth-identifier" error={errors.identifier} required>
           <Input
-            id="identifier"
+            ref={firstField}
+            id="auth-identifier"
             name="identifier"
             type="text"
             autoComplete="username"
@@ -132,9 +105,9 @@ export default function LoginPage() {
           />
         </Field>
 
-        <Field label="Senha" htmlFor="password" error={errors.password} required>
+        <Field label="Senha" htmlFor="auth-password" error={errors.password} required>
           <Input
-            id="password"
+            id="auth-password"
             name="password"
             type="password"
             autoComplete="current-password"
@@ -148,9 +121,9 @@ export default function LoginPage() {
         </Field>
 
         <div className="text-right">
-          <Link to="/esqueci-senha" className="text-xs font-medium text-brand-400 hover:text-brand-300">
+          <SwitchLink onClick={openForgot} className="text-xs font-medium">
             Esqueci minha senha
-          </Link>
+          </SwitchLink>
         </div>
 
         <Button type="submit" loading={submitting} disabled={blocked} className="w-full">
@@ -160,14 +133,14 @@ export default function LoginPage() {
 
       {googleLoginEnabled && (
         <>
-          <div className="my-5 flex items-center gap-3 text-xs text-slate-500">
-            <span className="h-px flex-1 bg-slate-700" />
-            ou
-            <span className="h-px flex-1 bg-slate-700" />
-          </div>
+          <OrDivider />
           <GoogleButton onCredential={handleGoogle} />
         </>
       )}
-    </AuthShell>
+
+      <p className="mt-5 text-center text-sm text-slate-400">
+        Ainda nao tem conta? <SwitchLink onClick={openRegister}>Criar conta</SwitchLink>
+      </p>
+    </>
   )
 }

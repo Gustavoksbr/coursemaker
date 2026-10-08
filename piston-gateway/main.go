@@ -140,6 +140,12 @@ func main() {
 	} else {
 		log.Printf("piston-gateway ouvindo na porta %s (Piston em %s)", port, pistonURL)
 	}
+	// Opcional: no Render gratuito, chama o proprio /health a cada 10 min para o servico nunca dormir.
+	if pingURL := os.Getenv("AUTO_PING_URL"); strings.TrimSpace(pingURL) != "" {
+		startSelfPing(pingURL, selfPingInterval, &http.Client{Timeout: 30 * time.Second})
+		log.Printf("auto-ping ligado: %s a cada %s", selfPingTarget(pingURL), selfPingInterval)
+	}
+
 	log.Fatal(http.ListenAndServe(":"+port, mux))
 }
 

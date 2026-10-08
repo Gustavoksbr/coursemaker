@@ -30,7 +30,6 @@ import com.coursemaker.dto.code.CodeExerciseDtos.ValidateExerciseRequest;
 import com.coursemaker.dto.code.CodeExerciseDtos.ValidationResponse;
 import com.coursemaker.dto.code.CodeExerciseDtos.VisibleOutcome;
 import com.coursemaker.exception.ApiExceptions.BadRequestException;
-import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import com.coursemaker.exception.ExerciseValidationException;
 import com.coursemaker.repository.AreaRepository;
@@ -88,9 +87,6 @@ public class CodeExerciseService {
      * return value, from the closed set in {@link JavaTypes} (each language maps it to its own types).
      */
     static final Set<String> TYPED_LANGUAGES = Set.of("java", "csharp", "cpp", "c", "go", "rust", "kotlin");
-
-    /** "Ver solucao" unlocks after this many unsuccessful submissions. */
-    public static final int SOLUTION_UNLOCK_AFTER_FAILURES = 2;
 
     static final int MAX_FUNCTION_TESTS = 100;
     static final int MAX_OUTPUT_TESTS = 20;
@@ -364,31 +360,29 @@ public class CodeExerciseService {
             return progressRepository.findById(new UserBlockId(viewer.getId(), blockId))
                     .map(row -> new ExerciseProgressResponse(
                             blockId, row.isPassed(), row.getFailedSubmissions(), solutionAvailable(row), row.getLastCode()))
-                    .orElse(new ExerciseProgressResponse(blockId, false, 0, false, null));
+                    .orElse(new ExerciseProgressResponse(blockId, false, 0, true, null));
         });
     }
 
-    /** The reference solution, once the student passed or failed enough times; never before. */
+    /**
+     * The reference solution, for any student who can see the lesson. It is never gated: someone
+     * who does not want to think about it can just keep failing until it unlocks anyway, so a lock
+     * only adds friction. (The hidden tests stay hidden - only the author's code is shown.)
+     */
     public SolutionResponse solution(UUID blockId, User viewer) {
         return readOnlyTx.execute(status -> {
             LessonBlock block = loadBlockForContent(blockId, viewer);
             requireExerciseBlock(block);
 
-            boolean unlocked = progressRepository.findById(new UserBlockId(viewer.getId(), blockId))
-                    .map(CodeExerciseService::solutionAvailable)
-                    .orElse(false);
-            if (!unlocked) {
-                throw new ForbiddenException("A solucao so fica disponivel depois de "
-                        + SOLUTION_UNLOCK_AFTER_FAILURES + " envios sem sucesso");
-            }
             CodeExercise exercise = exerciseRepository.findById(blockId)
                     .orElseThrow(() -> ResourceNotFoundException.of("Exercicio"));
             return new SolutionResponse(exercise.getSolutionCode());
         });
     }
 
+    /** Always true; kept in the responses so existing clients keep working. */
     private static boolean solutionAvailable(CodeExerciseProgress progress) {
-        return progress.isPassed() || progress.getFailedSubmissions() >= SOLUTION_UNLOCK_AFTER_FAILURES;
+        return true;
     }
 
     // ------------------------------------------------------------------ loading

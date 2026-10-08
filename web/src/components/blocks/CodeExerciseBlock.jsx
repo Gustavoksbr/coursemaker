@@ -5,7 +5,6 @@ import {
   ClipboardPaste,
   EyeOff,
   Lightbulb,
-  Lock,
   PartyPopper,
   Play,
   Send,
@@ -25,9 +24,6 @@ import { errorMessage } from '@/lib/api'
 import { EXERCISE_MODE, formatCall, LANGUAGE_LABELS, typedParam } from '@/lib/codeExercise'
 import { cn } from '@/lib/cn'
 
-/** Sent after this many unsuccessful submissions the author's solution unlocks (mirrors the backend). */
-const UNLOCK_AFTER = 2
-
 function parseContent(block) {
   try {
     return JSON.parse(block.content ?? '{}')
@@ -45,7 +41,7 @@ function show(mode, value) {
 /**
  * The exercise a student works in: editor, visible examples, "Executar exemplos" (visible tests
  * only, never counts), "Enviar solucao" (every test, counts, hidden ones reduced to a number) and
- * "Ver solucao" once enough submissions failed.
+ * "Ver solucao" (always available - there is nothing to earn first).
  *
  * Falls back to the static preview when the viewer cannot run code (not signed in).
  * `onPassed(blockId)` fires the first time a submission passes everything, so the lesson view can
@@ -62,7 +58,7 @@ function InteractiveExercise({ block, passedFromCourse, onPassed }) {
 
   const [code, setCode] = useState(content?.starterCode ?? '')
   const touched = useRef(false)
-  const [progress, setProgress] = useState({ passed: passedFromCourse, failedSubmissions: 0, solutionAvailable: false })
+  const [progress, setProgress] = useState({ passed: passedFromCourse, failedSubmissions: 0 })
   const [busy, setBusy] = useState(null) // 'run' | 'submit' | 'solution'
   const [runResult, setRunResult] = useState(null)
   const [submitResult, setSubmitResult] = useState(null)
@@ -74,11 +70,7 @@ function InteractiveExercise({ block, passedFromCourse, onPassed }) {
     getCodeExerciseProgress(block.id)
       .then((saved) => {
         if (cancelled) return
-        setProgress({
-          passed: saved.passed,
-          failedSubmissions: saved.failedSubmissions,
-          solutionAvailable: saved.solutionAvailable,
-        })
+        setProgress({ passed: saved.passed, failedSubmissions: saved.failedSubmissions })
         if (saved.lastCode && !touched.current) setCode(saved.lastCode)
       })
       .catch(() => {
@@ -128,11 +120,7 @@ function InteractiveExercise({ block, passedFromCourse, onPassed }) {
       setSubmitResult(result)
       setRunResult(null)
       const wasPassed = progress.passed
-      setProgress({
-        passed: result.exercisePassed,
-        failedSubmissions: result.failedSubmissions,
-        solutionAvailable: result.solutionAvailable,
-      })
+      setProgress({ passed: result.exercisePassed, failedSubmissions: result.failedSubmissions })
       if (result.exercisePassed && !wasPassed) onPassed?.(block.id)
     } catch (error) {
       toast.error(errorMessage(error, 'Nao foi possivel enviar agora.'))
@@ -157,8 +145,6 @@ function InteractiveExercise({ block, passedFromCourse, onPassed }) {
     touched.current = true
     setCode(solution)
   }
-
-  const missing = Math.max(0, UNLOCK_AFTER - progress.failedSubmissions)
 
   return (
     <section className="space-y-4 rounded-xl border border-slate-700 bg-slate-800/60 p-4" aria-label={content.title || 'Exercicio de codigo'}>
@@ -232,18 +218,9 @@ function InteractiveExercise({ block, passedFromCourse, onPassed }) {
         </Button>
 
         <div className="ml-auto text-xs">
-          {progress.solutionAvailable ? (
-            <Button variant="ghost" size="sm" onClick={revealSolution} loading={busy === 'solution'} disabled={busy !== null}>
-              <Lightbulb size={14} /> Ver solucao
-            </Button>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-slate-500">
-              <Lock size={13} />
-              {missing === UNLOCK_AFTER
-                ? `Ver solucao: liberada apos ${UNLOCK_AFTER} envios sem sucesso`
-                : `Ver solucao: falta ${missing} envio sem sucesso`}
-            </span>
-          )}
+          <Button variant="ghost" size="sm" onClick={revealSolution} loading={busy === 'solution'} disabled={busy !== null}>
+            <Lightbulb size={14} /> Ver solucao
+          </Button>
         </div>
       </div>
 
@@ -431,10 +408,9 @@ function SubmitPanel({ result, mode, functionName }) {
         </p>
       )}
 
-      {!result.solutionAvailable && result.hiddenTotal > 0 && (
+      {result.hiddenTotal > 0 && (
         <p className="text-xs text-slate-400">
-          Dica: os escondidos cobrem casos de borda, como negativos, zero e valores vazios. Depois de 2 envios sem
-          sucesso a solucao do autor fica disponivel.
+          Dica: os escondidos cobrem casos de borda, como negativos, zero e valores vazios.
         </p>
       )}
     </div>

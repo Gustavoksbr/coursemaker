@@ -95,8 +95,8 @@ src/
 | Rota | Página |
 |------|--------|
 | `/` | Home com destaques e busca unificada |
-| `/login`, `/register`, `/setup-nickname` | Autenticação |
-| `/esqueci-senha`, `/redefinir-senha` | Recuperação de senha por e-mail |
+| `/setup-nickname` | Escolha do nickname (login e cadastro são modais, não rotas) |
+| `/redefinir-senha?token=` | Só abre o modal de nova senha (link do e-mail) e volta para a home |
 | `/pesquisar` | Busca unificada com filtros |
 | `/courses/:nickname/:slug` | Landing + leitura das lições (`?lesson=` seleciona a aula) |
 | `/courses/:nickname/:slug/edit` | Editor de 3 colunas (dono) |

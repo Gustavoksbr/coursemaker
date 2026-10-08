@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMessaging } from '@/context/MessagingContext'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, CalendarDays, GraduationCap, Mail, UserX, Waypoints } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
@@ -10,6 +10,7 @@ import { PostCard } from '@/components/post/PostCard'
 import { TrilhaCard } from '@/components/trilha/TrilhaCard'
 import { EmptyState, ErrorState, PageLoader } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { getPublicProfile, userKeys } from '@/api/users'
 import { errorMessage } from '@/lib/api'
 import { formatDate } from '@/lib/format'
@@ -18,7 +19,7 @@ import { cn } from '@/lib/cn'
 export default function PublicProfilePage() {
   const { nickname } = useParams()
   const { user, isAuthenticated } = useAuth()
-  const navigate = useNavigate()
+  const { openLogin } = useAuthModal()
   const { openMessages } = useMessaging()
   const [tab, setTab] = useState('courses')
   const [areaFilter, setAreaFilter] = useState('')
@@ -98,7 +99,7 @@ export default function PublicProfilePage() {
             className="btn-secondary shrink-0"
             onClick={() => {
               if (!isAuthenticated) {
-                navigate('/login')
+                openLogin()
                 return
               }
               openMessages(profile.nickname)

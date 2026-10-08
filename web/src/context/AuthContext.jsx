@@ -9,7 +9,7 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   // `loading` covers the initial "do we have a valid token?" round-trip. Rendering routes before it
-  // settles would bounce an authenticated user to /login on every refresh.
+  // settles would flash the login dialog at an authenticated user on every refresh.
   const [loading, setLoading] = useState(Boolean(getToken()))
   const queryClient = useQueryClient()
 

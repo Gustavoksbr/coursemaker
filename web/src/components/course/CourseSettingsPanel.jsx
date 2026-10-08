@@ -130,6 +130,7 @@ export function CourseSettingsPanel({ course, draft, courseQueryKey, onDeleted, 
               <Input
                 id="settings-password"
                 type="password"
+                secret
                 maxLength={LIMITS.PASSWORD}
                 value={form.password}
                 onChange={(event) => setField({ password: event.target.value })}

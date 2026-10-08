@@ -8,6 +8,7 @@ import { CharCounter, Textarea } from '@/components/ui/Field'
 import { ConfirmModal } from '@/components/ui/Modal'
 import { EmptyState, Spinner } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { useToast } from '@/context/ToastContext'
 import { banUser } from '@/api/courses'
 import { commentKeys, createComment, deleteComment, listComments } from '@/api/comments'
@@ -18,6 +19,7 @@ import { formatRelative } from '@/lib/format'
 /** kind: 'course' | 'post' | 'trilha'. Banning a commenter only exists for courses. */
 export function CommentThread({ kind, contentId, isOwner }) {
   const { isAuthenticated } = useAuth()
+  const { openLogin } = useAuthModal()
   const queryClient = useQueryClient()
   const toast = useToast()
   const [replyingTo, setReplyingTo] = useState(null)
@@ -78,9 +80,9 @@ export function CommentThread({ kind, contentId, isOwner }) {
         />
       ) : (
         <p className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-sm text-slate-400">
-          <Link to="/login" className="font-semibold text-brand-400 hover:text-brand-300">
+          <button type="button" onClick={openLogin} className="font-semibold text-brand-400 hover:text-brand-300">
             Entre na sua conta
-          </Link>{' '}
+          </button>{' '}
           para comentar.
         </p>
       )}

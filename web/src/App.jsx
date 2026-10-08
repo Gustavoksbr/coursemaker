@@ -6,10 +6,6 @@ import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary'
 import { PageLoader } from '@/components/ui/Feedback'
 import { usePrefetchCatalogs } from '@/hooks/usePrefetchCatalogs'
 import HomePage from '@/pages/HomePage'
-import LoginPage from '@/pages/LoginPage'
-import RegisterPage from '@/pages/RegisterPage'
-import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
-import ResetPasswordPage from '@/pages/ResetPasswordPage'
 import SetupNicknamePage from '@/pages/SetupNicknamePage'
 import SearchPage from '@/pages/SearchPage'
 import CertificateViewPage from '@/pages/CertificateViewPage'
@@ -29,6 +25,7 @@ import AdminHomePage from '@/pages/admin/AdminHomePage'
 import AdminModerationPage from '@/pages/admin/AdminModerationPage'
 import AdminSchoolsPage from '@/pages/admin/AdminSchoolsPage'
 import NotFoundPage from '@/pages/NotFoundPage'
+import { ResetLinkRedirect } from '@/components/auth/ResetLinkRedirect'
 import CodePlaygroundPage from '@/pages/CodePlaygroundPage'
 
 // The editors pull in Tiptap/ProseMirror, which is the single heaviest dependency here and is
@@ -54,10 +51,9 @@ const router = createBrowserRouter([
     errorElement: <RouteErrorBoundary />,
     children: [
       { path: '/', element: <HomePage /> },
-      { path: '/login', element: <LoginPage /> },
-      { path: '/register', element: <RegisterPage /> },
-      { path: '/esqueci-senha', element: <ForgotPasswordPage /> },
-      { path: '/redefinir-senha', element: <ResetPasswordPage /> },
+      // Sign-in has no pages of its own - it is a modal (see AuthModal). This is only where the
+      // link in the password-reset email lands: it opens that modal and goes home.
+      { path: '/redefinir-senha', element: <ResetLinkRedirect /> },
       { path: '/privacidade', element: <PrivacyPolicyPage /> },
       { path: '/users/:nickname', element: <PublicProfilePage /> },
       { path: '/escolas', element: <SchoolsListPage /> },

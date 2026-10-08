@@ -14,7 +14,9 @@ import com.coursemaker.dto.user.UserSummary;
 import com.coursemaker.exception.ApiExceptions.ForbiddenException;
 import com.coursemaker.repository.CourseRepository;
 import com.coursemaker.repository.EnrollmentRepository;
+import com.coursemaker.repository.CodeExerciseProgressRepository;
 import com.coursemaker.repository.LessonCompletionRepository;
+import com.coursemaker.repository.QuestionAnswerRepository;
 import com.coursemaker.repository.LessonRepository;
 import com.coursemaker.repository.PrivateCourseAccessRepository;
 import com.coursemaker.repository.UserRepository;
@@ -49,6 +51,8 @@ public class EnrollmentService {
     private final CourseMapper courseMapper;
     private final LessonRepository lessonRepository;
     private final LessonCompletionRepository lessonCompletionRepository;
+    private final QuestionAnswerRepository questionAnswerRepository;
+    private final CodeExerciseProgressRepository codeExerciseProgressRepository;
     private final NotificationService notificationService;
     private final PlatformTransactionManager transactionManager;
 
@@ -102,8 +106,17 @@ public class EnrollmentService {
         });
     }
 
+    /**
+     * Leaving a course is also how a student starts it over: besides the enrollment, every lesson
+     * they finished, question they answered and exercise they solved in it is wiped. The certificate
+     * needs no cleanup - it is never stored, only issued while the progress says the course is done.
+     * (Anything they bookmarked in their library is a separate, deliberate choice and stays.)
+     */
     @Transactional
     public EnrollmentStatusResponse unenroll(UUID courseId, User user) {
+        lessonCompletionRepository.deleteAllForUserInCourse(user.getId(), courseId);
+        questionAnswerRepository.deleteAllForUserInCourse(user.getId(), courseId);
+        codeExerciseProgressRepository.deleteAllForUserInCourse(user.getId(), courseId);
         enrollmentRepository.deleteById(new UserCourseId(user.getId(), courseId));
         return status(courseId, user);
     }

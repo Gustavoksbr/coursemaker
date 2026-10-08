@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { OpenMessagesButton } from '@/components/messages/MessagesModal'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, UserMinus, UserPlus } from 'lucide-react'
@@ -14,6 +14,7 @@ import { Thumbnail } from '@/components/ui/Thumbnail'
 import { TrilhaItemsList } from '@/components/trilha/TrilhaItemsList'
 import { CommentThread } from '@/components/comments/CommentThread'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { useToast } from '@/context/ToastContext'
 import {
   completeTrilhaItem,
@@ -29,9 +30,9 @@ import { trilhaHref } from '@/lib/contentLinks'
 export default function TrilhaViewPage() {
   const { nickname, slug } = useParams()
   const { isAuthenticated } = useAuth()
+  const { openLogin } = useAuthModal()
   const queryClient = useQueryClient()
   const toast = useToast()
-  const navigate = useNavigate()
 
   const trilhaQueryKey = trilhaKeys.bySlug(nickname, slug)
   const trilhaQuery = useQuery({
@@ -127,7 +128,7 @@ export default function TrilhaViewPage() {
 
   const handleFollowClick = () => {
     if (!isAuthenticated) {
-      navigate('/login')
+      openLogin()
       return
     }
     toggleFollow()

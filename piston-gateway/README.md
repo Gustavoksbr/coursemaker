@@ -286,6 +286,12 @@ Serviço Web novo → Language **Docker**, Root Directory `piston-gateway`, Dock
 e `CODE_RUNNER_TOKEN=<o mesmo AUTH_TOKEN>`. No plano gratuito o serviço dorme após 15 min parado (a primeira
 execução depois disso demora) e tem 512 MB de RAM.
 
+Para ele **não dormir**, defina `AUTO_PING_URL=https://<servico>.onrender.com` (o endereço público do próprio serviço,
+sem `/health`): o gateway passa a chamar o próprio `/health` a cada 10 minutos. Tem de ser a URL pública, não
+`localhost`, porque só o tráfego que entra pelo proxy do Render conta como atividade. Sem a variável nada acontece.
+Atenção: o plano gratuito dá cerca de 750 horas por mês por workspace, divididas entre todos os serviços
+gratuitos; dois serviços sempre ligados não cabem nisso.
+
 ## Parando tudo
 
 ```bash

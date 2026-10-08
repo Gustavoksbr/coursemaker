@@ -24,6 +24,7 @@ import { CardSkeletonGrid, ErrorState } from '@/components/ui/Feedback'
 import { Avatar } from '@/components/ui/Avatar'
 import { Reveal } from '@/components/home/Reveal'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { useNicknameGate } from '@/hooks/useNicknameGate'
 import { useCountUp } from '@/hooks/useReveal'
 import { search, searchKeys } from '@/api/users'
@@ -69,6 +70,7 @@ const VALUE_PROPS = [
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth()
+  const { openRegister } = useAuthModal()
   const navigate = useNavigate()
   const [term, setTerm] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
@@ -431,9 +433,9 @@ export default function HomePage() {
                   <Plus size={16} /> Criar um curso
                 </button>
               ) : (
-                <Link to="/register" className="btn-primary">
+                <button type="button" onClick={openRegister} className="btn-primary">
                   Criar conta gratis <ArrowRight size={16} />
-                </Link>
+                </button>
               )}
               <Link to="/pesquisar" className="btn-secondary">
                 Explorar conteudo

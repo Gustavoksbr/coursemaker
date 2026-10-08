@@ -279,6 +279,7 @@ export function CreateCourseModal({ open, onClose }) {
               <Input
                 id="course-password"
                 type="password"
+                secret
                 maxLength={LIMITS.PASSWORD}
                 value={form.password}
                 onChange={(event) => setForm({ ...form, password: event.target.value })}

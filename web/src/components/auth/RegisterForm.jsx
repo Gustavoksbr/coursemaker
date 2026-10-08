@@ -1,30 +1,24 @@
 import { useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { AlertCircle } from 'lucide-react'
-import { AuthShell } from '@/components/auth/AuthShell'
+import { Link } from 'react-router-dom'
 import { GoogleButton, googleLoginEnabled } from '@/components/auth/GoogleButton'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { errorMessage, fieldErrors } from '@/lib/api'
 import { LIMITS } from '@/lib/constants'
+import { FormError, OrDivider, SwitchLink, useAutoFocus } from './authFormParts'
 
 const MIN_PASSWORD_LENGTH = 8
 
-export default function RegisterPage() {
-  const { register, loginWithGoogle, isAuthenticated, loading: bootstrapping } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
+export function RegisterForm() {
+  const { register, loginWithGoogle } = useAuth()
+  const { close, openLogin } = useAuthModal()
+  const firstField = useAutoFocus()
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-
-  const redirectTo = location.state?.from?.pathname ?? '/biblioteca'
-
-  if (!bootstrapping && isAuthenticated) {
-    return <Navigate to={redirectTo} replace />
-  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -43,13 +37,12 @@ export default function RegisterPage() {
     setFormError('')
     try {
       await register(form.name.trim(), form.email.trim(), form.password)
-      // A missing nickname does not block navigation, only creating content (see
-      // useNicknameGate) - so a fresh account goes straight to what it was after, same as login.
-      navigate(redirectTo, { replace: true })
+      // A missing nickname does not block anything but creating content (see useNicknameGate), so
+      // a fresh account simply carries on where it was.
+      close()
     } catch (error) {
       setErrors(fieldErrors(error))
       setFormError(errorMessage(error, 'Nao foi possivel criar a conta.'))
-    } finally {
       setSubmitting(false)
     }
   }
@@ -59,38 +52,26 @@ export default function RegisterPage() {
     setSubmitting(true)
     try {
       await loginWithGoogle(idToken)
-      navigate(redirectTo, { replace: true })
+      close()
     } catch (error) {
       setFormError(errorMessage(error, 'Nao foi possivel entrar com o Google.'))
-    } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <AuthShell
-      title="Criar conta"
-      subtitle="Leva menos de um minuto."
-      footer={
-        <>
-          Ja tem conta?{' '}
-          <Link to="/login" className="font-semibold text-brand-400 hover:text-brand-300">
-            Entrar
-          </Link>
-        </>
-      }
-    >
+    <>
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         {formError && (
-          <div className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
-            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <FormError>
             <p>{formError}</p>
-          </div>
+          </FormError>
         )}
 
-        <Field label="Nome" htmlFor="name" error={errors.name} required>
+        <Field label="Nome" htmlFor="auth-name" error={errors.name} required>
           <Input
-            id="name"
+            ref={firstField}
+            id="auth-name"
             name="name"
             autoComplete="name"
             required
@@ -102,9 +83,9 @@ export default function RegisterPage() {
           />
         </Field>
 
-        <Field label="Email" htmlFor="email" error={errors.email} required>
+        <Field label="Email" htmlFor="auth-email" error={errors.email} required>
           <Input
-            id="email"
+            id="auth-email"
             name="email"
             type="email"
             autoComplete="email"
@@ -119,13 +100,13 @@ export default function RegisterPage() {
 
         <Field
           label="Senha"
-          htmlFor="password"
+          htmlFor="auth-register-password"
           error={errors.password}
           hint={`Entre ${MIN_PASSWORD_LENGTH} e ${LIMITS.PASSWORD} caracteres`}
           required
         >
           <Input
-            id="password"
+            id="auth-register-password"
             name="password"
             type="password"
             autoComplete="new-password"
@@ -139,9 +120,9 @@ export default function RegisterPage() {
           />
         </Field>
 
-        <Field label="Confirmar senha" htmlFor="confirm" error={errors.confirm} required>
+        <Field label="Confirmar senha" htmlFor="auth-confirm" error={errors.confirm} required>
           <Input
-            id="confirm"
+            id="auth-confirm"
             name="confirm"
             type="password"
             autoComplete="new-password"
@@ -160,7 +141,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-xs text-slate-500">
           Ao criar sua conta, voce concorda com nossa{' '}
-          <Link to="/privacidade" className="text-brand-400 hover:text-brand-300">
+          <Link to="/privacidade" onClick={close} className="text-brand-400 hover:text-brand-300">
             Politica de Privacidade
           </Link>
           .
@@ -169,14 +150,14 @@ export default function RegisterPage() {
 
       {googleLoginEnabled && (
         <>
-          <div className="my-5 flex items-center gap-3 text-xs text-slate-500">
-            <span className="h-px flex-1 bg-slate-700" />
-            ou
-            <span className="h-px flex-1 bg-slate-700" />
-          </div>
+          <OrDivider />
           <GoogleButton onCredential={handleGoogle} text="signup_with" />
         </>
       )}
-    </AuthShell>
+
+      <p className="mt-5 text-center text-sm text-slate-400">
+        Ja tem conta? <SwitchLink onClick={openLogin}>Entrar</SwitchLink>
+      </p>
+    </>
   )
 }

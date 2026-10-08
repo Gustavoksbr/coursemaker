@@ -356,6 +356,7 @@ export default function PostEditorPage() {
             <Input
               id="post-password"
               type="password"
+              secret
               maxLength={LIMITS.PASSWORD}
               value={form.password}
               onChange={(event) => setForm({ ...form, password: event.target.value })}

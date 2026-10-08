@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { useMessaging } from '@/context/MessagingContext'
 import { useNotifications } from '@/context/NotificationContext'
 import { Avatar } from '@/components/ui/Avatar'
@@ -52,8 +53,9 @@ const NOTIFICATION_TEXT = {
 
 export function Navbar() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth()
+  const { openLogin, openRegister } = useAuthModal()
   const { notifications, loading: notificationsLoading, unreadCount, markRead, markAllRead } = useNotifications()
-  const { unreadCount: messagesUnreadCount, openMessages } = useMessaging()
+  const { unreadCount: messagesUnreadCount, openMessages, closeMessages, modal: messagesModal } = useMessaging()
   const navigate = useNavigate()
   const { requireNickname, nicknameModalProps } = useNicknameGate()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -144,8 +146,15 @@ export function Navbar() {
 
               <button
                 type="button"
-                onClick={() => openMessages()}
+                onClick={() => {
+                  // So um painel flutuante por vez: abrir as mensagens fecha as notificacoes.
+                  setNotificationsOpen(false)
+                  if (messagesModal.open) closeMessages()
+                  else openMessages()
+                }}
                 className="btn-ghost relative px-2"
+                aria-haspopup="dialog"
+                aria-expanded={messagesModal.open}
                 aria-label="Mensagens"
                 title="Mensagens"
               >
@@ -160,7 +169,10 @@ export function Navbar() {
               <div className="relative" ref={notificationsRef}>
                 <button
                   type="button"
-                  onClick={() => setNotificationsOpen((open) => !open)}
+                  onClick={() => {
+                    closeMessages()
+                    setNotificationsOpen((open) => !open)
+                  }}
                   className="btn-ghost relative px-2"
                   aria-haspopup="menu"
                   aria-expanded={notificationsOpen}
@@ -178,9 +190,11 @@ export function Navbar() {
                 {notificationsOpen && (
                   <div
                     role="menu"
-                    className="absolute right-0 mt-2 w-80 animate-slide-up overflow-hidden rounded-lg border border-slate-700 bg-slate-800 shadow-xl"
+                    // No celular o painel ocupa a largura da tela, logo abaixo da barra (ancorado no sino ele
+                    // estourava a borda esquerda); a partir de sm vira o dropdown de 20rem sob o sino.
+                    className="fixed inset-x-2 top-[4.25rem] animate-slide-up overflow-hidden rounded-lg border border-slate-700 bg-slate-800 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-700 px-4 py-3">
                       <p className="text-sm font-semibold text-slate-100">Notificacoes</p>
                       {notifications.length > 0 && (
                         <button
@@ -193,7 +207,7 @@ export function Navbar() {
                       )}
                     </div>
 
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-[min(24rem,calc(100dvh-9rem))] overflow-y-auto">
                       {notificationsLoading ? (
                         <div className="flex justify-center py-6">
                           <Spinner />
@@ -342,12 +356,12 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login" className="btn-ghost">
+              <button type="button" onClick={openLogin} className="btn-ghost">
                 Entrar
-              </Link>
-              <Link to="/register" className="btn-primary">
+              </button>
+              <button type="button" onClick={openRegister} className="btn-primary">
                 Criar conta
-              </Link>
+              </button>
             </>
           )}
 

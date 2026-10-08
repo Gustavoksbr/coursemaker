@@ -479,7 +479,7 @@ class CodeExerciseIT extends IntegrationTest {
     // ------------------------------------------------------------------ student
 
     @Test
-    @DisplayName("fluxo do aluno: exemplos nao contam, solucao so depois de 2 falhas, conclusao exige resolver")
+    @DisplayName("fluxo do aluno: exemplos nao contam, solucao sempre disponivel, conclusao exige resolver")
     void studentFlow() throws Exception {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
@@ -502,22 +502,22 @@ class CodeExerciseIT extends IntegrationTest {
         // The lesson cannot be completed yet.
         post("/api/v1/lessons/" + lessonId + "/complete", null, student.caller()).andExpect(status().isBadRequest());
 
-        // First wrong submission: counted, solution still locked.
+        // The solution is open from the start - nothing to earn first.
+        assertThat(getOk(base + "/solution", student.caller()).get("solutionCode").asText()).isEqualTo(SUM_SOLUTION);
+
+        // First wrong submission: counted.
         JsonNode first = postOk(base + "/submit", Map.of("code", DIFF_SOLUTION), student.caller());
         assertThat(first.get("allPassed").asBoolean()).isFalse();
         assertThat(first.get("failedSubmissions").asInt()).isEqualTo(1);
-        assertThat(first.get("solutionAvailable").asBoolean()).isFalse();
+        assertThat(first.get("solutionAvailable").asBoolean()).isTrue();
         assertThat(first.get("hiddenTotal").asInt()).isEqualTo(1);
         assertThat(first.get("hiddenPassed").asInt()).isZero();
         assertThat(first.get("visible")).hasSize(2);
         assertThat(first.toString()).doesNotContain(HIDDEN_MARKER);
-        get(base + "/solution", student.caller()).andExpect(status().isForbidden());
 
-        // Second wrong submission unlocks it.
         JsonNode second = postOk(base + "/submit", Map.of("code", DIFF_SOLUTION), student.caller());
         assertThat(second.get("failedSubmissions").asInt()).isEqualTo(2);
         assertThat(second.get("solutionAvailable").asBoolean()).isTrue();
-        assertThat(getOk(base + "/solution", student.caller()).get("solutionCode").asText()).isEqualTo(SUM_SOLUTION);
 
         // Passing: permanent, and it unlocks the lesson.
         JsonNode passed = postOk(base + "/submit", Map.of("code", SUM_SOLUTION), student.caller());
@@ -540,14 +540,12 @@ class CodeExerciseIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("a solucao e liberada tambem para quem ja resolveu")
-    void solutionUnlockedAfterPassing() throws Exception {
+    @DisplayName("a solucao esta disponivel sem ter tentado nada")
+    void solutionAvailableWithoutAnyAttempt() throws Exception {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
         UUID blockId = blockId(createFunctionExercise(owner, curriculum.lessonIds().get(0), SUM_SOLUTION));
-
-        postOk("/api/v1/blocks/" + blockId + "/exercise/submit", Map.of("code", SUM_SOLUTION), student.caller());
 
         getOk("/api/v1/blocks/" + blockId + "/exercise/solution", student.caller());
     }

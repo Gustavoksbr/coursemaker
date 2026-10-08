@@ -40,7 +40,7 @@ export function ConversationList({ onSelect }) {
           message="Mensagens que voce enviar ou receber aparecem aqui."
         />
       ) : (
-        <ul className="max-h-[60vh] divide-y divide-slate-800 overflow-y-auto rounded-xl border border-slate-800">
+        <ul className="divide-y divide-slate-800 overflow-hidden rounded-xl border border-slate-800">
           {conversations.map((conversation) => (
             <li key={conversation.partner.id}>
               <button

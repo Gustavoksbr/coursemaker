@@ -3,6 +3,7 @@ import { Github } from 'lucide-react'
 import { AreaProvider } from '@/context/AreaContext'
 import { Navbar } from './Navbar'
 import { MessagesModal } from '@/components/messages/MessagesModal'
+import { AuthModal } from '@/components/auth/AuthModal'
 
 const GITHUB_URL = 'https://github.com/Gustavoksbr/coursemaker'
 
@@ -13,6 +14,7 @@ export function Layout() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <MessagesModal />
+        <AuthModal />
         <main className="flex-1">
           <Outlet />
         </main>
@@ -48,6 +50,7 @@ export function FullHeightLayout() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <MessagesModal />
+        <AuthModal />
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>

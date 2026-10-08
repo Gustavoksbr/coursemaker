@@ -50,14 +50,36 @@ export function Field({ label, error, hint, htmlFor, required, children, classNa
   )
 }
 
-export const Input = forwardRef(function Input({ className, invalid, type, ...props }, ref) {
+/** Browsers that can mask a plain text input, so it is never seen as a password field at all. */
+const canMaskText =
+  typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('-webkit-text-security', 'disc')
+
+/**
+ * `secret` marks a password that is NOT an account credential (e.g. the access password of a private
+ * course or post). Password managers must neither fill nor offer to save it - and, because they treat
+ * the field before a password input as a "username", must not tag the title/name field either.
+ * Where the browser can mask plain text it is rendered as one (invisible to password managers);
+ * elsewhere it stays a password field flagged as new-password with the usual opt-out attributes.
+ */
+export const Input = forwardRef(function Input({ className, invalid, type, secret, ...props }, ref) {
   const [visible, setVisible] = useState(false)
   const isPassword = type === 'password'
+  const maskAsText = Boolean(secret) && isPassword && canMaskText
+  const secretProps = secret
+    ? {
+        autoComplete: maskAsText ? 'off' : 'new-password',
+        'data-lpignore': 'true',
+        'data-1p-ignore': 'true',
+        'data-bwignore': 'true',
+        'data-form-type': 'other',
+      }
+    : {}
 
   const input = (
     <input
       ref={ref}
-      type={isPassword && visible ? 'text' : type}
+      type={maskAsText || (isPassword && visible) ? 'text' : type}
+      style={maskAsText && !visible ? { WebkitTextSecurity: 'disc', ...props.style } : props.style}
       aria-invalid={invalid || undefined}
       className={cn(
         'input',
@@ -66,6 +88,7 @@ export const Input = forwardRef(function Input({ className, invalid, type, ...pr
         className,
       )}
       {...props}
+      {...secretProps}
     />
   )
   if (!isPassword) return input

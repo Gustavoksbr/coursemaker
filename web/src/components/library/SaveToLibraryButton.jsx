@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Bookmark } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { cn } from '@/lib/cn'
 import { SaveToFolderModal } from './SaveToFolderModal'
 
@@ -13,7 +13,7 @@ import { SaveToFolderModal } from './SaveToFolderModal'
  */
 export function SaveToLibraryButton({ kind, contentId, saved, onChange, size = 'md', className }) {
   const { isAuthenticated } = useAuth()
-  const navigate = useNavigate()
+  const { openLogin } = useAuthModal()
   const [open, setOpen] = useState(false)
   const [localSaved, setLocalSaved] = useState(saved)
   const lastSavedProp = useRef(saved)
@@ -33,7 +33,7 @@ export function SaveToLibraryButton({ kind, contentId, saved, onChange, size = '
     event.preventDefault()
     event.stopPropagation()
     if (!isAuthenticated) {
-      navigate('/login')
+      openLogin()
       return
     }
     setOpen(true)

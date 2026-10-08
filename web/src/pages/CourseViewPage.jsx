@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { OpenMessagesButton } from '@/components/messages/MessagesModal'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CheckCircle2,
@@ -32,11 +32,14 @@ import { CourseRail } from '@/components/course/CourseRail'
 import { CertificateButton } from '@/components/shared/CertificateButton'
 import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
+import { ConfirmModal } from '@/components/ui/Modal'
 import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useAuth } from '@/context/AuthContext'
+import { useAuthModal } from '@/context/AuthModalContext'
 import { useToast } from '@/context/ToastContext'
 import { answerQuestionBlock, completeLesson, courseKeys, enroll, getCourseBySlug, unenroll } from '@/api/courses'
+import { libraryKeys } from '@/api/library'
 import { courseHref } from '@/lib/contentLinks'
 import { errorMessage } from '@/lib/api'
 import { cn } from '@/lib/cn'
@@ -106,9 +109,9 @@ export default function CourseViewPage() {
   const { nickname, slug } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated, user } = useAuth()
+  const { openLogin } = useAuthModal()
   const queryClient = useQueryClient()
   const toast = useToast()
-  const navigate = useNavigate()
 
   // Telas largas: a barra fixa pode ser recolhida (lembramos a escolha). Telas estreitas: o mesmo menu
   // abre numa gaveta, pelo botao "Aulas" da propria aula.
@@ -124,6 +127,7 @@ export default function CourseViewPage() {
     }
   }
   const [passwordOpen, setPasswordOpen] = useState(false)
+  const [confirmUnenrollOpen, setConfirmUnenrollOpen] = useState(false)
   // Set when the "Atividades" tab sends the student to a block; the lesson view scrolls to it once rendered.
   const [scrollTargetBlockId, setScrollTargetBlockId] = useState(null)
 
@@ -166,10 +170,18 @@ export default function CourseViewPage() {
   const { mutate: toggleEnrollment, isPending: enrolling } = useMutation({
     mutationFn: () => (course.enrolledByMe ? unenroll(course.id) : enroll(course.id)),
     onSuccess: (status) => {
+      setConfirmUnenrollOpen(false)
       queryClient.invalidateQueries({ queryKey: courseKeys.bySlug(nickname, slug) })
-      toast.success(status.enrolled ? 'Matricula confirmada!' : 'Matricula cancelada.')
+      // The course leaves "Meus cursos" in the library (and its progress is gone) once unenrolled.
+      queryClient.invalidateQueries({ queryKey: libraryKeys.overview })
+      toast.success(
+        status.enrolled ? 'Matricula confirmada!' : 'Matricula cancelada. Seu progresso neste curso foi apagado.',
+      )
     },
-    onError: (error) => toast.error(errorMessage(error, 'Nao foi possivel atualizar a matricula.')),
+    onError: (error) => {
+      setConfirmUnenrollOpen(false)
+      toast.error(errorMessage(error, 'Nao foi possivel atualizar a matricula.'))
+    },
   })
 
   /**
@@ -223,11 +235,16 @@ export default function CourseViewPage() {
 
   const handleEnrollClick = () => {
     if (!isAuthenticated) {
-      navigate('/login')
+      openLogin()
       return
     }
     if (detail.requiresPassword) {
       setPasswordOpen(true)
+      return
+    }
+    // Leaving wipes the student's progress (it is how you start a course over): never in one click.
+    if (course.enrolledByMe) {
+      setConfirmUnenrollOpen(true)
       return
     }
     toggleEnrollment()
@@ -294,6 +311,7 @@ export default function CourseViewPage() {
               lessons={lessons}
               activeIndex={activeIndex}
               onSelectLesson={selectLesson}
+              onGoToActivity={selectActivity}
               onBackToLanding={() => selectLesson(null)}
               sidebarOpen={sidebarOpen}
               onToggleSidebar={toggleSidebar}
@@ -328,6 +346,16 @@ export default function CourseViewPage() {
       {detail.canViewContent && (
         <ChatWidget kind="course" contentId={course.id} raised={Boolean(activeLesson)} />
       )}
+
+      <ConfirmModal
+        open={confirmUnenrollOpen}
+        onClose={() => setConfirmUnenrollOpen(false)}
+        onConfirm={() => toggleEnrollment()}
+        loading={enrolling}
+        title="Desmatricular-se deste curso?"
+        message="Voce vai perder todo o seu progresso neste curso: as aulas concluidas, as questoes respondidas e os exercicios resolvidos. O certificado deixa de estar disponivel e o curso sai de 'Meus cursos' na biblioteca. Se voce se matricular de novo, recomeca do zero. Isso nao pode ser desfeito."
+        confirmLabel="Desmatricular e apagar progresso"
+      />
 
       <PrivatePasswordModal
         open={passwordOpen}
@@ -528,19 +556,18 @@ function Stat({ label, value }) {
   )
 }
 
-/** The sentence on the amber bar above "Proxima aula" while the lesson still has activities to do. */
-function pendingText(questions, exercises) {
-  if (questions > 0 && exercises > 0) {
-    return `Complete as ${questions + exercises} atividades pendentes desta aula para continuar`
+const isActivity = (block) => block.type === 'question' || block.type === 'code_exercise'
+
+/** The sentence on the amber bar above "Concluir curso" while something still stands in the way. */
+function finishCourseText(activities, lessonsToMark) {
+  const parts = []
+  if (activities > 0) {
+    parts.push(activities === 1 ? '1 atividade pendente' : `${activities} atividades pendentes`)
   }
-  if (exercises > 0) {
-    return exercises === 1
-      ? 'Resolva o exercicio pendente desta aula para continuar'
-      : `Resolva os ${exercises} exercicios pendentes desta aula para continuar`
+  if (lessonsToMark > 0) {
+    parts.push(lessonsToMark === 1 ? '1 aula sem marcar como concluida' : `${lessonsToMark} aulas sem marcar como concluidas`)
   }
-  return questions === 1
-    ? 'Responda a questao pendente desta aula para continuar'
-    : `Responda as ${questions} questoes pendentes desta aula para continuar`
+  return `Para concluir o curso ainda faltam: ${parts.join(' e ')}`
 }
 
 export function LessonView({
@@ -549,6 +576,7 @@ export function LessonView({
   lessons,
   activeIndex,
   onSelectLesson,
+  onGoToActivity,
   onBackToLanding,
   sidebarOpen,
   onToggleSidebar,
@@ -568,24 +596,43 @@ export function LessonView({
   const previous = activeIndex > 0 ? lessons[activeIndex - 1] : null
   const next = activeIndex < lessons.length - 1 ? lessons[activeIndex + 1] : null
 
-  // A lesson with QUESTION or CODE_EXERCISE blocks cannot be completed until every one of them is
-  // done (answered correctly / solved) - the backend enforces this too (see
-  // ProgressService#markComplete), this is just what keeps the button itself from ever attempting a
-  // completion that would be rejected.
-  const pendingBlocks = canTrackProgress
-    ? blocks.filter(
-      (block) =>
-        (block.type === 'question' && !answeredQuestionBlockIds?.has(block.id)) ||
-        (block.type === 'code_exercise' && !passedExerciseBlockIds?.has(block.id)),
+  // A lesson with QUESTION or CODE_EXERCISE blocks cannot be marked complete until every one of
+  // them is done (answered correctly / solved) - the backend enforces this too (see
+  // ProgressService#markComplete). Moving between lessons is never blocked by it: the sidebar lets
+  // the student go anywhere, so "Proxima aula" must not be the one door that stays shut.
+  const isPending = (block) =>
+    (block.type === 'question' && !answeredQuestionBlockIds?.has(block.id)) ||
+    (block.type === 'code_exercise' && !passedExerciseBlockIds?.has(block.id))
+  const pendingBlocks = canTrackProgress ? blocks.filter(isPending) : []
+  const hasPendingActivities = pendingBlocks.length > 0
+
+  // Finishing the course is the one gate that stays, and it looks at the whole course, every time:
+  // all activities done, and every other lesson marked as concluded (this one is marked by the click).
+  const coursePending = canTrackProgress
+    ? lessons.flatMap((item) =>
+      (item.blocks || []).filter((block) => isActivity(block) && isPending(block))
+        .map((block) => ({ blockId: block.id, lessonId: item.id })))
+    : []
+  const lessonsToMark = canTrackProgress
+    ? lessons.filter(
+      (item) => item.id !== lesson.id && !item.completed
+        && !(item.blocks || []).some((block) => isActivity(block) && isPending(block)),
     )
     : []
-  const hasPendingActivities = pendingBlocks.length > 0
-  const pendingQuestions = pendingBlocks.filter((block) => block.type === 'question').length
-  const pendingExercises = pendingBlocks.length - pendingQuestions
+  const cannotFinishCourse = !next && (coursePending.length > 0 || lessonsToMark.length > 0)
 
-  const scrollToFirstPending = () => {
-    document.getElementById(`block-${pendingBlocks[0].id}`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  const goToFirstMissing = () => {
+    if (coursePending.length > 0) {
+      const target = coursePending[0]
+      if (target.lessonId === lesson.id) {
+        document.getElementById(`block-${target.blockId}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else {
+        onGoToActivity?.(target)
+      }
+    } else if (lessonsToMark.length > 0) {
+      onSelectLesson(lessonsToMark[0].id)
+    }
   }
 
   // Arriving from the "Atividades" tab: wait for the lesson's blocks to be in the DOM, then bring
@@ -600,10 +647,10 @@ export function LessonView({
   }, [scrollToBlockId, lesson.id, onScrolledToBlock])
 
   // Advancing always navigates immediately; marking the lesson complete (if this course tracks
-  // progress) happens in the background and never blocks that navigation. Pending questions are
-  // the one thing that does block it: advance() simply isn't wired to the button in that case.
+  // progress) happens in the background and never blocks that navigation. A lesson that still has
+  // pending activities is simply left unmarked - the student can come back to it from the sidebar.
   const advance = () => {
-    if (canTrackProgress && !lesson.completed) onCompleteLesson(lesson.id)
+    if (canTrackProgress && !lesson.completed && !hasPendingActivities) onCompleteLesson(lesson.id)
     if (next) onSelectLesson(next.id)
     else onBackToLanding()
   }
@@ -634,6 +681,17 @@ export function LessonView({
               <CheckCircle2 size={16} /> Licao concluida
             </span>
           )}
+          {canTrackProgress && !lesson.completed && (
+            <button
+              type="button"
+              className="btn-secondary mt-4"
+              onClick={() => onCompleteLesson(lesson.id)}
+              disabled={hasPendingActivities}
+              title={hasPendingActivities ? 'Resolva as atividades desta aula para poder conclui-la' : undefined}
+            >
+              <CheckCircle2 size={16} /> Marcar como concluida
+            </button>
+          )}
         </header>
 
         {blocks.length === 0 ? (
@@ -655,13 +713,13 @@ export function LessonView({
       {/* Fixed to the viewport (not just the end of the article) so advancing never requires
         scrolling down to find it. */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
-        {hasPendingActivities && (
+        {cannotFinishCourse && (
           <button
             type="button"
-            onClick={scrollToFirstPending}
+            onClick={goToFirstMissing}
             className="block w-full border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-xs font-medium text-amber-300 underline-offset-2 hover:underline sm:px-6"
           >
-            {pendingText(pendingQuestions, pendingExercises)}
+            {finishCourseText(coursePending.length, lessonsToMark.length)}
           </button>
         )}
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 py-3 pl-4 pr-20 sm:px-6">
@@ -674,7 +732,7 @@ export function LessonView({
             <ChevronLeft size={16} />
             <span className="min-w-0 truncate">{previous?.title}</span>
           </button>
-          <Button onClick={advance} className="min-w-0" disabled={hasPendingActivities}>
+          <Button onClick={advance} className="min-w-0" disabled={cannotFinishCourse}>
             <span className="min-w-0 truncate">{next ? 'Proxima aula' : 'Concluir curso'}</span>
             {next ? <ChevronRight size={16} /> : <CheckCircle2 size={16} />}
           </Button>

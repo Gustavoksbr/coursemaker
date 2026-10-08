@@ -138,7 +138,7 @@ export function MessageThread({ nickname, onNavigate }) {
         </Link>
       </header>
 
-      <div className="flex max-h-[45vh] min-h-[30vh] flex-col space-y-4 overflow-y-auto py-2">
+      <div className="flex max-h-[40vh] min-h-[12rem] flex-col space-y-4 overflow-y-auto py-2">
         {messages.map((message) => {
           const mine = message.sender.id === user.id
           return (
