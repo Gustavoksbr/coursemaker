@@ -1,4 +1,5 @@
-import { forwardRef, useId } from 'react'
+import { forwardRef, useId, useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 /**
@@ -49,14 +50,42 @@ export function Field({ label, error, hint, htmlFor, required, children, classNa
   )
 }
 
-export const Input = forwardRef(function Input({ className, invalid, ...props }, ref) {
-  return (
+export const Input = forwardRef(function Input({ className, invalid, type, ...props }, ref) {
+  const [visible, setVisible] = useState(false)
+  const isPassword = type === 'password'
+
+  const input = (
     <input
       ref={ref}
+      type={isPassword && visible ? 'text' : type}
       aria-invalid={invalid || undefined}
-      className={cn('input', invalid && 'border-red-500 focus:border-red-500 focus:ring-red-500', className)}
+      className={cn(
+        'input',
+        invalid && 'border-red-500 focus:border-red-500 focus:ring-red-500',
+        isPassword && 'pr-11',
+        className,
+      )}
       {...props}
     />
+  )
+  if (!isPassword) return input
+
+  // Every password field gets a show/hide toggle; the button sits on the input's right edge.
+  return (
+    <div className="relative">
+      {input}
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setVisible((current) => !current)}
+        disabled={props.disabled}
+        aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
+        aria-pressed={visible}
+        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+    </div>
   )
 })
 

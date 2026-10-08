@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react'
 
+const DRAG_MIME = 'application/x-coursemaker-row'
+
 /**
  * Drag-and-drop reordering on top of the native HTML5 drag events — no dependency needed for a
  * vertical list.
@@ -43,8 +45,9 @@ export function useDragReorder(items, onReorder, { idKey = 'id' } = {}) {
       onDragStart: (event) => {
         setDraggingId(id)
         event.dataTransfer.effectAllowed = 'move'
-        // Firefox ignores a drag that carries no data.
-        event.dataTransfer.setData('text/plain', id)
+        // Firefox ignores a drag that carries no data. Use a custom type, not text/plain: text
+        // fields accept text/plain drops and would paste the id into whatever the row landed on.
+        event.dataTransfer.setData(DRAG_MIME, String(id))
       },
       onDragOver: (event) => {
         event.preventDefault()
