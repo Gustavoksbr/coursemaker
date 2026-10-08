@@ -9,6 +9,7 @@ import { CourseCard } from '@/components/course/CourseCard'
 import { PostCard } from '@/components/post/PostCard'
 import { TrilhaCard } from '@/components/trilha/TrilhaCard'
 import { EmptyState, ErrorState, PageLoader } from '@/components/ui/Feedback'
+import { PageMeta } from '@/components/layout/PageMeta'
 import { useAuth } from '@/context/AuthContext'
 import { useAuthModal } from '@/context/AuthModalContext'
 import { getPublicProfile, userKeys } from '@/api/users'
@@ -57,6 +58,11 @@ export default function PublicProfilePage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6">
+      <PageMeta
+        title={`${profile.name} (@${profile.nickname})`}
+        description={profile.bio || `Perfil de ${profile.name}: cursos, trilhas e posts publicados.`}
+        noindex={Boolean(profile.deleted)}
+      />
       <header className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
         <Avatar src={profile.image} name={profile.name} size="xl" />
 

@@ -13,6 +13,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { Thumbnail } from '@/components/ui/Thumbnail'
 import { TrilhaItemsList } from '@/components/trilha/TrilhaItemsList'
 import { CommentThread } from '@/components/comments/CommentThread'
+import { PageMeta } from '@/components/layout/PageMeta'
 import { useAuth } from '@/context/AuthContext'
 import { useAuthModal } from '@/context/AuthModalContext'
 import { useToast } from '@/context/ToastContext'
@@ -136,6 +137,11 @@ export default function TrilhaViewPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
+      <PageMeta
+        title={trilha.title}
+        description={trilha.description}
+        noindex={trilha.visibility !== 'public' || trilha.status !== 'available'}
+      />
       <header className="space-y-4">
         <ContentBadges
           status={trilha.status}

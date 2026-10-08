@@ -19,6 +19,7 @@ import { useToast } from '@/context/ToastContext'
 import { getPostBySlug, postKeys } from '@/api/posts'
 import { errorMessage } from '@/lib/api'
 import { formatDate } from '@/lib/format'
+import { PageMeta } from '@/components/layout/PageMeta'
 
 export default function PostViewPage() {
   const { nickname, slug } = useParams()
@@ -53,6 +54,11 @@ export default function PostViewPage() {
 
   return (
     <>
+      <PageMeta
+        title={post.title}
+        description={post.description}
+        noindex={post.visibility !== 'public' || post.status !== 'available'}
+      />
       <article className="mx-auto max-w-3xl space-y-8 px-4 py-8 sm:px-6">
         <header className="space-y-4">
           <ContentBadges

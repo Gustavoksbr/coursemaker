@@ -4,6 +4,7 @@ import { AreaProvider } from '@/context/AreaContext'
 import { Navbar } from './Navbar'
 import { MessagesModal } from '@/components/messages/MessagesModal'
 import { AuthModal } from '@/components/auth/AuthModal'
+import { RouteMeta } from './PageMeta'
 
 const GITHUB_URL = 'https://github.com/Gustavoksbr/coursemaker'
 
@@ -15,6 +16,7 @@ export function Layout() {
         <Navbar />
         <MessagesModal />
         <AuthModal />
+        <RouteMeta />
         <main className="flex-1">
           <Outlet />
         </main>
@@ -51,6 +53,7 @@ export function FullHeightLayout() {
         <Navbar />
         <MessagesModal />
         <AuthModal />
+        <RouteMeta />
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>

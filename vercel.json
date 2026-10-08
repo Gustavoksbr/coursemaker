@@ -3,7 +3,44 @@
   "buildCommand": "npm --prefix web install && npm --prefix web run build",
   "outputDirectory": "web/dist",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    {
+      "source": "/courses/:nickname/:slug",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|WhatsApp|Twitterbot|Slackbot|Discordbot|TelegramBot|LinkedInBot|Googlebot|Google-InspectionTool|bingbot|Applebot|Pinterest|redditbot|Embedly|SkypeUriPreview|Mastodon|DuckDuckBot|YandexBot).*" }],
+      "destination": "/api/seo?kind=course&nickname=:nickname&slug=:slug"
+    },
+    {
+      "source": "/posts/:nickname/:slug",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|WhatsApp|Twitterbot|Slackbot|Discordbot|TelegramBot|LinkedInBot|Googlebot|Google-InspectionTool|bingbot|Applebot|Pinterest|redditbot|Embedly|SkypeUriPreview|Mastodon|DuckDuckBot|YandexBot).*" }],
+      "destination": "/api/seo?kind=post&nickname=:nickname&slug=:slug"
+    },
+    {
+      "source": "/trilhas/:nickname/:slug",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|WhatsApp|Twitterbot|Slackbot|Discordbot|TelegramBot|LinkedInBot|Googlebot|Google-InspectionTool|bingbot|Applebot|Pinterest|redditbot|Embedly|SkypeUriPreview|Mastodon|DuckDuckBot|YandexBot).*" }],
+      "destination": "/api/seo?kind=trilha&nickname=:nickname&slug=:slug"
+    },
+    {
+      "source": "/users/:nickname",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|WhatsApp|Twitterbot|Slackbot|Discordbot|TelegramBot|LinkedInBot|Googlebot|Google-InspectionTool|bingbot|Applebot|Pinterest|redditbot|Embedly|SkypeUriPreview|Mastodon|DuckDuckBot|YandexBot).*" }],
+      "destination": "/api/seo?kind=user&nickname=:nickname"
+    },
+    {
+      "source": "/escolas/:slug",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|WhatsApp|Twitterbot|Slackbot|Discordbot|TelegramBot|LinkedInBot|Googlebot|Google-InspectionTool|bingbot|Applebot|Pinterest|redditbot|Embedly|SkypeUriPreview|Mastodon|DuckDuckBot|YandexBot).*" }],
+      "destination": "/api/seo?kind=school&slug=:slug"
+    },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+      ]
+    }
   ],
   "env": {
     "VITE_API_URL": "https://coursemaker-rawh.onrender.com"

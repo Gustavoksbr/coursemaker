@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { BookOpen, ExternalLink, GraduationCap, Waypoints } from 'lucide-react'
 import { CourseCard } from '@/components/course/CourseCard'
+import { PageMeta } from '@/components/layout/PageMeta'
 import { PostCard } from '@/components/post/PostCard'
 import { TrilhaCard } from '@/components/trilha/TrilhaCard'
 import { EmptyState, ErrorState, PageLoader } from '@/components/ui/Feedback'
@@ -63,6 +64,7 @@ export default function SchoolPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6">
+      <PageMeta title={school.name} description={school.description} />
       <header className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
         {school.logoUrl ? (
           <img

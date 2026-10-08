@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { Compass } from 'lucide-react'
+import { PageMeta } from '@/components/layout/PageMeta'
 
 export default function NotFoundPage() {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
+      <PageMeta title="Página não encontrada" noindex />
       <Compass className="text-slate-700" size={40} />
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Pagina nao encontrada</h1>

@@ -1,0 +1,15 @@
+# Telas privadas, de edicao e de conta nao tem nada para indexar.
+User-agent: *
+Allow: /
+Disallow: /profile
+Disallow: /biblioteca
+Disallow: /mensagens
+Disallow: /admin/
+Disallow: /posts/new
+Disallow: /code-playground
+Disallow: /setup-nickname
+Disallow: /redefinir-senha
+Disallow: /*/edit
+Disallow: /*/certificado
+
+Sitemap: https://coursemakerbr.vercel.app/sitemap.xml

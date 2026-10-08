@@ -33,6 +33,7 @@ import { CertificateButton } from '@/components/shared/CertificateButton'
 import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
 import { ConfirmModal } from '@/components/ui/Modal'
+import { PageMeta } from '@/components/layout/PageMeta'
 import { CourseTrilhasSection } from '@/components/trilha/CourseTrilhasSection'
 import { RelatedItemsSection } from '@/components/related/RelatedItemsSection'
 import { useAuth } from '@/context/AuthContext'
@@ -277,6 +278,11 @@ export default function CourseViewPage() {
 
   return (
     <>
+      <PageMeta
+        title={course.name}
+        description={course.description || detail.landingDescription}
+        noindex={course.visibility !== 'public' || course.status !== 'available'}
+      />
       <div className="flex flex-1">
         {/* Minimizado: faixa de icones sempre a mostra (em telas largas so quando o menu esta recolhido). */}
         {hasSidebar && (
