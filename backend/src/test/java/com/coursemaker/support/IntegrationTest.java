@@ -29,6 +29,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code @Transactional} boundaries are all exercised exactly as they are in production.
  */
 @SpringBootTest
+@org.springframework.test.context.TestPropertySource(properties = {
+        // Pinned so the tests do not depend on the dev's .env or on the shipped defaults.
+        "app.private-content-rate-limit.max-attempts=5",
+        "app.private-content-rate-limit.block-minutes=15",
+        "app.password-reset.rate-limit.max-per-client=3",
+        "app.password-reset.rate-limit.ip-max=10",
+        "app.password-reset.rate-limit.max-per-email=6",
+        "app.password-reset.rate-limit.window-seconds=3600",
+        "app.password-reset.rate-limit.block-seconds=3600",
+        "app.register-rate-limit.max-attempts=20",
+        "app.register-rate-limit.window-seconds=600",
+        "app.register-rate-limit.block-seconds=60",
+        "app.login-rate-limit.max-attempts=5",
+        "app.login-rate-limit.window-seconds=300",
+        "app.login-rate-limit.block-seconds=900",
+        "app.login-rate-limit.ip-max-attempts=20"})
 @AutoConfigureMockMvc
 public abstract class IntegrationTest {
 

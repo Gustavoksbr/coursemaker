@@ -12,6 +12,7 @@ import com.coursemaker.service.AuthService;
 import com.coursemaker.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -34,14 +35,15 @@ public class AuthController {
 
     @Operation(summary = "Cria uma conta e devolve o JWT")
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request,
+                                                 HttpServletRequest http) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request, http.getRemoteAddr()));
     }
 
-    @Operation(summary = "Autentica com email ou nickname e senha. Bloqueia por 15min apos 5 falhas")
+    @Operation(summary = "Autentica com email ou nickname e senha. Limita falhas por IP + identificador (configuravel via .env)")
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        return authService.login(request, http.getRemoteAddr());
     }
 
     @Operation(summary = "Autentica com um ID token do Google Identity Services")
@@ -58,8 +60,9 @@ public class AuthController {
 
     @Operation(summary = "Envia um email de redefinicao de senha, se o email existir")
     @PostMapping("/password-reset/request")
-    public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody RequestPasswordResetRequest request) {
-        passwordResetService.requestReset(request.email());
+    public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody RequestPasswordResetRequest request,
+                                                     HttpServletRequest http) {
+        passwordResetService.requestReset(request.email(), http.getRemoteAddr());
         return ResponseEntity.noContent().build();
     }
 

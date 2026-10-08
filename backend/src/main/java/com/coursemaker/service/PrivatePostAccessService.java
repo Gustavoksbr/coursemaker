@@ -14,7 +14,9 @@ import com.coursemaker.repository.PrivatePostAccessRepository;
 import com.coursemaker.repository.PrivatePostVerifiedRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.UUID;
 
@@ -38,6 +40,7 @@ public class PrivatePostAccessService {
     private final PasswordHasher passwordHasher;
     private final RateLimitService rateLimitService;
     private final PostAccessService postAccessService;
+    private final PlatformTransactionManager transactionManager;
 
     /**
      * Re-grants access to a returning reader who has verified the password before. Called on the
@@ -57,30 +60,35 @@ public class PrivatePostAccessService {
         }
     }
 
-    @Transactional
+    /** Not one big transaction, on purpose: see {@link PrivateCourseAccessService#validatePassword}. */
     public PrivateAccessResponse validatePassword(UUID postId, String password, User user) {
-        Post post = postRepository.findByIdWithOwner(postId)
-                .orElseThrow(() -> ResourceNotFoundException.of("Post"));
-        postAccessService.requireVisible(post, user);
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        String passwordHash = tx.execute(status -> {
+            Post post = postRepository.findByIdWithOwner(postId)
+                    .orElseThrow(() -> ResourceNotFoundException.of("Post"));
+            postAccessService.requireVisible(post, user);
 
-        if (!post.isPrivate()) {
-            throw new BadRequestException("Este post nao e privado");
-        }
-        if (post.getPasswordHash() == null) {
-            throw new BadRequestException("Este post ainda nao tem uma senha definida");
-        }
+            if (!post.isPrivate()) {
+                throw new BadRequestException("Este post nao e privado");
+            }
+            if (post.getPasswordHash() == null) {
+                throw new BadRequestException("Este post ainda nao tem uma senha definida");
+            }
+            return post.getPasswordHash();
+        });
 
         String rateLimitKey = RateLimitService.privatePostKey(postId, user.getId());
         rateLimitService.assertNotBlocked(rateLimitKey);
+        // Counted before the check, atomically, so a parallel burst of guesses cannot outrun the limit.
+        rateLimitService.consume(rateLimitKey);
 
-        if (!passwordHasher.matches(password, post.getPasswordHash())) {
-            rateLimitService.recordFailure(rateLimitKey);
+        if (!passwordHasher.matches(password, passwordHash)) {
             throw new UnauthorizedException("Senha incorreta. Tentativas restantes: "
                     + rateLimitService.remainingAttempts(rateLimitKey));
         }
 
         rateLimitService.recordSuccess(rateLimitKey);
-        grant(user.getId(), postId);
+        tx.executeWithoutResult(status -> grant(user.getId(), postId));
         return new PrivateAccessResponse(true, rateLimitService.getMaxAttempts());
     }
 

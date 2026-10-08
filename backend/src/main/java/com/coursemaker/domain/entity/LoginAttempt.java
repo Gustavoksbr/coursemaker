@@ -36,6 +36,10 @@ public class LoginAttempt {
     @Column(name = "blocked_until")
     private Instant blockedUntil;
 
+    /** When the current counting window opened; null for rows that are not window-based. */
+    @Column(name = "window_start")
+    private Instant windowStart;
+
     public boolean isBlockedAt(Instant now) {
         return blockedUntil != null && blockedUntil.isAfter(now);
     }

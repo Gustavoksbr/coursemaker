@@ -8,16 +8,19 @@ import com.coursemaker.dto.auth.AuthDtos.GoogleLoginRequest;
 import com.coursemaker.dto.auth.AuthDtos.LoginRequest;
 import com.coursemaker.dto.auth.AuthDtos.RegisterRequest;
 import com.coursemaker.dto.user.UserResponse;
+import com.coursemaker.exception.ApiErrorResponse;
 import com.coursemaker.exception.ApiExceptions.ConflictException;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import com.coursemaker.exception.ApiExceptions.UnauthorizedException;
 import com.coursemaker.repository.UserRepository;
 import com.coursemaker.service.GoogleTokenVerifier.GoogleProfile;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -32,8 +35,35 @@ public class AuthService {
     private final RateLimitService rateLimitService;
     private final GoogleTokenVerifier googleTokenVerifier;
 
-    @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    @Value("${app.register-rate-limit.max-attempts}")
+    private int registerMaxAttempts;
+
+    @Value("${app.register-rate-limit.window-seconds}")
+    private long registerWindowSeconds;
+
+    @Value("${app.register-rate-limit.block-seconds}")
+    private long registerBlockSeconds;
+
+    @Value("${app.login-rate-limit.max-attempts}")
+    private int loginMaxAttempts;
+
+    @Value("${app.login-rate-limit.window-seconds}")
+    private long loginWindowSeconds;
+
+    @Value("${app.login-rate-limit.block-seconds}")
+    private long loginBlockSeconds;
+
+    @Value("${app.login-rate-limit.ip-max-attempts}")
+    private int loginIpMaxAttempts;
+
+    // Deliberately NOT @Transactional: the rate limiter commits in its own transaction (REQUIRES_NEW),
+    // and holding a connection here while it asks for a second one starves the pool under a burst.
+    public AuthResponse register(RegisterRequest request, String clientIp) {
+        // Every attempt counts (bcrypt is expensive and accounts are free), so a script cannot spam
+        // sign-ups or burn CPU. Per IP, never global, so nobody can lock others out of registering.
+        rateLimitService.consume(RateLimitService.registerIpKey(clientIp), new RateLimitService.Policy(
+                registerMaxAttempts, Duration.ofSeconds(registerWindowSeconds), Duration.ofSeconds(registerBlockSeconds)));
+
         String email = request.email().trim().toLowerCase();
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ConflictException("Ja existe uma conta com este email");
@@ -51,11 +81,30 @@ public class AuthService {
         return toAuthResponse(userRepository.save(user));
     }
 
-    @Transactional
-    public AuthResponse login(LoginRequest request) {
+    /**
+     * Failures are throttled per client, never per account: the buckets are {@code (ip, identifier)}
+     * and {@code ip}. Locking by identifier alone would let anyone lock a victim out just by failing
+     * logins against their email (account-lockout DoS). Here the attacker only blocks themselves.
+     * The per-IP bucket is not cleared on success, so a valid account of their own cannot be used
+     * to reset the counter between guesses.
+     */
+    // Deliberately NOT @Transactional: the rate limiter commits in its own transaction (REQUIRES_NEW),
+    // and holding a connection here while it asks for a second one starves the pool under a burst.
+    public AuthResponse login(LoginRequest request, String clientIp) {
         String identifier = request.identifier().trim().toLowerCase();
-        String rateLimitKey = RateLimitService.loginKey(identifier);
-        rateLimitService.assertNotBlocked(rateLimitKey);
+        String clientKey = RateLimitService.loginClientKey(clientIp, identifier);
+        String ipKey = RateLimitService.loginIpKey(clientIp);
+        rateLimitService.assertNotBlocked(clientKey);
+        rateLimitService.assertNotBlocked(ipKey);
+
+        // The attempt is counted BEFORE the password is checked (atomically), so a parallel burst
+        // cannot all pass the check while the slow bcrypt runs. A correct password gives it back.
+        Duration window = Duration.ofSeconds(loginWindowSeconds);
+        Duration block = Duration.ofSeconds(loginBlockSeconds);
+        RateLimitService.Policy clientPolicy = new RateLimitService.Policy(loginMaxAttempts, window, block);
+        RateLimitService.Policy ipPolicy = new RateLimitService.Policy(loginIpMaxAttempts, window, block);
+        int clientLeft = rateLimitService.consume(clientKey, clientPolicy);
+        int ipLeft = rateLimitService.consume(ipKey, ipPolicy);
 
         // Nicknames are restricted to "^[a-z0-9][a-z0-9-]*$" (see UpdateUserRequest), so they can
         // never contain "@" - that's what tells the two apart in a single input field.
@@ -66,11 +115,13 @@ public class AuthService {
         // response cannot be used to enumerate accounts.
         if (user == null || user.getPasswordHash() == null
                 || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            rateLimitService.recordFailure(rateLimitKey);
-            throw new UnauthorizedException("Credenciais invalidas");
+            int left = Math.min(clientLeft, ipLeft);
+            throw new UnauthorizedException("Credenciais invalidas").withRateLimit(
+                    new ApiErrorResponse.RateLimitInfo(left, block.toSeconds(), left == 0 ? block.toSeconds() : null));
         }
 
-        rateLimitService.recordSuccess(rateLimitKey);
+        rateLimitService.recordSuccess(clientKey);
+        rateLimitService.refund(ipKey, loginIpMaxAttempts);
         return toAuthResponse(user);
     }
 

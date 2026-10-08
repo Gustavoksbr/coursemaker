@@ -92,9 +92,16 @@ se fosse um login. Tem rate limit próprio, com cooldown de reenvio.
 
 ### Proteção contra força bruta
 
-`LoginAttempts` conta falhas consecutivas por identificador. 5 falhas bloqueiam por 15 minutos
-(`app.rate-limit.*`), e a resposta 429 traz o header `Retry-After`. Vale para o login e para a
-senha de curso privado (chave por `curso:usuário`). Qualquer sucesso zera o contador.
+`LoginAttempts` conta falhas. Na senha de curso/post privado, 5 falhas consecutivas bloqueiam por
+15 minutos (`app.private-content-rate-limit.*`, env `PRIVATE_CONTENT_RATE_LIMIT_MAX_ATTEMPTS` / `_BLOCK_MINUTES`; chave por `curso:usuário`; vale também para o token de reset de senha). A resposta 429 traz `Retry-After`.
+
+**Login** (`app.login-rate-limit.*`, configurável no `.env`: `LOGIN_RATE_LIMIT_MAX_ATTEMPTS`,
+`_WINDOW_SECONDS`, `_BLOCK_SECONDS`, `_IP_MAX_ATTEMPTS`): N falhas dentro de uma janela de W segundos
+bloqueiam por B segundos. O limite é por **IP + identificador** e por **IP**, nunca só pela conta —
+assim ninguém consegue travar o login de outra pessoa errando a senha do e-mail dela (DoS por bloqueio
+de conta); o atacante só bloqueia a si mesmo. O contador por IP não zera num login bem-sucedido, para
+que uma conta própria não sirva para resetá-lo. Atrás de proxy (Render) o IP real vem de
+`X-Forwarded-For` (`FORWARD_HEADERS_STRATEGY=native`).
 
 ## Endpoints
 

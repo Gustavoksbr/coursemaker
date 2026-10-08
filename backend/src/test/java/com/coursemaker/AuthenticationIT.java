@@ -87,14 +87,18 @@ class AuthenticationIT extends IntegrationTest {
         register();
 
         for (int attempt = 1; attempt <= 5; attempt++) {
+            // Every failure tells the UI how many tries are left; the 5th one reports the block.
             post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", "errada"), Caller.ANONYMOUS)
-                    .andExpect(status().isUnauthorized());
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.rateLimit.remainingAttempts").value(5 - attempt))
+                    .andExpect(jsonPath("$.rateLimit.blockSeconds").value(900));
         }
 
         // The sixth attempt is refused before the password is even checked...
         post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", "errada"), Caller.ANONYMOUS)
                 .andExpect(status().isTooManyRequests())
-                .andExpect(header().exists("Retry-After"));
+                .andExpect(header().exists("Retry-After"))
+                .andExpect(jsonPath("$.rateLimit.retryAfterSeconds").isNumber());
 
         // ...and the block holds even for the correct password.
         post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", PASSWORD), Caller.ANONYMOUS)
@@ -103,6 +107,33 @@ class AuthenticationIT extends IntegrationTest {
         Integer blocked = jdbc.queryForObject(
                 "SELECT count(*) FROM login_attempts WHERE blocked_until > now()", Integer.class);
         assertThat(blocked).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("um atacante em outro IP nao consegue bloquear o login do dono da conta")
+    void attackerCannotLockTheOwnerOut() throws Exception {
+        register();
+
+        for (int attempt = 1; attempt <= 6; attempt++) {
+            loginFrom("203.0.113.9", EMAIL, "errada");
+        }
+        // The attacker is throttled...
+        loginFrom("203.0.113.9", EMAIL, "errada").andExpect(status().isTooManyRequests());
+
+        // ...but the real owner, from another address, still gets in.
+        loginFrom("198.51.100.7", EMAIL, PASSWORD).andExpect(status().isOk());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions loginFrom(String ip, String identifier,
+                                                                         String password) throws Exception {
+        return mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/api/v1/auth/login")
+                .with(request -> {
+                    request.setRemoteAddr(ip);
+                    return request;
+                })
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("identifier", identifier, "password", password))));
     }
 
     @Test
@@ -116,7 +147,8 @@ class AuthenticationIT extends IntegrationTest {
         post("/api/v1/auth/login", Map.of("identifier", EMAIL, "password", PASSWORD), Caller.ANONYMOUS)
                 .andExpect(status().isOk());
 
-        Integer remaining = jdbc.queryForObject("SELECT count(*) FROM login_attempts", Integer.class);
+        Integer remaining = jdbc.queryForObject(
+                "SELECT count(*) FROM login_attempts WHERE identifier LIKE 'login:%'", Integer.class);
         assertThat(remaining).isZero();
 
         // The counter really is back to zero: four more failures still do not block.

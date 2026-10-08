@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -106,5 +107,33 @@ class PasswordResetIT extends IntegrationTest {
                 .andExpect(status().isTooManyRequests());
 
         then(mailSender).should(times(1)).send(eq(user.email()), contains("Redefinir"), anyString());
+    }
+
+    @Test
+    @DisplayName("limita pedidos de email por IP+email, igual para email cadastrado ou nao, sem travar o dono")
+    void requestsAreThrottledPerClientWithoutLockingTheOwnerOut() throws Exception {
+        String victim = "vitima@example.com"; // not registered: the limit must not depend on that
+
+        for (int i = 1; i <= 3; i++) {
+            requestFrom("203.0.113.9", victim).andExpect(status().isNoContent());
+        }
+        requestFrom("203.0.113.9", victim)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"));
+
+        // Someone else asking for the same inbox is not affected by the attacker's block.
+        requestFrom("198.51.100.7", victim).andExpect(status().isNoContent());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions requestFrom(String ip, String email)
+            throws Exception {
+        return mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/api/v1/auth/password-reset/request")
+                .with(request -> {
+                    request.setRemoteAddr(ip);
+                    return request;
+                })
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("email", email))));
     }
 }

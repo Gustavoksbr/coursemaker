@@ -39,8 +39,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiErrorResponse> handleApiException(ApiException ex, HttpServletRequest request) {
         HttpStatus status = ex.getStatus();
-        ApiErrorResponse body = ApiErrorResponse.of(
-                status.value(), status.getReasonPhrase(), ex.getMessage(), request.getRequestURI());
+        ApiErrorResponse body = ex.getRateLimit() != null
+                ? ApiErrorResponse.withRateLimit(status.value(), status.getReasonPhrase(), ex.getMessage(),
+                        request.getRequestURI(), ex.getRateLimit())
+                : ApiErrorResponse.of(
+                        status.value(), status.getReasonPhrase(), ex.getMessage(), request.getRequestURI());
 
         if (ex instanceof RateLimitExceededException rateLimited) {
             return ResponseEntity.status(status)

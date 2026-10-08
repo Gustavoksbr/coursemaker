@@ -11,7 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -40,6 +41,7 @@ public class PasswordResetService {
     private final RateLimitService rateLimitService;
     private final ResendMailSender mailSender;
     private final AuthService authService;
+    private final PlatformTransactionManager transactionManager;
 
     @Value("${app.password-reset.token-ttl-minutes}")
     private int tokenTtlMinutes;
@@ -47,14 +49,31 @@ public class PasswordResetService {
     @Value("${app.password-reset.resend-cooldown-seconds}")
     private int resendCooldownSeconds;
 
+    @Value("${app.password-reset.rate-limit.max-per-client}")
+    private int maxPerClient;
+
+    @Value("${app.password-reset.rate-limit.max-per-email}")
+    private int maxPerEmail;
+
+    @Value("${app.password-reset.rate-limit.ip-max}")
+    private int ipMax;
+
+    @Value("${app.password-reset.rate-limit.window-seconds}")
+    private long windowSeconds;
+
+    @Value("${app.password-reset.rate-limit.block-seconds}")
+    private long blockSeconds;
+
     @Value("${app.public-url}")
     private String publicUrl;
 
-    @Transactional
-    public void requestReset(String rawEmail) {
+    // Deliberately NOT @Transactional: the rate limiter commits in its own transaction (REQUIRES_NEW),
+    // and holding a connection here while it asks for a second one starves the pool under a burst.
+    public void requestReset(String rawEmail, String clientIp) {
         String email = rawEmail.trim().toLowerCase(Locale.ROOT);
         String rateLimitKey = RateLimitService.passwordResetKey(email);
         rateLimitService.assertNotBlocked(rateLimitKey);
+        throttleRequests(email, clientIp);
 
         User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
         if (user == null) {
@@ -83,29 +102,55 @@ public class PasswordResetService {
         mailSender.send(user.getEmail(), "Redefinir sua senha - CourseMaker", emailHtml(user.getName(), link));
     }
 
-    @Transactional
+    /**
+     * Every request counts - whether or not the email is registered - so the 429 is the same for
+     * existing and unknown addresses (no enumeration). Three buckets: (ip, email) keeps one client
+     * from flooding an inbox without being able to burn the victim's own quota; ip stops one client
+     * from spraying many inboxes; email is a generous global backstop against a distributed flood.
+     */
+    private void throttleRequests(String email, String clientIp) {
+        String clientKey = RateLimitService.resetRequestClientKey(clientIp, email);
+        String ipKey = RateLimitService.resetRequestIpKey(clientIp);
+        String emailKey = RateLimitService.resetRequestEmailKey(email);
+        rateLimitService.assertNotBlocked(clientKey);
+        rateLimitService.assertNotBlocked(ipKey);
+        rateLimitService.assertNotBlocked(emailKey);
+
+        Duration window = Duration.ofSeconds(windowSeconds);
+        Duration block = Duration.ofSeconds(blockSeconds);
+        rateLimitService.consume(clientKey, new RateLimitService.Policy(maxPerClient, window, block));
+        rateLimitService.consume(ipKey, new RateLimitService.Policy(ipMax, window, block));
+        rateLimitService.consume(emailKey, new RateLimitService.Policy(maxPerEmail, window, block));
+    }
+
+    /** Not one big transaction: see the note on requestReset. The writes run in a short one of their own. */
     public AuthResponse confirmReset(String rawToken, String newPassword) {
-        PasswordResetToken token = tokenRepository.findByTokenHash(hash(rawToken)).orElse(null);
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        String tokenHash = hash(rawToken);
 
         // Once a token resolves to a user, brute-force protection keys off that account, same as
         // login; an unrecognised token falls back to a shared key so blind guessing still gets
         // throttled without needing to know who it belongs to.
-        String rateLimitKey = token != null
-                ? RateLimitService.passwordResetKey(token.getUser().getEmail())
-                : "password-reset:unknown-token";
+        String rateLimitKey = tx.execute(status -> tokenRepository.findByTokenHash(tokenHash)
+                .map(token -> RateLimitService.passwordResetKey(token.getUser().getEmail()))
+                .orElse("password-reset:unknown-token"));
         rateLimitService.assertNotBlocked(rateLimitKey);
+        rateLimitService.consume(rateLimitKey);
 
-        if (token == null || !token.isUsable(Instant.now())) {
-            rateLimitService.recordFailure(rateLimitKey);
-            throw new BadRequestException("Link invalido ou expirado. Peca um novo.");
-        }
-
-        User user = token.getUser();
-        user.setPasswordHash(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-
-        token.setUsedAt(Instant.now());
-        tokenRepository.save(token);
+        User user = tx.execute(status -> {
+            PasswordResetToken token = tokenRepository.findByTokenHash(tokenHash).orElse(null);
+            if (token == null || !token.isUsable(Instant.now())) {
+                throw new BadRequestException("Link invalido ou expirado. Peca um novo.");
+            }
+            // Single use, enforced by the database: of two parallel confirms with the same link only
+            // the one that flips used_at from NULL wins (a read-then-write check would let both in).
+            if (tokenRepository.markUsed(token.getId(), Instant.now()) != 1) {
+                throw new BadRequestException("Link invalido ou expirado. Peca um novo.");
+            }
+            User owner = token.getUser();
+            owner.setPasswordHash(passwordEncoder.encode(newPassword));
+            return userRepository.save(owner);
+        });
 
         rateLimitService.recordSuccess(rateLimitKey);
         return authService.afterPasswordReset(user);

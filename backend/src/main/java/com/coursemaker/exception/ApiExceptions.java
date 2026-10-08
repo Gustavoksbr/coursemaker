@@ -15,6 +15,7 @@ public final class ApiExceptions {
     public abstract static class ApiException extends RuntimeException {
 
         private final HttpStatus status;
+        private ApiErrorResponse.RateLimitInfo rateLimit;
 
         protected ApiException(HttpStatus status, String message) {
             super(message);
@@ -23,6 +24,16 @@ public final class ApiExceptions {
 
         public HttpStatus getStatus() {
             return status;
+        }
+
+        public ApiErrorResponse.RateLimitInfo getRateLimit() {
+            return rateLimit;
+        }
+
+        /** Attaches throttling info to the error body (see {@link ApiErrorResponse.RateLimitInfo}). */
+        public ApiException withRateLimit(ApiErrorResponse.RateLimitInfo rateLimit) {
+            this.rateLimit = rateLimit;
+            return this;
         }
     }
 
@@ -80,6 +91,7 @@ public final class ApiExceptions {
         public RateLimitExceededException(String message, long retryAfterSeconds) {
             super(HttpStatus.TOO_MANY_REQUESTS, message);
             this.retryAfterSeconds = retryAfterSeconds;
+            withRateLimit(new ApiErrorResponse.RateLimitInfo(0, null, retryAfterSeconds));
         }
 
         public long getRetryAfterSeconds() {

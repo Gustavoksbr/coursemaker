@@ -22,7 +22,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -48,38 +50,56 @@ public class EnrollmentService {
     private final LessonRepository lessonRepository;
     private final LessonCompletionRepository lessonCompletionRepository;
     private final NotificationService notificationService;
+    private final PlatformTransactionManager transactionManager;
 
-    @Transactional
+    /**
+     * Not one big transaction: unlocking a private course runs the password rate limiter, which
+     * commits in its own transaction, and nesting that inside an open one deadlocks the connection
+     * pool under a burst. So: (1) a short transaction decides whether a password is needed,
+     * (2) the unlock runs with no transaction open, (3) a second short transaction enrolls.
+     */
     public EnrollmentStatusResponse enroll(UUID courseId, String password, User user) {
-        Course course = courseService.loadVisible(courseId, user);
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
 
-        if (!course.isPublished()) {
-            throw new ForbiddenException("Este curso ainda e um rascunho");
-        }
-        if (accessService.isOwner(course, user)) {
-            throw new ForbiddenException("Voce ja e o dono deste curso");
-        }
+        Boolean needsUnlock = tx.execute(status -> {
+            Course course = courseService.loadVisible(courseId, user);
 
-        // A private course needs the password unlocked first; sending it inline lets the frontend
-        // do "type password -> enroll" in a single step.
-        if (course.isPrivate()) {
-            privateAccessService.restoreIfPreviouslyVerified(course, user);
-            if (!accessService.canViewContent(course, user)) {
-                if (password == null || password.isBlank()) {
-                    throw new ForbiddenException("Informe a senha do curso para se matricular");
-                }
-                privateAccessService.validatePassword(courseId, password, user);
+            if (!course.isPublished()) {
+                throw new ForbiddenException("Este curso ainda e um rascunho");
             }
+            if (accessService.isOwner(course, user)) {
+                throw new ForbiddenException("Voce ja e o dono deste curso");
+            }
+
+            // A private course needs the password unlocked first; sending it inline lets the frontend
+            // do "type password -> enroll" in a single step.
+            if (course.isPrivate()) {
+                privateAccessService.restoreIfPreviouslyVerified(course, user);
+                if (!accessService.canViewContent(course, user)) {
+                    if (password == null || password.isBlank()) {
+                        throw new ForbiddenException("Informe a senha do curso para se matricular");
+                    }
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        if (Boolean.TRUE.equals(needsUnlock)) {
+            privateAccessService.validatePassword(courseId, password, user);
         }
 
-        UserCourseId key = new UserCourseId(user.getId(), courseId);
-        if (!enrollmentRepository.existsById(key)) {
-            enrollmentRepository.save(Enrollment.of(user.getId(), courseId));
-            notificationService.notify(course.getOwner(), user, NotificationType.ENROLLMENT, EntityKind.COURSE,
-                    course.getId(), course.getName(),
-                    "/courses/" + course.getOwner().getNickname() + "/" + course.getSlug());
-        }
-        return status(courseId, user);
+        return tx.execute(status -> {
+            Course course = courseService.loadVisible(courseId, user);
+            UserCourseId key = new UserCourseId(user.getId(), courseId);
+            if (!enrollmentRepository.existsById(key)) {
+                enrollmentRepository.save(Enrollment.of(user.getId(), courseId));
+                notificationService.notify(course.getOwner(), user, NotificationType.ENROLLMENT, EntityKind.COURSE,
+                        course.getId(), course.getName(),
+                        "/courses/" + course.getOwner().getNickname() + "/" + course.getSlug());
+            }
+            return status(courseId, user);
+        });
     }
 
     @Transactional

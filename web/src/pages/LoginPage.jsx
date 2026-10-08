@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { AuthShell } from '@/components/auth/AuthShell'
@@ -8,6 +8,7 @@ import { Field, Input } from '@/components/ui/Field'
 import { useAuth } from '@/context/AuthContext'
 import { errorMessage, fieldErrors } from '@/lib/api'
 import { LIMITS } from '@/lib/constants'
+import { loginFailureMessage, rateLimitOf } from '@/lib/rateLimit'
 
 export default function LoginPage() {
   const { login, loginWithGoogle, isAuthenticated, loading: bootstrapping } = useAuth()
@@ -17,6 +18,28 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Throttling state from the last failed attempt, plus a ticking clock while a block is running.
+  const [limit, setLimit] = useState(null)
+  const [blockedUntil, setBlockedUntil] = useState(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  const secondsLeft = blockedUntil ? Math.max(0, Math.ceil((blockedUntil - now) / 1000)) : 0
+  const blocked = secondsLeft > 0
+
+  useEffect(() => {
+    if (!blockedUntil) return undefined
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [blockedUntil])
+
+  // When the countdown reaches zero the block is over: clear it so the form is usable again.
+  useEffect(() => {
+    if (blockedUntil && secondsLeft === 0) {
+      setBlockedUntil(null)
+      setLimit(null)
+      setFormError('')
+    }
+  }, [blockedUntil, secondsLeft])
 
   const redirectTo = location.state?.from?.pathname ?? '/biblioteca'
 
@@ -35,10 +58,17 @@ export default function LoginPage() {
     setSubmitting(true)
     setErrors({})
     setFormError('')
+    setLimit(null)
     try {
       afterAuth(await login(form.identifier.trim(), form.password))
     } catch (error) {
       setErrors(fieldErrors(error))
+      const info = rateLimitOf(error)
+      setLimit(info)
+      if (info?.retryAfterSeconds != null) {
+        setNow(Date.now())
+        setBlockedUntil(Date.now() + info.retryAfterSeconds * 1000)
+      }
       setFormError(errorMessage(error, 'Nao foi possivel entrar.'))
     } finally {
       setSubmitting(false)
@@ -72,9 +102,18 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         {formError && (
-          <div className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm text-red-300"
+          >
             <AlertCircle size={16} className="mt-0.5 shrink-0" />
-            <p>{formError}</p>
+            <div className="space-y-1">
+              <p>{formError}</p>
+              {/* Always tell the user where they stand: tries left, or how long the block lasts. */}
+              {loginFailureMessage(limit, secondsLeft) && (
+                <p className="font-medium text-red-200">{loginFailureMessage(limit, secondsLeft)}</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -114,8 +153,8 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <Button type="submit" loading={submitting} className="w-full">
-          Entrar
+        <Button type="submit" loading={submitting} disabled={blocked} className="w-full">
+          {blocked ? `Aguarde ${secondsLeft} s` : 'Entrar'}
         </Button>
       </form>
 

@@ -14,7 +14,9 @@ import com.coursemaker.repository.PrivateCourseVerifiedRepository;
 import com.coursemaker.exception.ApiExceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.UUID;
 
@@ -40,6 +42,7 @@ public class PrivateCourseAccessService {
     private final PasswordHasher passwordHasher;
     private final RateLimitService rateLimitService;
     private final CourseAccessService courseAccessService;
+    private final PlatformTransactionManager transactionManager;
 
     /**
      * Re-grants access to a returning student who has verified the password before. Called on the
@@ -59,30 +62,40 @@ public class PrivateCourseAccessService {
         }
     }
 
-    @Transactional
+    /**
+     * Deliberately NOT one big transaction. The rate limiter commits in its own transaction
+     * (REQUIRES_NEW); doing that while this method already held a connection would need a second one
+     * per request and, under a burst, deadlock the whole pool. So the DB work runs in short
+     * transactions of its own and nothing is held open while the limiter or the hash check runs.
+     */
     public PrivateAccessResponse validatePassword(UUID courseId, String password, User user) {
-        Course course = courseRepository.findByIdWithOwner(courseId)
-                .orElseThrow(() -> ResourceNotFoundException.of("Curso"));
-        courseAccessService.requireVisible(course, user);
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        String passwordHash = tx.execute(status -> {
+            Course course = courseRepository.findByIdWithOwner(courseId)
+                    .orElseThrow(() -> ResourceNotFoundException.of("Curso"));
+            courseAccessService.requireVisible(course, user);
 
-        if (!course.isPrivate()) {
-            throw new BadRequestException("Este curso nao e privado");
-        }
-        if (course.getPasswordHash() == null) {
-            throw new BadRequestException("Este curso ainda nao tem uma senha definida");
-        }
+            if (!course.isPrivate()) {
+                throw new BadRequestException("Este curso nao e privado");
+            }
+            if (course.getPasswordHash() == null) {
+                throw new BadRequestException("Este curso ainda nao tem uma senha definida");
+            }
+            return course.getPasswordHash();
+        });
 
         String rateLimitKey = RateLimitService.privateCourseKey(courseId, user.getId());
         rateLimitService.assertNotBlocked(rateLimitKey);
+        // Counted before the check, atomically, so a parallel burst of guesses cannot outrun the limit.
+        rateLimitService.consume(rateLimitKey);
 
-        if (!passwordHasher.matches(password, course.getPasswordHash())) {
-            rateLimitService.recordFailure(rateLimitKey);
+        if (!passwordHasher.matches(password, passwordHash)) {
             throw new UnauthorizedException("Senha incorreta. Tentativas restantes: "
                     + rateLimitService.remainingAttempts(rateLimitKey));
         }
 
         rateLimitService.recordSuccess(rateLimitKey);
-        grant(user.getId(), courseId);
+        tx.executeWithoutResult(status -> grant(user.getId(), courseId));
         return new PrivateAccessResponse(true, rateLimitService.getMaxAttempts());
     }
 
