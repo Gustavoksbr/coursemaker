@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-10 sm:px-6">
       <header className="space-y-2">
         <h1 className="text-3xl font-bold text-slate-100">Política de Privacidade</h1>
-        <p className="text-sm text-slate-500">Última atualização: setembro de 2026</p>
+        <p className="text-sm text-slate-500">Última atualização: outubro de 2026</p>
       </header>
 
       <p className="text-slate-300">
@@ -26,6 +26,15 @@ export default function PrivacyPolicyPage() {
           <li>
             O conteúdo que você publica (cursos, posts, trilhas, comentários) e o que você faz com o
             conteúdo de outras pessoas (matrículas, progresso, curtidas, itens salvos).
+          </li>
+          <li>
+            O código que você escreve nos exercícios de código: a última versão enviada em cada
+            exercício fica salva, para você continuar de onde parou, junto com o resultado dos testes.
+          </li>
+          <li>As mensagens diretas que você troca com outras pessoas na plataforma.</li>
+          <li>
+            O seu endereço IP e o email usados nas tentativas de login, cadastro e recuperação de
+            senha. Servem apenas para limitar tentativas em excesso e proteger as contas contra abuso.
           </li>
         </ul>
         <p>Não pedimos CPF, telefone, endereço ou qualquer outro dado que o serviço não usa.</p>
@@ -55,6 +64,25 @@ export default function PrivacyPolicyPage() {
             usando agora (o frontend).
           </li>
           <li>
+            <strong className="text-slate-200">Executor de código (Piston)</strong> — quando você roda
+            ou envia o código de um exercício, ele é enviado ao nosso executor de código, um serviço
+            do próprio CourseMaker, hospedado na Render e baseado no{' '}
+            <a
+              href="https://github.com/engineer-man/piston"
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand-400 hover:text-brand-300"
+            >
+              Piston
+            </a>
+            , um projeto de código aberto. Ele executa o programa em um ambiente isolado e devolve
+            apenas a saída e o resultado dos testes. Nada é enviado se você não rodar um exercício.
+          </li>
+          <li>
+            <strong className="text-slate-200">Resend</strong> — envia o email de recuperação de
+            senha, quando você pede. Recebe o seu email e o link de redefinição.
+          </li>
+          <li>
             <strong className="text-slate-200">Cloudinary</strong> — hospeda as imagens que você
             envia (fotos de perfil, thumbnails, imagens de aula).
           </li>
@@ -69,8 +97,8 @@ export default function PrivacyPolicyPage() {
           </li>
         </ul>
         <p>
-          Supabase, Render e Vercel são infraestrutura: hospedam e processam os dados para o
-          CourseMaker funcionar, mas não os usam para nenhuma finalidade própria. Não vendemos nem
+          Supabase, Render, Vercel, Resend e o executor de código são infraestrutura: hospedam e
+          processam os dados para o CourseMaker funcionar, mas não os usam para nenhuma finalidade própria. Não vendemos nem
           compartilhamos seus dados para fins de publicidade.
         </p>
       </Section>
@@ -80,6 +108,11 @@ export default function PrivacyPolicyPage() {
           O CourseMaker não usa cookies de rastreamento, publicidade ou analytics. O login fica
           guardado no armazenamento local do seu navegador (localStorage), usado apenas para manter
           você autenticado - nada disso é compartilhado com terceiros.
+        </p>
+        <p>
+          Os vídeos das aulas são incorporados do YouTube ou do Google Drive. Quando você os
+          reproduz, esses serviços podem definir os próprios cookies; isso acontece nos servidores
+          deles e não é controlado pelo CourseMaker.
         </p>
       </Section>
 
@@ -92,10 +125,21 @@ export default function PrivacyPolicyPage() {
           </li>
           <li>
             <strong className="text-slate-200">Excluir sua conta</strong> pela mesma tela, na seção
-            "Zona de risco". A exclusão remove permanentemente seu email, foto, biografia e stacks.
-            Cursos, posts e trilhas que você publicou continuam existindo (para não afetar quem já
-            estuda por eles), mas passam a ser atribuídos a um "Usuário excluído" - sem nenhum dado
-            que identifique você. Essa ação é irreversível: não há como recuperar a conta depois.
+            "Zona de risco". A exclusão remove permanentemente seu email, nome, senha, foto,
+            biografia e stacks, e a conta passa a aparecer como "Usuário excluído". Essa ação é
+            irreversível: não há como recuperar a conta depois.
+            <ul>
+              <li>
+                Cursos, posts e trilhas que você publicou continuam existindo, para não afetar quem
+                já estuda por eles. O seu <em>nickname</em> permanece neles, porque faz parte do
+                endereço desses conteúdos.
+              </li>
+              <li>
+                Matrículas, progresso, comentários, mensagens e o código dos exercícios não são
+                apagados, mas ficam ligados a uma conta que já não tem email, nome nem foto. Para
+                pedir a remoção de algum conteúdo específico, escreva para o contato abaixo.
+              </li>
+            </ul>
           </li>
           <li>Solicitar portabilidade ou esclarecer qualquer dúvida pelo contato abaixo.</li>
         </ul>

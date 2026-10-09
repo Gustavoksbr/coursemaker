@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { AlertTriangle, Lock, Save } from 'lucide-react'
+import { AlertTriangle, Lock, Save, ShieldCheck } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Field'
@@ -171,15 +171,31 @@ export default function ProfilePage() {
 
       <UnsavedChangesPrompt blocker={blocker} />
 
+      <p className="flex items-center gap-2 text-sm text-slate-400">
+        <ShieldCheck size={16} className="shrink-0 text-slate-500" aria-hidden="true" />
+        <span>
+          Veja como tratamos seus dados na{' '}
+          <Link to="/privacidade" className="text-brand-400 hover:text-brand-300 hover:underline">
+            Politica de Privacidade
+          </Link>
+          .
+        </span>
+      </p>
+
       <section className="space-y-3 rounded-xl border border-red-500/30 bg-red-500/5 p-5">
         <div className="flex items-center gap-2 text-red-400">
           <AlertTriangle size={18} />
           <h2 className="font-semibold">Zona de risco</h2>
         </div>
         <p className="text-sm text-slate-400">
-          Excluir sua conta remove seu email, foto, bio e stacks permanentemente. Cursos, posts e
-          trilhas que voce publicou continuam no ar (para nao afetar quem ja estuda por eles), mas
-          aparecem como de um "Usuario excluido". Isso nao pode ser desfeito.
+          Excluir sua conta remove seu email, nome, foto, bio e stacks permanentemente. Cursos, posts e
+          trilhas que voce publicou continuam no ar (para nao afetar quem ja estuda por eles), com o
+          seu nickname, e a conta passa a aparecer como "Usuario excluido". Isso nao pode ser
+          desfeito. Os detalhes estao na{' '}
+          <Link to="/privacidade" className="text-brand-400 underline hover:text-brand-300">
+            Politica de Privacidade
+          </Link>
+          .
         </p>
         <Button variant="danger" onClick={() => setDeleteOpen(true)}>
           Excluir minha conta
