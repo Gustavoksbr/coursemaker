@@ -170,17 +170,23 @@ class CourseFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("apenas admin alterna o destaque")
-    void onlyAdminCanToggleFeatured() throws Exception {
+    @DisplayName("apenas admin escolhe os cursos em destaque na home")
+    void onlyAdminCanPickFeaturedCourses() throws Exception {
         TestUser owner = fixtures.user("ana");
         TestUser admin = fixtures.admin("chefe");
         UUID courseId = fixtures.publishedCourse(owner, "Curso Destaque");
 
-        post("/api/v1/courses/" + courseId + "/featured", null, owner.caller())
+        // The old POST /courses/{id}/featured toggle became PUT /admin/home-picks/courses with the exact list.
+        put("/api/v1/admin/home-picks/courses", Map.of("ids", List.of(courseId)), owner.caller())
                 .andExpect(status().isForbidden());
+        assertThat(getOk("/api/v1/courses/" + courseId, owner.caller()).get("summary").get("featured").asBoolean()).isFalse();
 
-        JsonNode featured = postOk("/api/v1/courses/" + courseId + "/featured", null, admin.caller());
-        assertThat(featured.get("featured").asBoolean()).isTrue();
+        putOk("/api/v1/admin/home-picks/courses", Map.of("ids", List.of(courseId)), admin.caller());
+        assertThat(getOk("/api/v1/courses/" + courseId, owner.caller()).get("summary").get("featured").asBoolean()).isTrue();
+
+        // the list is exact: sending an empty one takes it off again
+        putOk("/api/v1/admin/home-picks/courses", Map.of("ids", List.of()), admin.caller());
+        assertThat(getOk("/api/v1/courses/" + courseId, owner.caller()).get("summary").get("featured").asBoolean()).isFalse();
     }
 
     // --------------------------------------------------------------- filtering

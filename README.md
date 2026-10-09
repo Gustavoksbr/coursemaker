@@ -1,5 +1,7 @@
 # CourseMaker BR
 
+[![CI](https://github.com/Gustavoksbr/coursemaker/actions/workflows/ci.yml/badge.svg)](https://github.com/Gustavoksbr/coursemaker/actions/workflows/ci.yml)
+
 Plataforma de aprendizado aberta a qualquer pessoa: você pode ser aluno, professor, ou os dois ao
 mesmo tempo. Crie e publique cursos estruturados, trilhas e posts com blocos de conteúdo rico
 (texto, código, imagem e vídeo), ou simplesmente entre para aprender com o que a comunidade

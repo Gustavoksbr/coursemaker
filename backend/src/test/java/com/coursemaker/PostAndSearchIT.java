@@ -163,7 +163,7 @@ class PostAndSearchIT extends IntegrationTest {
         fixtures.publishedCourse(owner, "Curso Comum");
         UUID starred = fixtures.publishedCourse(owner, "Curso Destaque");
         fixtures.publishedPost(owner, "Post Recente");
-        postOk("/api/v1/courses/" + starred + "/featured", null, admin.caller());
+        putOk("/api/v1/admin/home-picks/courses", Map.of("ids", List.of(starred)), admin.caller());
 
         JsonNode result = getOk("/api/v1/search", Caller.ANONYMOUS);
 
