@@ -1,4 +1,4 @@
-# CourseMaker
+# CourseMaker BR
 
 Plataforma de aprendizado aberta a qualquer pessoa: você pode ser aluno, professor, ou os dois ao
 mesmo tempo. Crie e publique cursos estruturados, trilhas e posts com blocos de conteúdo rico
@@ -6,6 +6,22 @@ mesmo tempo. Crie e publique cursos estruturados, trilhas e posts com blocos de 
 publicou.
 
 🔗 **[coursemakerbr.vercel.app](https://coursemakerbr.vercel.app/)**
+
+> **English:** CourseMaker is an open-source online course platform (LMS), in Portuguese, where anyone can learn, teach, or both.
+> Build structured courses, learning paths and posts with rich blocks (text, images, video, quizzes and **runnable coding
+> exercises** in 12 programming languages, with hidden tests), track progress, earn **certificates**, message other users and
+> ask an **AI assistant** about the content. Spring Boot + React + PostgreSQL, with a Go gateway that runs students' code
+> on top of Piston.
+
+## ✨ O que você pode fazer
+
+- **Cursos, trilhas e posts** · courses, learning paths and posts, montados com blocos arrastáveis: texto formatado, imagens, vídeos, questões de múltipla escolha e exercícios de código.
+- **Exercícios de código executáveis** · runnable coding exercises: o aluno escreve, executa os exemplos e envia; o código roda isolado, em 12 linguagens, com limite de tempo e de memória. Testes escondidos mostram só quantos passaram, e a solução do autor está sempre disponível.
+- **Progresso e certificados** · progress tracking and certificates: matrícula, progresso por aula, conclusão do curso só com todas as atividades feitas, certificado para baixar e opção de desmatricular para refazer o curso.
+- **Biblioteca pessoal** · personal library: salve cursos, posts e trilhas em pastas e retome de onde parou.
+- **Social** · perfis públicos, curtidas, comentários, mensagens diretas em tempo real, notificações e um assistente de IA dentro do curso.
+- **Organização do conteúdo** · áreas, escolas (várias pessoas publicando sob o mesmo nome), cursos e posts públicos, privados com senha ou rascunho, busca com filtros e página inicial editável por administradores.
+- **Segurança** · login por e-mail e senha ou conta Google, recuperação de senha por e-mail, limite de tentativas por IP e por conta (sem permitir bloquear a conta de outra pessoa) e moderação de conteúdo.
 
 ## 📁 Estrutura
 
@@ -259,7 +275,7 @@ sem precisar de Docker nem do banco de desenvolvimento.
 
 
 
-## 🔑 Funcionalidades
+## 🔑 Recursos técnicos
 
 - Autenticação JWT (email/senha + Google Identity Services) e recuperação de senha por e-mail
 - Cursos, posts e trilhas com módulos/etapas, lições e blocos de conteúdo (texto, código, imagem,
