@@ -102,7 +102,12 @@ function createPayload(draft) {
   if (draft.type === BLOCK_TYPE.CODE_EXERCISE) {
     return { type: draft.type, language: draft.language, exercise: exerciseToPayload(draft.exercise) }
   }
-  return { type: draft.type, content: draft.content, language: draft.language }
+  return {
+    type: draft.type,
+    content: draft.content,
+    language: draft.language,
+    ...(draft.transcript?.trim() ? { transcript: draft.transcript } : {}),
+  }
 }
 
 /** Body of PATCH /blocks/{id}: only what changed, with an exercise form converted for the API. */
@@ -218,6 +223,8 @@ export function useCurriculumDraft(courseId, initialModules) {
           type: block.type,
           content: block.content,
           language: block.language,
+          // Only the author's own request carries it (see BlockResponse.ofOwner); '' = none.
+          transcript: block.transcript ?? '',
         }))
         dispatch({ type: 'SET_BLOCKS', lessonId, collection: emptyCollection(seeded) })
         return seeded
@@ -321,6 +328,7 @@ export function useCurriculumDraft(courseId, initialModules) {
               type: real.type,
               content: real.content,
               language: real.language,
+              transcript: real.transcript ?? '',
               // The form the creator just saved stays, so reopening it needs no round trip.
               ...(draft.exercise ? { exercise: draft.exercise } : {}),
             })

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
+import java.util.UUID;
 
 public final class AiChatDtos {
 
@@ -18,9 +19,14 @@ public final class AiChatDtos {
             @NotBlank @Size(max = 4000) String content) {
     }
 
+    /**
+     * @param lessonId the lesson the student has open (courses only). The assistant reads that lesson;
+     *                 absent, or not part of the course, it only knows the lesson titles.
+     */
     public record ChatRequest(
             @NotBlank @Size(max = 2000) String message,
-            @Size(max = 12) List<@Valid ChatMessage> history) {
+            @Size(max = 12) List<@Valid ChatMessage> history,
+            UUID lessonId) {
     }
 
     public record ChatResponse(String reply) {

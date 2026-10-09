@@ -44,8 +44,12 @@ public class LessonBlockService {
 
     @Transactional(readOnly = true)
     public List<BlockResponse> list(UUID lessonId, User viewer) {
-        lessonService.loadVisible(lessonId, viewer);
-        return blockRepository.findByLessonOrdered(lessonId).stream().map(BlockResponse::of).toList();
+        Lesson lesson = lessonService.loadVisible(lessonId, viewer);
+        // The author's editor gets each video's transcript back; everyone else never does.
+        boolean owner = accessService.isOwner(lesson.getModule().getCourse(), viewer);
+        return blockRepository.findByLessonOrdered(lessonId).stream()
+                .map(owner ? BlockResponse::ofOwner : BlockResponse::of)
+                .toList();
     }
 
     // create and update are not @Transactional as a whole: for a CODE_EXERCISE block the reference
@@ -61,6 +65,8 @@ public class LessonBlockService {
         } else if (request.exercise() != null) {
             throw new BadRequestException("Dados de exercicio so valem para blocos de exercicio de codigo");
         }
+        String transcript = BlockTranscripts.normalize(request.transcript());
+        requireVideoForTranscript(request.type(), transcript);
 
         PreparedExercise prepared = exercise;
         return tx.execute(status -> {
@@ -71,6 +77,7 @@ public class LessonBlockService {
                             ? prepared.publicContent()
                             : htmlSanitizer.sanitize(request.type(), request.content()))
                     .language(prepared != null ? prepared.language() : request.language())
+                    .transcript(transcript)
                     .orderIndex(blockRepository.findMaxOrder(lessonId) + 1)
                     .build();
 
@@ -78,7 +85,7 @@ public class LessonBlockService {
             if (prepared != null) {
                 codeExerciseService.persist(saved.getId(), prepared);
             }
-            return BlockResponse.of(saved);
+            return BlockResponse.ofOwner(saved);
         });
     }
 
@@ -91,6 +98,9 @@ public class LessonBlockService {
         }
         if (!isExercise && request.exercise() != null) {
             throw new BadRequestException("Dados de exercicio so valem para blocos de exercicio de codigo");
+        }
+        if (isExercise) {
+            requireVideoForTranscript(existing.getType(), BlockTranscripts.normalize(request.transcript()));
         }
 
         PreparedExercise exercise = null;
@@ -111,11 +121,19 @@ public class LessonBlockService {
                     block.setLanguage(prepared.language());
                     codeExerciseService.persist(blockId, prepared);
                 }
-                return BlockResponse.of(blockRepository.save(block));
+                return BlockResponse.ofOwner(blockRepository.save(block));
             }
 
             if (request.type() != null) {
                 block.setType(request.type());
+            }
+            if (request.transcript() != null) {
+                String transcript = BlockTranscripts.normalize(request.transcript());
+                requireVideoForTranscript(block.getType(), transcript);
+                block.setTranscript(transcript);
+            } else if (block.getType() != BlockType.VIDEO) {
+                // Turned into some other kind of block: a transcript no longer belongs to it.
+                block.setTranscript(null);
             }
             if (request.content() != null) {
                 block.setContent(htmlSanitizer.sanitize(block.getType(), request.content()));
@@ -123,7 +141,7 @@ public class LessonBlockService {
             if (request.language() != null) {
                 block.setLanguage(request.language());
             }
-            return BlockResponse.of(blockRepository.save(block));
+            return BlockResponse.ofOwner(blockRepository.save(block));
         });
     }
 
@@ -148,7 +166,14 @@ public class LessonBlockService {
         }
         blockRepository.saveAll(byId.values());
 
-        return blockRepository.findByLessonOrdered(lessonId).stream().map(BlockResponse::of).toList();
+        return blockRepository.findByLessonOrdered(lessonId).stream().map(BlockResponse::ofOwner).toList();
+    }
+
+    /** Only a video has something to transcribe. */
+    static void requireVideoForTranscript(BlockType type, String transcript) {
+        if (transcript != null && type != BlockType.VIDEO) {
+            throw new BadRequestException("A transcricao so vale para blocos de video");
+        }
     }
 
     private LessonBlock loadForEditing(UUID blockId, User viewer) {

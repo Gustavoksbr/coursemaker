@@ -29,6 +29,7 @@ import { CurriculumNav, flattenLessons } from '@/components/course/CurriculumNav
 import { CourseSidebar } from '@/components/course/CourseSidebar'
 import { SidebarDrawer } from '@/components/course/SidebarDrawer'
 import { CourseRail } from '@/components/course/CourseRail'
+import { EditCourseButton } from '@/components/course/EditCourseButton'
 import { CertificateButton } from '@/components/shared/CertificateButton'
 import { BlockToggleButton } from '@/components/shared/BlockToggleButton'
 import { PrivatePasswordModal } from '@/components/shared/PrivatePasswordModal'
@@ -287,8 +288,21 @@ export default function CourseViewPage() {
         }
       />
 
+      {/* Pinned for the owner on every page of the course; on a lesson it opens the editor on that lesson. */}
+      {detail.isOwner && (
+        <EditCourseButton
+          courseHref={courseHref(course)}
+          lesson={activeLesson ? { id: activeLesson.id, title: activeLesson.title } : null}
+        />
+      )}
+
       {detail.canViewContent && (
-        <ChatWidget kind="course" contentId={course.id} raised={Boolean(activeLesson)} />
+        <ChatWidget
+          kind="course"
+          contentId={course.id}
+          lesson={activeLesson ? { id: activeLesson.id, title: activeLesson.title } : null}
+          raised={Boolean(activeLesson)}
+        />
       )}
 
       <ConfirmModal

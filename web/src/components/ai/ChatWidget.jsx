@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
-import { Bot, GripHorizontal, Loader2, MessageCircle, Send, Sparkles, X } from 'lucide-react'
+import { BookOpen, Bot, FileText, GripHorizontal, Loader2, MessageCircle, Send, Sparkles, X } from 'lucide-react'
 import { chatAboutCourse, chatAboutPost } from '@/api/ai'
 import { useAuth } from '@/context/AuthContext'
 import { useDraggableWidget } from '@/hooks/useDraggableWidget'
@@ -17,16 +17,18 @@ const DEFAULT_BOTTOM = 24
 const RAISED_DEFAULT_BOTTOM = 104
 
 const SUGGESTIONS = {
-  course: ['Resuma este curso', 'Quais sao os principais topicos?', 'Por onde eu comeco?'],
+  // With a lesson open the assistant reads that lesson; without one it only knows the lesson titles.
+  lesson: ['Resuma esta aula', 'Quais sao os pontos principais?', 'Explique isso de forma simples'],
+  overview: ['Quais aulas tem este curso?', 'Por onde eu comeco?', 'Resuma este curso'],
   post: ['Resuma este post', 'Quais sao os pontos principais?', 'Explique isso de forma simples'],
 }
 
 const COPY = {
   course: {
     title: 'Assistente do curso',
-    subtitle: 'Pergunte sobre o conteudo das aulas',
-    empty: 'Faca uma pergunta ou escolha uma sugestao para que eu analise este curso.',
-    placeholder: 'Pergunte algo sobre o curso...',
+    subtitle: 'Responde sobre a aula que voce esta vendo',
+    empty: 'Faca uma pergunta ou escolha uma sugestao. Eu so enxergo a aula aberta no momento.',
+    placeholder: 'Pergunte algo sobre esta aula...',
   },
   post: {
     title: 'Assistente do post',
@@ -37,11 +39,36 @@ const COPY = {
 }
 
 /**
+ * What the assistant can see right now, shown to the student as a tag. On a course it is the open lesson
+ * (the server reads only that one - see AiChatContext) or, with no lesson open, just the lesson titles.
+ */
+export function chatContext(kind, lesson) {
+  if (kind === 'post') {
+    return { key: 'post', label: 'Este post', hint: 'Respondo com base no texto deste post.', icon: FileText }
+  }
+  if (lesson) {
+    return {
+      key: lesson.id,
+      label: lesson.title,
+      hint: 'Vejo so o conteudo desta aula. Para perguntar sobre outra aula, abra-a antes.',
+      icon: BookOpen,
+    }
+  }
+  return {
+    key: null,
+    label: 'Visao geral do curso',
+    hint: 'Nenhuma aula aberta: so conheco os titulos das aulas. Abra uma aula para perguntar sobre ela.',
+    icon: BookOpen,
+    muted: true,
+  }
+}
+
+/**
  * Floating chat bubble that answers questions grounded in a course's or post's own content.
  * Fully draggable (mouse or touch) so it can never get stuck on top of other controls - see
  * useDraggableWidget. `raised` only affects where it starts out before the user ever drags it.
  */
-export function ChatWidget({ kind, contentId, raised = false }) {
+export function ChatWidget({ kind, contentId, lesson = null, raised = false }) {
   const { isAuthenticated } = useAuth()
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([])
@@ -59,6 +86,8 @@ export function ChatWidget({ kind, contentId, raised = false }) {
 
   const copy = COPY[kind]
   const sendFn = kind === 'course' ? chatAboutCourse : chatAboutPost
+  const context = chatContext(kind, lesson)
+  const suggestions = kind === 'post' ? SUGGESTIONS.post : lesson ? SUGGESTIONS.lesson : SUGGESTIONS.overview
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -73,14 +102,17 @@ export function ChatWidget({ kind, contentId, raised = false }) {
     if (!message || sending) return
 
     const history = messages.map(({ role, content }) => ({ role, content }))
-    setMessages((prev) => [...prev, { role: 'user', content: message }])
+    // Remember what the assistant could see when this was asked: the lesson can change while the chat stays open.
+    const asked = { key: context.key, label: context.label }
+    setMessages((prev) => [...prev, { role: 'user', content: message, context: asked }])
     setInput('')
     setError('')
     setSending(true)
 
     try {
-      const { reply } = await sendFn(contentId, { message, history })
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+      const payload = kind === 'course' ? { message, history, lessonId: lesson?.id ?? null } : { message, history }
+      const { reply } = await sendFn(contentId, payload)
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply, context: asked }])
     } catch (err) {
       const status = statusOf(err)
       const fallback =
@@ -135,11 +167,19 @@ export function ChatWidget({ kind, contentId, raised = false }) {
             </button>
           </header>
 
+          <div className="border-b border-slate-800 bg-slate-900 px-4 py-2" data-testid="chat-context">
+            <div className="flex min-w-0 items-center gap-2 text-xs">
+              <span className="shrink-0 text-slate-500">Contexto:</span>
+              <ContextTag context={context} />
+            </div>
+            <p className="mt-1 text-[11px] leading-snug text-slate-500">{context.hint}</p>
+          </div>
+
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
             {messages.length === 0 ? (
               <>
                 <div className="flex flex-wrap gap-2">
-                  {SUGGESTIONS[kind].map((suggestion) => (
+                  {suggestions.map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
@@ -156,7 +196,14 @@ export function ChatWidget({ kind, contentId, raised = false }) {
                 </p>
               </>
             ) : (
-              messages.map((entry, index) => <Bubble key={index} role={entry.role} content={entry.content} />)
+              messages.map((entry, index) => (
+                <Fragment key={index}>
+                  {entry.role === 'user' && index > 0 && messages[index - 1].context?.key !== entry.context?.key && (
+                    <ContextDivider label={entry.context?.label} />
+                  )}
+                  <Bubble role={entry.role} content={entry.content} />
+                </Fragment>
+              ))
             )}
 
             {sending && (
@@ -195,6 +242,35 @@ export function ChatWidget({ kind, contentId, raised = false }) {
         </div>
       )}
     </>
+  )
+}
+
+function ContextTag({ context }) {
+  const Icon = context.icon
+  return (
+    <span
+      title={context.label}
+      className={cn(
+        'inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium',
+        context.muted
+          ? 'border-slate-700 bg-slate-800 text-slate-300'
+          : 'border-brand-500/40 bg-brand-500/10 text-brand-300',
+      )}
+    >
+      <Icon size={12} className="shrink-0" aria-hidden="true" />
+      <span className="truncate">{context.label}</span>
+    </span>
+  )
+}
+
+/** Marks where the assistant started looking at something else (the student opened another lesson). */
+function ContextDivider({ label }) {
+  return (
+    <p className="flex items-center gap-2 text-[11px] text-slate-500">
+      <span className="h-px flex-1 bg-slate-800" />
+      <span className="max-w-[80%] truncate">Agora sobre: {label}</span>
+      <span className="h-px flex-1 bg-slate-800" />
+    </p>
   )
 }
 

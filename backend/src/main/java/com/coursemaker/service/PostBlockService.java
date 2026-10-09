@@ -29,24 +29,31 @@ public class PostBlockService {
 
     @Transactional(readOnly = true)
     public List<BlockResponse> list(UUID postId, User viewer) {
-        postService.loadVisible(postId, viewer);
-        return blockRepository.findByPostOrdered(postId).stream().map(BlockResponse::of).toList();
+        Post post = postService.loadVisible(postId, viewer);
+        // The author's editor gets each video's transcript back; everyone else never does.
+        boolean owner = accessService.isOwner(post, viewer);
+        return blockRepository.findByPostOrdered(postId).stream()
+                .map(owner ? BlockResponse::ofOwner : BlockResponse::of)
+                .toList();
     }
 
     @Transactional
     public BlockResponse create(UUID postId, CreateBlockRequest request, User viewer) {
         Post post = postService.loadForEditing(postId, viewer);
         requireNotExercise(request.type());
+        String transcript = BlockTranscripts.normalize(request.transcript());
+        LessonBlockService.requireVideoForTranscript(request.type(), transcript);
 
         PostBlock block = PostBlock.builder()
                 .post(post)
                 .type(request.type())
                 .content(htmlSanitizer.sanitize(request.type(), request.content()))
                 .language(request.language())
+                .transcript(transcript)
                 .orderIndex(blockRepository.findMaxOrder(postId) + 1)
                 .build();
 
-        return BlockResponse.of(blockRepository.save(block));
+        return BlockResponse.ofOwner(blockRepository.save(block));
     }
 
     @Transactional
@@ -63,7 +70,14 @@ public class PostBlockService {
         if (request.language() != null) {
             block.setLanguage(request.language());
         }
-        return BlockResponse.of(blockRepository.save(block));
+        if (request.transcript() != null) {
+            String transcript = BlockTranscripts.normalize(request.transcript());
+            LessonBlockService.requireVideoForTranscript(block.getType(), transcript);
+            block.setTranscript(transcript);
+        } else if (block.getType() != com.coursemaker.domain.enums.BlockType.VIDEO) {
+            block.setTranscript(null);
+        }
+        return BlockResponse.ofOwner(blockRepository.save(block));
     }
 
     @Transactional
@@ -87,7 +101,7 @@ public class PostBlockService {
         }
         blockRepository.saveAll(byId.values());
 
-        return blockRepository.findByPostOrdered(postId).stream().map(BlockResponse::of).toList();
+        return blockRepository.findByPostOrdered(postId).stream().map(BlockResponse::ofOwner).toList();
     }
 
     private PostBlock loadForEditing(UUID blockId, User viewer) {

@@ -45,6 +45,13 @@ public class LessonBlock {
     @Column
     private String language;
 
+    /**
+     * Transcript of a VIDEO block, pasted by the author. Only the owner's editor ever gets it back from the
+     * API; students never see it. It exists so the AI assistant can answer about what the video says.
+     */
+    @Column(columnDefinition = "text")
+    private String transcript;
+
     @Column(name = "order_index", nullable = false)
     @Builder.Default
     private int orderIndex = 0;

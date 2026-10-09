@@ -21,11 +21,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Jsoup;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -36,19 +36,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
- * Backs the "Assistente" chat on course and post pages. It gathers every text/code block the
- * viewer is allowed to see, hands it to Groq as a system prompt, and answers the viewer's question
- * grounded in that content. Images and videos cannot be described this way, so they are skipped.
+ * Backs the "Assistente" chat on course and post pages. On a course it reads the lesson the viewer has
+ * open (plus the lesson titles, see {@link AiChatContext}); on a post, the post itself. The text goes to
+ * Groq as a system prompt and the answer is grounded in it. Images and videos cannot be described this
+ * way, so they are skipped.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiChatService {
 
-    private static final int MAX_CONTEXT_CHARS = 14_000;
+    private static final int MAX_POST_CHARS = 14_000;
     private static final int MAX_MESSAGES_PER_WINDOW = 20;
     private static final Duration RATE_LIMIT_WINDOW = Duration.ofMinutes(10);
 
@@ -86,17 +86,27 @@ public class AiChatService {
         Course course = courseService.loadVisible(courseId, viewer);
         courseAccessService.requireContentAccess(course, viewer);
 
-        String context = buildCourseContext(course);
-        String systemPrompt = systemPrompt("curso", course.getName(), context);
-        return chat(viewer, systemPrompt, request);
+        List<Module> modules = moduleRepository.findByCourseOrdered(course.getId());
+        List<Lesson> lessons = lessonRepository.findAllByCourseId(course.getId());
+        // Looked up among the course's own lessons, so an id from another course (or a stale one) just
+        // means "no lesson open" instead of leaking someone else's content.
+        Lesson open = request.lessonId() == null ? null : lessons.stream()
+                .filter(lesson -> lesson.getId().equals(request.lessonId()))
+                .findFirst()
+                .orElse(null);
+        List<LessonBlock> blocks = open == null ? List.of() : lessonBlockRepository.findByLessonOrdered(open.getId());
+
+        String context = AiChatContext.courseContext(
+                course.getName(), course.getDescription(), modules, lessons, open, blocks,
+                AiChatContext.searchQuery(request.message(), request.history()));
+        return chat(viewer, AiChatContext.systemPrompt(course.getName(), context), request);
     }
 
     public ChatResponse chatAboutPost(UUID postId, ChatRequest request, User viewer) {
         Post post = postService.loadVisible(postId, viewer);
 
-        String context = buildPostContext(post);
-        String systemPrompt = systemPrompt("post", post.getTitle(), context);
-        return chat(viewer, systemPrompt, request);
+        String context = buildPostContext(post, AiChatContext.searchQuery(request.message(), request.history()));
+        return chat(viewer, postSystemPrompt(post.getTitle(), context), request);
     }
 
     // ------------------------------------------------------------------- chat
@@ -110,7 +120,7 @@ public class AiChatService {
 
         List<GroqMessage> messages = new ArrayList<>();
         messages.add(new GroqMessage("system", systemPrompt));
-        for (ChatMessage turn : safeHistory(request.history())) {
+        for (ChatMessage turn : AiChatContext.trimHistory(request.history())) {
             messages.add(new GroqMessage(turn.role(), turn.content()));
         }
         messages.add(new GroqMessage("user", request.message()));
@@ -132,19 +142,34 @@ public class AiChatService {
                 throw new ServiceUnavailableException("O assistente nao conseguiu responder. Tente novamente.");
             }
             return new ChatResponse(reply.trim());
+        } catch (RestClientResponseException ex) {
+            int status = ex.getStatusCode().value();
+            if (status == 429) {
+                // The plan's per-minute token budget is shared by every student: ask them to wait a moment.
+                long retryAfter = retryAfterSeconds(ex);
+                log.warn("Groq devolveu 429 (limite de tokens por minuto); tentar de novo em {}s", retryAfter);
+                throw new RateLimitExceededException(
+                        "O assistente esta com muitas perguntas agora. Tente de novo em alguns segundos.", retryAfter);
+            }
+            log.error("Groq API respondeu {}: {}", status, ex.getResponseBodyAsString());
+            if (status == 413) {
+                throw new ServiceUnavailableException(
+                        "Esta pergunta e a conversa ficaram grandes demais para o assistente. Tente uma pergunta mais curta.");
+            }
+            throw new ServiceUnavailableException("O assistente de IA esta indisponivel no momento. Tente novamente em instantes.");
         } catch (RestClientException ex) {
             log.error("Falha ao chamar a Groq API", ex);
             throw new ServiceUnavailableException("O assistente de IA esta indisponivel no momento. Tente novamente em instantes.");
         }
     }
 
-    private List<ChatMessage> safeHistory(List<ChatMessage> history) {
-        if (history == null || history.isEmpty()) {
-            return List.of();
+    private static long retryAfterSeconds(RestClientResponseException ex) {
+        String header = ex.getResponseHeaders() == null ? null : ex.getResponseHeaders().getFirst("retry-after");
+        try {
+            return Math.max(1, Long.parseLong(header.trim()));
+        } catch (RuntimeException missingOrNotANumber) {
+            return 20;
         }
-        // Keep only the most recent turns; older context matters less than staying within budget.
-        int from = Math.max(0, history.size() - 8);
-        return history.subList(from, history.size());
     }
 
     private void assertNotRateLimited(UUID userId) {
@@ -166,11 +191,11 @@ public class AiChatService {
 
     // --------------------------------------------------------------- context
 
-    private String systemPrompt(String kind, String title, String context) {
+    private String postSystemPrompt(String title, String context) {
         return """
-                Voce e o assistente de IA do CourseMaker, integrado a pagina de um %s chamado "%s".
+                Voce e o assistente de IA do CourseMaker, integrado a pagina de um post chamado "%s".
                 Responda apenas com base no conteudo fornecido abaixo. Se a resposta nao estiver no
-                conteudo, diga que essa informacao nao esta disponivel neste %s em vez de inventar.
+                conteudo, diga que essa informacao nao esta disponivel neste post em vez de inventar.
                 Responda sempre em portugues do Brasil, de forma clara e objetiva.
 
                 Formate a resposta em Markdown simples quando ajudar a leitura: paragrafos curtos,
@@ -180,36 +205,10 @@ public class AiChatService {
                 ===== CONTEUDO =====
                 %s
                 ===== FIM DO CONTEUDO =====
-                """.formatted(kind, title, kind, context.isBlank() ? "(sem conteudo de texto disponivel)" : context);
+                """.formatted(title, context.isBlank() ? "(sem conteudo de texto disponivel)" : context);
     }
 
-    private String buildCourseContext(Course course) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Curso: ").append(course.getName()).append('\n');
-        if (course.getDescription() != null && !course.getDescription().isBlank()) {
-            sb.append("Descricao: ").append(course.getDescription()).append('\n');
-        }
-
-        List<Module> modules = moduleRepository.findByCourseOrdered(course.getId());
-        Map<UUID, List<Lesson>> lessonsByModule = lessonRepository.findAllByCourseId(course.getId()).stream()
-                .collect(Collectors.groupingBy(lesson -> lesson.getModule().getId()));
-
-        for (Module module : modules) {
-            sb.append("\n## Modulo: ").append(module.getTitle()).append('\n');
-            for (Lesson lesson : lessonsByModule.getOrDefault(module.getId(), List.of())) {
-                sb.append("\n### Aula: ").append(lesson.getTitle()).append('\n');
-                for (LessonBlock block : lessonBlockRepository.findByLessonOrdered(lesson.getId())) {
-                    appendBlock(sb, block.getType(), block.getContent(), block.getLanguage());
-                    if (sb.length() > MAX_CONTEXT_CHARS) {
-                        return truncate(sb);
-                    }
-                }
-            }
-        }
-        return truncate(sb);
-    }
-
-    private String buildPostContext(Post post) {
+    private String buildPostContext(Post post, String query) {
         StringBuilder sb = new StringBuilder();
         sb.append("Post: ").append(post.getTitle()).append('\n');
         if (post.getDescription() != null && !post.getDescription().isBlank()) {
@@ -217,34 +216,26 @@ public class AiChatService {
         }
         sb.append('\n');
 
-        for (PostBlock block : postBlockRepository.findByPostOrdered(post.getId())) {
-            appendBlock(sb, block.getType(), block.getContent(), block.getLanguage());
-            if (sb.length() > MAX_CONTEXT_CHARS) {
+        List<PostBlock> blocks = postBlockRepository.findByPostOrdered(post.getId());
+        long withTranscript = blocks.stream()
+                .filter(block -> block.getType() == BlockType.VIDEO && block.getTranscript() != null && !block.getTranscript().isBlank())
+                .count();
+        int perVideo = withTranscript == 0 ? 0 : AiChatContext.MAX_TRANSCRIPT_CHARS / (int) withTranscript;
+        for (PostBlock block : blocks) {
+            AiChatContext.appendBlock(sb, block.getType(), block.getContent(), block.getLanguage(),
+                    block.getTranscript(), query, perVideo);
+            if (sb.length() > MAX_POST_CHARS) {
                 break;
             }
         }
         return truncate(sb);
     }
 
-    private void appendBlock(StringBuilder sb, BlockType type, String content, String language) {
-        if (content == null || content.isBlank()) {
-            return;
-        }
-        switch (type) {
-            case TEXT -> sb.append(Jsoup.parse(content).text()).append('\n');
-            case CODE -> sb.append("```").append(language == null ? "" : language).append('\n')
-                    .append(content).append("\n```\n");
-            case IMAGE, VIDEO -> {
-                // No visual/transcript understanding yet: just note that media exists here.
-            }
-        }
-    }
-
     private String truncate(StringBuilder sb) {
-        if (sb.length() <= MAX_CONTEXT_CHARS) {
+        if (sb.length() <= MAX_POST_CHARS) {
             return sb.toString();
         }
-        return sb.substring(0, MAX_CONTEXT_CHARS) + "\n[...conteudo truncado...]";
+        return sb.substring(0, MAX_POST_CHARS) + "\n[...conteudo truncado...]";
     }
 
     // -------------------------------------------------------- Groq API shapes

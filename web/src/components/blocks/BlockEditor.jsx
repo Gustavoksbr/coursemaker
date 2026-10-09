@@ -3,6 +3,7 @@ import { Field, Select, Textarea } from '@/components/ui/Field'
 import { RichTextEditor } from './RichTextEditor'
 import { ImageUploadField } from './ImageUploadField'
 import { QuestionEditor } from './QuestionEditor'
+import { TranscriptField } from './TranscriptField'
 import { CodeExerciseEditor } from './CodeExerciseEditor'
 import { BLOCK_TYPE, LIMITS } from '@/lib/constants'
 import { HIGHLIGHTABLE_LANGUAGES } from '@/lib/highlighter'
@@ -97,6 +98,14 @@ export function BlockEditor({ block, onChange, courseId, onExerciseCheck }) {
             </div>
           )}
         </Field>
+      )}
+
+      {block.type === BLOCK_TYPE.VIDEO && (
+        <TranscriptField
+          blockId={block.id}
+          value={block.transcript ?? ''}
+          onChange={(next) => onChange({ transcript: next })}
+        />
       )}
 
       {block.type === BLOCK_TYPE.QUESTION && (

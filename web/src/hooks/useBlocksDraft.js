@@ -51,6 +51,8 @@ export function useBlocksDraft(parentId, api) {
       type: block.type,
       content: block.content,
       language: block.language,
+      // Only the author's own request carries it (see BlockResponse.ofOwner); '' = none.
+      transcript: block.transcript ?? '',
     }))
     dispatch({ type: 'SET', collection: emptyCollection(seeded) })
     return seeded
@@ -81,13 +83,19 @@ export function useBlocksDraft(parentId, api) {
     try {
       for (const draft of diffMutations(working).creates) {
         const real = await runStep('um bloco', () =>
-          api.create(parentId, { type: draft.type, content: draft.content, language: draft.language }),
+          api.create(parentId, {
+            type: draft.type,
+            content: draft.content,
+            language: draft.language,
+            ...(draft.transcript?.trim() ? { transcript: draft.transcript } : {}),
+          }),
         )
         working = commitCreate(working, draft.id, {
           id: real.id,
           type: real.type,
           content: real.content,
           language: real.language,
+          transcript: real.transcript ?? '',
         })
       }
       for (const { id, fields } of diffMutations(working).updates) {

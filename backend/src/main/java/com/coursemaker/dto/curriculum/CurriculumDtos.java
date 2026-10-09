@@ -6,6 +6,7 @@ import com.coursemaker.domain.entity.Module;
 import com.coursemaker.domain.entity.PostBlock;
 import com.coursemaker.domain.enums.BlockType;
 import com.coursemaker.dto.code.CodeExerciseDtos.ExerciseSpec;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -100,8 +101,10 @@ public final class CurriculumDtos {
                         BlockType type,
                         String content,
                         String language,
-                        int order) {
+                        int order,
+                        @JsonInclude(JsonInclude.Include.NON_NULL) String transcript) {
 
+                /** The public shape: what a student gets. The transcript is never part of it. */
                 public static BlockResponse of(LessonBlock block) {
                         return new BlockResponse(
                                         block.getId(),
@@ -109,7 +112,8 @@ public final class CurriculumDtos {
                                         block.getType(),
                                         block.getContent(),
                                         block.getLanguage(),
-                                        block.getOrderIndex());
+                                        block.getOrderIndex(),
+                                        null);
                 }
 
                 public static BlockResponse of(PostBlock block) {
@@ -119,7 +123,21 @@ public final class CurriculumDtos {
                                         block.getType(),
                                         block.getContent(),
                                         block.getLanguage(),
-                                        block.getOrderIndex());
+                                        block.getOrderIndex(),
+                                        null);
+                }
+
+                /** For the author's editor: the public shape plus the video transcript they pasted. */
+                public static BlockResponse ofOwner(LessonBlock block) {
+                        return of(block).withTranscript(block.getTranscript());
+                }
+
+                public static BlockResponse ofOwner(PostBlock block) {
+                        return of(block).withTranscript(block.getTranscript());
+                }
+
+                private BlockResponse withTranscript(String transcript) {
+                        return new BlockResponse(id, parentId, type, content, language, order, transcript);
                 }
         }
 
@@ -129,6 +147,9 @@ public final class CurriculumDtos {
         // file.
         private static final int MAX_BLOCK_CONTENT_LENGTH = 100_000;
 
+        // A video transcript: an hour of speech is about 60,000 characters.
+        private static final int MAX_TRANSCRIPT_LENGTH = 100_000;
+
         /**
          * {@code exercise} only applies to CODE_EXERCISE blocks, whose content is built by the server
          * from it (a client-sent {@code content} is ignored for them).
@@ -137,21 +158,26 @@ public final class CurriculumDtos {
                         @NotNull BlockType type,
                         @Size(max = MAX_BLOCK_CONTENT_LENGTH) String content,
                         @Size(max = 50) String language,
-                        @Valid ExerciseSpec exercise) {
+                        @Valid ExerciseSpec exercise,
+                        @Size(max = MAX_TRANSCRIPT_LENGTH) String transcript) {
 
                 public CreateBlockRequest(BlockType type, String content, String language) {
-                        this(type, content, language, null);
+                        this(type, content, language, null, null);
                 }
         }
 
+        /**
+         * {@code transcript}: absent leaves it as it is, an empty string removes it. Only VIDEO blocks have one.
+         */
         public record UpdateBlockRequest(
                         BlockType type,
                         @Size(max = MAX_BLOCK_CONTENT_LENGTH) String content,
                         @Size(max = 50) String language,
-                        @Valid ExerciseSpec exercise) {
+                        @Valid ExerciseSpec exercise,
+                        @Size(max = MAX_TRANSCRIPT_LENGTH) String transcript) {
 
                 public UpdateBlockRequest(BlockType type, String content, String language) {
-                        this(type, content, language, null);
+                        this(type, content, language, null, null);
                 }
         }
 
