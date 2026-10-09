@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { OpenMessagesButton } from '@/components/messages/MessagesModal'
 import { Navigate, useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Mail, Pencil, Save, X, TriangleAlert } from 'lucide-react'
+import { Eye, Mail, Pencil, Save, X, TriangleAlert, ArrowLeft } from 'lucide-react'
 import { CoursePreview } from '@/components/course/CoursePreview'
 import { CourseRail } from '@/components/course/CourseRail'
 import { SidebarDrawer } from '@/components/course/SidebarDrawer'
@@ -192,7 +192,16 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
             onClick={() => navigate(courseHref(course))}
             className="btn-ghost text-xs"
           >
-            <X size={14} /> Cancelar alteracoes
+            {/* Sem nada para salvar nao ha o que "cancelar": e so uma volta para a pagina do curso. */}
+            {isDirty ? (
+              <>
+                <X size={14} /> Cancelar alteracoes
+              </>
+            ) : (
+              <>
+                <ArrowLeft size={14} /> Voltar para a pagina do curso
+              </>
+            )}
           </button>
         </header>
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { OpenMessagesButton } from '@/components/messages/MessagesModal'
 import { Navigate, useNavigate, useParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Mail, Save, X } from 'lucide-react'
+import { Eye, Mail, Save, X, ArrowLeft } from 'lucide-react'
 import { TrilhaPreview } from '@/components/trilha/TrilhaPreview'
 import { TrilhaSettingsPanel } from '@/components/trilha/TrilhaSettingsPanel'
 import { TrilhaStructureEditor } from '@/components/trilha/TrilhaStructureEditor'
@@ -135,7 +135,16 @@ function TrilhaEditorContent({ detail, trilhaQueryKey, onDeleted }) {
           }
           className="btn-ghost text-xs"
         >
-          <X size={14} /> Cancelar alteracoes
+          {/* Sem nada para salvar nao ha o que "cancelar": e so uma volta para a pagina da trilha. */}
+          {isDirty ? (
+            <>
+              <X size={14} /> Cancelar alteracoes
+            </>
+          ) : (
+            <>
+              <ArrowLeft size={14} /> Voltar para a pagina da trilha
+            </>
+          )}
         </button>
       </header>
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { OpenMessagesButton } from '@/components/messages/MessagesModal'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff, Mail, Save, Trash2, X } from 'lucide-react'
+import { Eye, EyeOff, Mail, Save, Trash2, X, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { CategoryInput } from '@/components/ui/CategoryInput'
@@ -241,7 +241,16 @@ export default function PostEditorPage() {
               }
               className="btn-ghost text-xs"
             >
-              <X size={14} /> Cancelar alteracoes
+              {/* Sem nada para salvar nao ha o que "cancelar": e so uma volta para a pagina do post. */}
+              {contentDirty ? (
+                <>
+                  <X size={14} /> Cancelar alteracoes
+                </>
+              ) : (
+                <>
+                  <ArrowLeft size={14} /> Voltar para a pagina do post
+                </>
+              )}
             </button>
           </>
         )}
