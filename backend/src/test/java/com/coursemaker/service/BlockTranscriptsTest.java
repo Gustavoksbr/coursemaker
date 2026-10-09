@@ -81,6 +81,56 @@ class BlockTranscriptsTest {
     }
 
     @Test
+    void readsTheMomentAStudentAsksAbout() {
+        assertThat(BlockTranscripts.queryTime("o q ele fala no minuto  6")).isEqualTo(360);
+        assertThat(BlockTranscripts.queryTime("o que diz no minuto 6?")).isEqualTo(360);
+        assertThat(BlockTranscripts.queryTime("resuma a parte aos 12 minutos")).isEqualTo(720);
+        assertThat(BlockTranscripts.queryTime("o que acontece em 1:30?")).isEqualTo(90);
+        assertThat(BlockTranscripts.queryTime("e em 1:02:03")).isEqualTo(3723);
+        assertThat(BlockTranscripts.queryTime("o que e um vetor?")).isEqualTo(-1);
+        assertThat(BlockTranscripts.queryTime(null)).isEqualTo(-1);
+    }
+
+    @Test
+    void aQuestionAboutAMinuteGetsThatStretchOfAParagraphStyleTranscript() {
+        // A summary written as paragraphs, each opening with its time in parentheses, like the one Gemini gives.
+        String transcript = IntStream.range(0, 14)
+                .mapToObj(i -> "(%d:00) Paragrafo %02d. %s".formatted(i, i, "texto sobre o assunto ".repeat(30)))
+                .collect(Collectors.joining("\n"));
+        assertThat(transcript.length()).isGreaterThan(7_000);
+
+        String excerpt = BlockTranscripts.excerpt(transcript, "o q ele fala no minuto  6 fala", 4_500);
+
+        assertThat(excerpt.length()).isLessThanOrEqualTo(4_500);
+        assertThat(excerpt).contains("(6:00) Paragrafo 06");
+        // and the paragraph that follows it, because the answer often runs into it
+        assertThat(excerpt).contains("(7:00) Paragrafo 07");
+    }
+
+    @Test
+    void theMinuteAlsoWorksWhenTheTimesAreOnTheirOwnLines() {
+        String transcript = IntStream.range(0, 40)
+                .mapToObj(i -> "%d:%02d\nfala numero %02d %s".formatted(i / 6, (i % 6) * 10, i, "palavras ".repeat(25)))
+                .collect(Collectors.joining("\n"));
+
+        String excerpt = BlockTranscripts.excerpt(transcript, "o que diz aos 3 minutos?", 3_000);
+
+        assertThat(excerpt.length()).isLessThanOrEqualTo(3_000);
+        assertThat(excerpt).contains("3:00 fala numero 18");
+    }
+
+    @Test
+    void aLongParagraphIsCutAtAWordAndKeepsItsTime() {
+        String transcript = "(0:00) " + "abc ".repeat(600) + "\n(5:00) " + "def ".repeat(600);
+
+        int[] starts = BlockTranscripts.chunkStarts(java.util.List.of(
+                "(0:00) abc abc", "abc abc abc", "(5:00) def def", "def def"));
+
+        assertThat(starts).containsExactly(0, 0, 300, 300);
+        assertThat(BlockTranscripts.excerpt(transcript, "minuto 5", 2_000)).contains("(5:00) def");
+    }
+
+    @Test
     void stopwordsAndShortWordsAreNotSearchTerms() {
         assertThat(BlockTranscripts.queryTerms("quero a aula sobre o video")).isEmpty();
         assertThat(BlockTranscripts.queryTerms("como funciona o laço while")).contains("func", "laco", "whil");

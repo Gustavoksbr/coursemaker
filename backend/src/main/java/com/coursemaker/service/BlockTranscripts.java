@@ -25,6 +25,12 @@ final class BlockTranscripts {
     private static final Pattern CUE_TIMING = Pattern.compile(
             "^(?:(\\d{1,2}):)?(\\d{1,2}):(\\d{2})[.,]\\d{1,3}\\s*-->.*$");
     private static final Pattern CUE_INDEX = Pattern.compile("^\\d+$");
+    /** A clock time anywhere in the text: "6:00", "(6:00)", "1:02:03". */
+    private static final Pattern TIME_IN_TEXT = Pattern.compile("(?<![\\d:])(?:(\\d{1,2}):)?(\\d{1,2}):(\\d{2})(?![\\d:])");
+    /** "minuto 6", "no minuto  6", "min 6". */
+    private static final Pattern MINUTE_AFTER_WORD = Pattern.compile("\\bmin(?:utos?)?\\.?\\s*(?:de|do|no|aos|em)?\\s*(\\d{1,3})\\b");
+    /** "aos 6 minutos", "6 min". */
+    private static final Pattern MINUTE_BEFORE_WORD = Pattern.compile("\\b(\\d{1,3})\\s*min(?:utos?)?\\b");
     private static final Pattern WORDS = Pattern.compile("[^\\p{L}\\p{N}]+");
     private static final Pattern MARKS = Pattern.compile("\\p{M}+");
 
@@ -114,6 +120,38 @@ final class BlockTranscripts {
             return String.join("\n", chunks);
         }
 
+        // A question about a moment ("o que ele fala no minuto 6?") is answered by the stretch around it: words
+        // like "minuto" name nothing in the text, so without this the pieces would be picked blindly.
+        List<Integer> chosen = new ArrayList<>();
+        int target = queryTime(query);
+        if (target >= 0) {
+            int[] starts = chunkStarts(chunks);
+            // The latest moment written at or before the target, and the FIRST piece that begins there (a long
+            // paragraph is cut in several pieces that all inherit its time).
+            int bestStart = -1;
+            for (int start : starts) {
+                if (start <= target) {
+                    bestStart = Math.max(bestStart, start);
+                }
+            }
+            int at = 0;
+            for (int i = 0; i < starts.length && bestStart >= 0; i++) {
+                if (starts[i] == bestStart) {
+                    at = i;
+                    break;
+                }
+            }
+            int own = fit == 1 ? 1 : (fit + 1) / 2;
+            // the piece itself, the one after it (what is said next), the one before, then further out
+            for (int step = 0; chosen.size() < own && step < 2 * chunks.size(); step++) {
+                int offset = (step + 1) / 2;
+                int candidate = step % 2 == 1 ? at + offset : at - offset;
+                if (candidate >= 0 && candidate < chunks.size() && !chosen.contains(candidate)) {
+                    chosen.add(candidate);
+                }
+            }
+        }
+
         Set<String> terms = queryTerms(query);
         double[] scores = new double[chunks.size()];
         double best = 0;
@@ -122,21 +160,25 @@ final class BlockTranscripts {
             best = Math.max(best, scores[i]);
         }
 
-        List<Integer> chosen = new ArrayList<>();
-        if (best == 0) {
-            // spread over the whole video, first and last piece included
-            for (int k = 0; k < fit; k++) {
-                chosen.add(fit == 1 ? 0 : (int) Math.round((double) k * (chunks.size() - 1) / (fit - 1)));
-            }
-        } else {
+        if (best > 0) {
             List<Integer> byScore = new ArrayList<>();
             for (int i = 0; i < chunks.size(); i++) {
-                if (scores[i] > 0) {
+                if (scores[i] > 0 && !chosen.contains(i)) {
                     byScore.add(i);
                 }
             }
             byScore.sort(Comparator.<Integer>comparingDouble(i -> -scores[i]).thenComparingInt(i -> i));
-            chosen.addAll(byScore.subList(0, Math.min(fit, byScore.size())));
+            for (int i : byScore) {
+                if (chosen.size() >= fit) {
+                    break;
+                }
+                chosen.add(i);
+            }
+        } else if (chosen.isEmpty()) {
+            // nothing specific asked ("resuma esta aula"): spread over the whole video, first and last piece included
+            for (int k = 0; k < fit; k++) {
+                chosen.add(fit == 1 ? 0 : (int) Math.round((double) k * (chunks.size() - 1) / (fit - 1)));
+            }
         }
 
         List<Integer> ordered = new ArrayList<>(new LinkedHashSet<>(chosen));
@@ -158,6 +200,59 @@ final class BlockTranscripts {
         return sb.toString().strip();
     }
 
+    /**
+     * The moment the question points at, in seconds, or -1: "6:30", "minuto 6", "aos 6 minutos". The first one
+     * wins, and the new question comes before the one it follows, so it is the one the student means.
+     */
+    static int queryTime(String query) {
+        if (query == null) {
+            return -1;
+        }
+        String text = fold(query);
+        var clock = TIME_IN_TEXT.matcher(text);
+        if (clock.find()) {
+            return seconds(clock.group(1), clock.group(2), clock.group(3));
+        }
+        var after = MINUTE_AFTER_WORD.matcher(text);
+        if (after.find()) {
+            return Integer.parseInt(after.group(1)) * 60;
+        }
+        var before = MINUTE_BEFORE_WORD.matcher(text);
+        if (before.find()) {
+            return Integer.parseInt(before.group(1)) * 60;
+        }
+        return -1;
+    }
+
+    private static int seconds(String hours, String minutes, String seconds) {
+        int h = hours == null ? 0 : Integer.parseInt(hours);
+        return h * 3600 + Integer.parseInt(minutes) * 60 + Integer.parseInt(seconds);
+    }
+
+    /**
+     * When each piece begins, in seconds: the first time written in it, or - for a piece cut out of the middle of
+     * a long paragraph - the last time seen before it.
+     */
+    static int[] chunkStarts(List<String> chunks) {
+        int[] starts = new int[chunks.size()];
+        int lastSeen = 0;
+        for (int i = 0; i < chunks.size(); i++) {
+            var matcher = TIME_IN_TEXT.matcher(chunks.get(i));
+            boolean first = true;
+            int start = lastSeen;
+            while (matcher.find()) {
+                int at = seconds(matcher.group(1), matcher.group(2), matcher.group(3));
+                if (first) {
+                    start = at;
+                    first = false;
+                }
+                lastSeen = at;
+            }
+            starts[i] = start;
+        }
+        return starts;
+    }
+
     private static List<String> chunk(List<String> lines) {
         List<String> chunks = new ArrayList<>();
         StringBuilder current = new StringBuilder();
@@ -168,8 +263,13 @@ final class BlockTranscripts {
                     chunks.add(current.toString());
                     current.setLength(0);
                 }
-                chunks.add(rest.substring(0, CHUNK_CHARS));
-                rest = rest.substring(CHUNK_CHARS);
+                // cut at a word boundary, not in the middle of a word
+                int cut = rest.lastIndexOf(' ', CHUNK_CHARS);
+                if (cut < CHUNK_CHARS / 2) {
+                    cut = CHUNK_CHARS;
+                }
+                chunks.add(rest.substring(0, cut).strip());
+                rest = rest.substring(cut).strip();
             }
             if (current.length() > 0 && current.length() + 1 + rest.length() > CHUNK_CHARS) {
                 chunks.add(current.toString());
