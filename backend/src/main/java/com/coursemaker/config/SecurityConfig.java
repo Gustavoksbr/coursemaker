@@ -134,7 +134,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+        // Patterns, not exact origins, so FRONTEND_URL can hold "*" (any site), a domain, or a wildcard such as
+        // "https://meuapp-*.vercel.app" / "http://localhost:*" - several of them, comma-separated. The API
+        // authenticates with a bearer token (no cookies), so a broad list does not expose anyone's session; the
+        // trade-off is that browsers on other sites may call the API (see the note in .env.example).
+        configuration.setAllowedOriginPatterns(Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
                 .toList());

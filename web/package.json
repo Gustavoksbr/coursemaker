@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:prod": "vite --mode prod --port 5173 --strictPort",
+    "dev:prod": "vite --mode prod --port 5180",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .js,.jsx",
