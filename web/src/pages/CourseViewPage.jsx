@@ -114,19 +114,6 @@ export default function CourseViewPage() {
   const queryClient = useQueryClient()
   const toast = useToast()
 
-  // Telas largas: a barra fixa pode ser recolhida (lembramos a escolha). Telas estreitas: o mesmo menu
-  // abre numa gaveta, pelo botao "Aulas" da propria aula.
-  const [sidebarOpen, setSidebarOpen] = useState(readSidebarPreference)
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const toggleSidebar = () => {
-    const next = !sidebarOpen
-    setSidebarOpen(next)
-    try {
-      localStorage.setItem(SIDEBAR_PREFERENCE_KEY, next ? '1' : '0')
-    } catch {
-      // Sem armazenamento (janela privada etc.): a barra so nao lembra a escolha.
-    }
-  }
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [confirmUnenrollOpen, setConfirmUnenrollOpen] = useState(false)
   // Set when the "Atividades" tab sends the student to a block; the lesson view scrolls to it once rendered.
@@ -152,7 +139,6 @@ export default function CourseViewPage() {
 
   const activeLessonId = searchParams.get('lesson')
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) ?? null
-  const activeIndex = lessons.findIndex((lesson) => lesson.id === activeLessonId)
 
   // Ask for the password as soon as we learn the course is locked.
   useEffect(() => {
@@ -164,7 +150,6 @@ export default function CourseViewPage() {
     if (lessonId) params.set('lesson', lessonId)
     else params.delete('lesson')
     setSearchParams(params)
-    setDrawerOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -251,30 +236,10 @@ export default function CourseViewPage() {
     toggleEnrollment()
   }
 
-  const hasSidebar = detail.canViewContent && detail.modules.length > 0
-  const sidebarBody = (
-    <>
-      {!detail.isOwner && detail.progress && (
-        <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/60 p-3">
-          <ProgressBar
-            completed={detail.progress.completedLessons}
-            total={detail.progress.totalLessons}
-            percentage={detail.progress.percentage}
-            ariaLabel="Progresso no curso"
-          />
-        </div>
-      )}
-      <CourseSidebar
-        modules={detail.modules}
-        activeLessonId={activeLessonId}
-        onSelectLesson={selectLesson}
-        onSelectActivity={selectActivity}
-        answeredQuestionBlockIds={answeredQuestionBlockIds}
-        passedExerciseBlockIds={passedExerciseBlockIds}
-        showProgress={isAuthenticated && !detail.isOwner}
-      />
-    </>
-  )
+  // Progresso (aulas concluidas, barra, menu com os visto) so existe para quem esta matriculado. Quem apenas
+  // olha pode ler, responder questoes e enviar exercicios - isso fica salvo e vale ao se matricular -, mas
+  // nao marca aulas como concluidas.
+  const enrolledStudent = isAuthenticated && !detail.isOwner && course.enrolledByMe
 
   return (
     <>
@@ -283,71 +248,44 @@ export default function CourseViewPage() {
         description={course.description || detail.landingDescription}
         noindex={course.visibility !== 'public' || course.status !== 'available'}
       />
-      <div className="flex flex-1">
-        {/* Minimizado: faixa de icones sempre a mostra (em telas largas so quando o menu esta recolhido). */}
-        {hasSidebar && (
-          <div className={cn('sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start', sidebarOpen && 'md:hidden')}>
-            <CourseRail
-              modules={detail.modules}
-              activeLessonId={activeLessonId}
-              onSelectLesson={selectLesson}
-              onExpand={toggleSidebar}
-              onExpandDrawer={() => setDrawerOpen(true)}
-              showProgress={isAuthenticated && !detail.isOwner}
-            />
-          </div>
-        )}
-        {/* Maximizado em telas largas: barra completa ao lado. Em telas estreitas vira a gaveta abaixo. */}
-        {hasSidebar && sidebarOpen && (
-          <aside className="hidden w-72 shrink-0 border-r border-slate-800 md:block">
-            <div className="sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto p-3">{sidebarBody}</div>
-          </aside>
-        )}
-        {hasSidebar && (
-          <SidebarDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-            {sidebarBody}
-          </SidebarDrawer>
-        )}
-
-        <div className="min-w-0 flex-1">
-          {activeLesson ? (
-            <LessonView
-              course={course}
-              lesson={activeLesson}
-              lessons={lessons}
-              activeIndex={activeIndex}
-              onSelectLesson={selectLesson}
-              onGoToActivity={selectActivity}
-              onBackToLanding={() => selectLesson(null)}
-              sidebarOpen={sidebarOpen}
-              onToggleSidebar={toggleSidebar}
-              onCompleteLesson={markLessonComplete}
-              canTrackProgress={isAuthenticated && !detail.isOwner}
-              answeredQuestionBlockIds={answeredQuestionBlockIds}
-              onAnswerQuestion={answerQuestion}
-              passedExerciseBlockIds={passedExerciseBlockIds}
-              onExercisePassed={markExercisePassed}
-              exercisesInteractive={isAuthenticated}
-              scrollToBlockId={scrollTargetBlockId}
-              onScrolledToBlock={() => setScrollTargetBlockId(null)}
-            />
-          ) : (
-            <Landing
-              detail={detail}
-              course={course}
-              lessons={lessons}
-              currentUser={user}
-              onSelectLesson={selectLesson}
-              onEnrollClick={handleEnrollClick}
-              enrolling={enrolling}
-              onUnlockClick={() => setPasswordOpen(true)}
-              onSavedChange={() =>
-                queryClient.invalidateQueries({ queryKey: courseKeys.bySlug(nickname, slug) })
-              }
-            />
-          )}
-        </div>
-      </div>
+      <CourseViewer
+        course={course}
+        modules={detail.modules}
+        lessons={lessons}
+        activeLessonId={activeLessonId}
+        onSelectLesson={selectLesson}
+        onSelectActivity={selectActivity}
+        canViewContent={detail.canViewContent}
+        progress={enrolledStudent ? detail.progress : null}
+        showProgress={enrolledStudent}
+        canTrackProgress={enrolledStudent}
+        showEnrollPrompt={!detail.isOwner && !course.enrolledByMe}
+        onEnrollClick={handleEnrollClick}
+        enrolling={enrolling}
+        answeredQuestionBlockIds={answeredQuestionBlockIds}
+        passedExerciseBlockIds={passedExerciseBlockIds}
+        onAnswerQuestion={answerQuestion}
+        onExercisePassed={markExercisePassed}
+        onCompleteLesson={markLessonComplete}
+        exercisesInteractive={isAuthenticated}
+        scrollToBlockId={scrollTargetBlockId}
+        onScrolledToBlock={() => setScrollTargetBlockId(null)}
+        landing={
+          <Landing
+            detail={detail}
+            course={course}
+            lessons={lessons}
+            currentUser={user}
+            onSelectLesson={selectLesson}
+            onEnrollClick={handleEnrollClick}
+            enrolling={enrolling}
+            onUnlockClick={() => setPasswordOpen(true)}
+            onSavedChange={() =>
+              queryClient.invalidateQueries({ queryKey: courseKeys.bySlug(nickname, slug) })
+            }
+          />
+        }
+      />
 
       {detail.canViewContent && (
         <ChatWidget kind="course" contentId={course.id} raised={Boolean(activeLesson)} />
@@ -576,6 +514,155 @@ function finishCourseText(activities, lessonsToMark) {
   return `Para concluir o curso ainda faltam: ${parts.join(' e ')}`
 }
 
+/**
+ * O visualizador de curso: menu de aulas (faixa minimizada sempre a mostra, barra completa em telas
+ * largas, gaveta em telas estreitas) + a aula aberta, ou `landing` quando nenhuma esta aberta.
+ * E o MESMO componente da pagina do curso e da pre-visualizacao do editor, entao as duas sempre
+ * se comportam igual. Quem usa decide a origem dos dados e o que conta como progresso.
+ *
+ * `stickyTop`/`stickyHeight` dizem onde o menu gruda: abaixo da barra de navegacao do site (padrao) ou
+ * abaixo do cabecalho da pre-visualizacao.
+ */
+export function CourseViewer({
+  course,
+  modules,
+  lessons,
+  activeLessonId,
+  onSelectLesson,
+  onSelectActivity,
+  canViewContent = true,
+  progress = null,
+  showProgress = false,
+  canTrackProgress = false,
+  showEnrollPrompt = false,
+  onEnrollClick,
+  enrolling = false,
+  answeredQuestionBlockIds,
+  passedExerciseBlockIds,
+  onAnswerQuestion,
+  onExercisePassed,
+  onCompleteLesson,
+  exercisesInteractive = false,
+  scrollToBlockId,
+  onScrolledToBlock,
+  landing,
+  stickyTop = 'top-16',
+  stickyHeight = 'h-[calc(100vh-4rem)]',
+  stickyMaxHeight = 'max-h-[calc(100vh-4rem)]',
+}) {
+  // Telas largas: a barra fixa pode ser recolhida (lembramos a escolha). Telas estreitas: o mesmo menu
+  // abre numa gaveta, pelo botao da faixa minimizada.
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarPreference)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const toggleSidebar = () => {
+    const next = !sidebarOpen
+    setSidebarOpen(next)
+    try {
+      localStorage.setItem(SIDEBAR_PREFERENCE_KEY, next ? '1' : '0')
+    } catch {
+      // Sem armazenamento (janela privada etc.): a barra so nao lembra a escolha.
+    }
+  }
+
+  const activeIndex = lessons.findIndex((lesson) => lesson.id === activeLessonId)
+  const activeLesson = activeIndex >= 0 ? lessons[activeIndex] : null
+
+  const selectLesson = (lessonId) => {
+    setDrawerOpen(false)
+    onSelectLesson(lessonId)
+  }
+  const selectActivity = (activity) => {
+    setDrawerOpen(false)
+    onSelectActivity?.(activity)
+  }
+
+  const hasSidebar = canViewContent && modules.length > 0
+  const sidebarBody = (
+    <>
+      {progress && (
+        <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+          <ProgressBar
+            completed={progress.completedLessons}
+            total={progress.totalLessons}
+            percentage={progress.percentage}
+            ariaLabel="Progresso no curso"
+          />
+        </div>
+      )}
+      <CourseSidebar
+        modules={modules}
+        activeLessonId={activeLessonId}
+        onSelectLesson={selectLesson}
+        onSelectActivity={selectActivity}
+        answeredQuestionBlockIds={answeredQuestionBlockIds}
+        passedExerciseBlockIds={passedExerciseBlockIds}
+        showProgress={showProgress}
+      />
+    </>
+  )
+
+  return (
+    <div className="flex flex-1">
+      {/* Minimizado: faixa de icones sempre a mostra (em telas largas so quando o menu esta recolhido). */}
+      {hasSidebar && (
+        <div className={cn('sticky shrink-0 self-start', stickyTop, stickyHeight, sidebarOpen && 'md:hidden')}>
+          <CourseRail
+            modules={modules}
+            activeLessonId={activeLessonId}
+            onSelectLesson={selectLesson}
+            onExpand={toggleSidebar}
+            onExpandDrawer={() => setDrawerOpen(true)}
+            showProgress={showProgress}
+          />
+        </div>
+      )}
+      {/* Maximizado em telas largas: barra completa ao lado. Em telas estreitas vira a gaveta abaixo. */}
+      {hasSidebar && sidebarOpen && (
+        <aside className="hidden w-72 shrink-0 border-r border-slate-800 md:block">
+          <div className={cn('sticky overflow-y-auto p-3', stickyTop, stickyMaxHeight)}>{sidebarBody}</div>
+        </aside>
+      )}
+      {hasSidebar && (
+        <SidebarDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+          {sidebarBody}
+        </SidebarDrawer>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {activeLesson ? (
+          <LessonView
+            course={course}
+            lesson={activeLesson}
+            lessons={lessons}
+            activeIndex={activeIndex}
+            onSelectLesson={selectLesson}
+            onGoToActivity={selectActivity}
+            onBackToLanding={() => selectLesson(null)}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={toggleSidebar}
+            onCompleteLesson={onCompleteLesson}
+            canTrackProgress={canTrackProgress}
+            showEnrollPrompt={showEnrollPrompt}
+            onEnrollClick={onEnrollClick}
+            enrolling={enrolling}
+            answeredQuestionBlockIds={answeredQuestionBlockIds}
+            onAnswerQuestion={onAnswerQuestion}
+            passedExerciseBlockIds={passedExerciseBlockIds}
+            onExercisePassed={onExercisePassed}
+            exercisesInteractive={exercisesInteractive}
+            scrollToBlockId={scrollToBlockId}
+            onScrolledToBlock={onScrolledToBlock}
+          />
+        ) : (
+          // Num container em coluna, um filho com margem automatica (a pagina inicial usa mx-auto) deixa
+          // de esticar e passa a medir o proprio conteudo: a imagem alargava a tela. Este wrapper estica.
+          <div className="w-full min-w-0">{landing}</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function LessonView({
   course,
   lesson,
@@ -588,6 +675,9 @@ export function LessonView({
   onToggleSidebar,
   onCompleteLesson,
   canTrackProgress,
+  showEnrollPrompt = false,
+  onEnrollClick,
+  enrolling = false,
   answeredQuestionBlockIds,
   onAnswerQuestion,
   passedExerciseBlockIds,
@@ -663,7 +753,7 @@ export function LessonView({
 
   return (
     <>
-      <article className="mx-auto max-w-3xl px-4 py-8 pb-28 sm:px-6">
+      <article className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 pb-10 sm:px-6">
         <div className="mb-6 flex items-center gap-3">
           <button
             type="button"
@@ -698,6 +788,20 @@ export function LessonView({
               <CheckCircle2 size={16} /> Marcar como concluida
             </button>
           )}
+          {showEnrollPrompt && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-sm text-slate-300">
+              <p className="flex min-w-0 flex-1 basis-60 items-start gap-2">
+                <Lock size={16} className="mt-0.5 shrink-0 text-slate-500" />
+                <span>
+                  Matricule-se para marcar aulas como concluidas e acompanhar seu progresso. O que voce responder
+                  ou resolver aqui ja fica salvo e vale quando se matricular.
+                </span>
+              </p>
+              <Button variant="secondary" size="sm" onClick={onEnrollClick} loading={enrolling}>
+                <UserPlus size={14} /> Matricular-se
+              </Button>
+            </div>
+          )}
         </header>
 
         {blocks.length === 0 ? (
@@ -716,9 +820,9 @@ export function LessonView({
         )}
       </article>
 
-      {/* Fixed to the viewport (not just the end of the article) so advancing never requires
-        scrolling down to find it. */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
+      {/* Sticks to the bottom of the viewport while the lesson is on screen (so advancing never
+        requires scrolling down to find it) and rests above the page footer at the end. */}
+      <nav className="sticky bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
         {cannotFinishCourse && (
           <button
             type="button"
@@ -729,18 +833,21 @@ export function LessonView({
           </button>
         )}
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 py-3 pl-4 pr-20 sm:px-6">
+          {/* Celular: so a seta (o titulo da aula anterior fica no nome acessivel); a partir de sm, com o titulo. */}
           <button
             type="button"
             onClick={() => previous && onSelectLesson(previous.id)}
             disabled={!previous}
+            aria-label={previous ? `Aula anterior: ${previous.title}` : undefined}
             className={cn('btn-ghost min-w-0 text-left', !previous && 'invisible')}
           >
-            <ChevronLeft size={16} />
-            <span className="min-w-0 truncate">{previous?.title}</span>
+            <ChevronLeft size={16} className="shrink-0" />
+            <span className="hidden min-w-0 truncate sm:inline">{previous?.title}</span>
           </button>
-          <Button onClick={advance} className="min-w-0" disabled={cannotFinishCourse}>
-            <span className="min-w-0 truncate">{next ? 'Proxima aula' : 'Concluir curso'}</span>
-            {next ? <ChevronRight size={16} /> : <CheckCircle2 size={16} />}
+          {/* O texto do botao principal nunca e cortado: quem encolhe e o titulo da aula anterior. */}
+          <Button onClick={advance} className="shrink-0 whitespace-nowrap" disabled={cannotFinishCourse}>
+            <span>{next ? 'Proxima aula' : canTrackProgress ? 'Concluir curso' : 'Voltar ao curso'}</span>
+            {next ? <ChevronRight size={16} /> : canTrackProgress ? <CheckCircle2 size={16} /> : <ChevronLeft size={16} />}
           </Button>
         </div>
       </nav>

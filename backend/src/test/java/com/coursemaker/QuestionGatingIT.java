@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("Conclusao de licao com questoes obrigatorias")
 class QuestionGatingIT extends IntegrationTest {
 
-    private static List<Map<String, Object>> alternatives(String correctText, String wrongText) {
+    static List<Map<String, Object>> alternatives(String correctText, String wrongText) {
         return List.of(
                 Map.of("id", "a", "text", correctText, "correct", true, "explanation", ""),
                 Map.of("id", "b", "text", wrongText, "correct", false, "explanation", ""));
@@ -34,6 +34,7 @@ class QuestionGatingIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        enroll(curriculum.courseId(), student.caller());
         fixtures.questionBlock(owner, curriculum.lessonIds().get(0), alternatives("Certa", "Errada"));
 
         post("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete", null, student.caller())
@@ -46,6 +47,7 @@ class QuestionGatingIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        enroll(curriculum.courseId(), student.caller());
         UUID lessonId = curriculum.lessonIds().get(0);
         UUID blockId = fixtures.questionBlock(owner, lessonId, alternatives("Certa", "Errada"));
 
@@ -66,6 +68,7 @@ class QuestionGatingIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        enroll(curriculum.courseId(), student.caller());
         UUID lessonId = curriculum.lessonIds().get(0);
         UUID first = fixtures.questionBlock(owner, lessonId, alternatives("Certa 1", "Errada 1"));
         UUID second = fixtures.questionBlock(owner, lessonId, alternatives("Certa 2", "Errada 2"));
@@ -100,6 +103,7 @@ class QuestionGatingIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        enroll(curriculum.courseId(), student.caller());
 
         postOk("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete", null, student.caller());
     }

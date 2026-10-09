@@ -71,6 +71,7 @@ class EngagementIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 4);
+        enroll(curriculum.courseId(), student.caller());
 
         JsonNode afterOne = postOk("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete",
                 null, student.caller());
@@ -94,6 +95,7 @@ class EngagementIT extends IntegrationTest {
         TestUser bruno = fixtures.user("bruno");
         TestUser carla = fixtures.user("carla");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 2);
+        enroll(curriculum.courseId(), bruno.caller());
 
         postOk("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete", null, bruno.caller());
 
@@ -109,6 +111,7 @@ class EngagementIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 2);
+        enroll(curriculum.courseId(), student.caller());
         postOk("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete", null, student.caller());
 
         JsonNode lessons = getOk("/api/v1/courses/" + curriculum.courseId(), student.caller())
@@ -124,6 +127,7 @@ class EngagementIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        enroll(curriculum.courseId(), student.caller());
 
         JsonNode progress = postOk("/api/v1/lessons/" + curriculum.lessonIds().get(0) + "/complete",
                 null, student.caller());

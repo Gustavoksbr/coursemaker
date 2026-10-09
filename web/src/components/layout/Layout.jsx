@@ -8,6 +8,30 @@ import { RouteMeta } from './PageMeta'
 
 const GITHUB_URL = 'https://github.com/Gustavoksbr/coursemaker'
 
+/** Rodape do site: aparece em todas as paginas, inclusive nas que ocupam a tela toda (curso, editor, biblioteca). */
+function SiteFooter() {
+  return (
+    <footer className="border-t border-slate-800 py-6">
+      <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 text-center text-xs text-slate-500 sm:px-6">
+        <p>CourseMaker — aprenda ou ensine o que quiser. Matricule-se ou crie seu próprio curso.</p>
+        <div className="flex items-center gap-4">
+          <Link to="/privacidade" className="hover:text-slate-300 hover:underline">
+            Política de Privacidade
+          </Link>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 hover:text-slate-300 hover:underline"
+          >
+            <Github size={13} /> GitHub
+          </a>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
 /** Shell for every page: navbar on top, routed content below, footer at the bottom. */
 export function Layout() {
   return (
@@ -20,31 +44,15 @@ export function Layout() {
         <main className="flex-1">
           <Outlet />
         </main>
-        <footer className="border-t border-slate-800 py-6">
-          <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 text-center text-xs text-slate-500 sm:px-6">
-            <p>CourseMaker — aprenda ou ensine o que quiser. Matricule-se ou crie seu próprio curso.</p>
-            <div className="flex items-center gap-4">
-              <Link to="/privacidade" className="hover:text-slate-300 hover:underline">
-                Política de Privacidade
-              </Link>
-              <a
-                href={GITHUB_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 hover:text-slate-300 hover:underline"
-              >
-                <Github size={13} /> GitHub
-              </a>
-            </div>
-          </div>
-        </footer>
+        <SiteFooter />
       </div>
     </AreaProvider>
   )
 }
 
 /**
- * Shell without the footer, for pages that own the whole viewport (course editor, course viewer).
+ * Shell for pages that own the whole viewport (course editor, course viewer, library): the content
+ * column grows to fill the screen and the footer follows it.
  */
 export function FullHeightLayout() {
   return (
@@ -57,6 +65,7 @@ export function FullHeightLayout() {
         <main className="flex flex-1 flex-col">
           <Outlet />
         </main>
+        <SiteFooter />
       </div>
     </AreaProvider>
   )

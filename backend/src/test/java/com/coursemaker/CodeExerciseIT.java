@@ -484,6 +484,7 @@ class CodeExerciseIT extends IntegrationTest {
         TestUser owner = fixtures.user("ana");
         TestUser student = fixtures.user("bruno");
         Curriculum curriculum = fixtures.courseWithLessons(owner, "Curso", 1);
+        enroll(curriculum.courseId(), student.caller());
         UUID lessonId = curriculum.lessonIds().get(0);
         UUID blockId = blockId(createFunctionExercise(owner, lessonId, SUM_SOLUTION));
         String base = "/api/v1/blocks/" + blockId + "/exercise";

@@ -8,10 +8,13 @@ import { cn } from '@/lib/cn'
  * aula, ou o "visto" verde quando concluida). A aula aberta fica destacada e o nome aparece ao passar
  * o mouse. O botao do topo maximiza o menu: em telas largas a barra completa volta ao lado, em telas
  * estreitas ela abre por cima do conteudo.
+ *
+ * A faixa tem a altura do container (a da tela, grudada): com muitas aulas a lista rola por dentro em vez
+ * de passar do container e ser desenhada por cima do rodape.
  */
 export function CourseRail({ modules, activeLessonId, onSelectLesson, onExpand, onExpandDrawer, showProgress }) {
   return (
-    <nav aria-label="Aulas (menu minimizado)" className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-slate-800 py-3">
+    <nav aria-label="Aulas (menu minimizado)" className="flex h-full w-12 shrink-0 flex-col items-center gap-1 border-r border-slate-800 py-3">
       <button
         type="button"
         onClick={onExpandDrawer}
@@ -29,7 +32,7 @@ export function CourseRail({ modules, activeLessonId, onSelectLesson, onExpand, 
         <PanelLeftOpen size={18} />
       </button>
 
-      <div className="mt-1 flex w-full flex-col items-center gap-0.5 overflow-y-auto">
+      <div className="mt-1 flex min-h-0 w-full flex-1 flex-col items-center gap-0.5 overflow-y-auto">
         {modules.map((module, moduleIndex) => (
           <div key={module.id} className="flex w-full flex-col items-center gap-0.5">
             {moduleIndex > 0 && <span className="my-1 h-px w-6 bg-slate-800" aria-hidden="true" />}

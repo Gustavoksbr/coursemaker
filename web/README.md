@@ -27,6 +27,7 @@ campo de imagem continua funcionando — só aceita URL colada.
 
 ```bash
 npm run dev          # servidor de desenvolvimento
+npm run dev:prod     # idem, mas falando com a API publicada (.env.prod); so na porta 5173, por causa do CORS
 npm run build         # build de produção
 npm run preview       # serve o build localmente
 npm run lint          # ESLint

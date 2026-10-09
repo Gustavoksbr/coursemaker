@@ -97,6 +97,11 @@ public abstract class IntegrationTest {
         public static final Caller ANONYMOUS = new Caller(null);
     }
 
+    /** Enrolls the caller in a (published) course - needed before a lesson can be marked as done. */
+    protected void enroll(java.util.UUID courseId, Caller caller) throws Exception {
+        postOk("/api/v1/enrollments", java.util.Map.of("courseId", courseId), caller);
+    }
+
     protected ResultActions get(String path, Caller caller) throws Exception {
         return perform(MockMvcRequestBuilders.get(path), caller, null);
     }

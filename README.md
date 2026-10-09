@@ -107,6 +107,26 @@ cd web && npm install && npm run dev
 O app web usa `VITE_API_URL` (padrão `http://localhost:8080`) para achar a API. O backend libera
 CORS para a origem definida em `FRONTEND_URL`; os dois precisam combinar.
 
+#### Só o frontend, usando a API publicada (sem backend nem banco)
+
+Para mexer só na interface, dá para rodar o app web na sua máquina falando com a API do site no ar:
+
+```bash
+cd web && npm install && npm run dev:prod
+```
+
+O `dev:prod` carrega o `web/.env.prod` por cima do `.env` (só troca o `VITE_API_URL` para a API publicada).
+Três avisos:
+
+- **A porta é sempre a `5173`.** A API publicada só libera CORS para `http://localhost:5173` (e para o site em si);
+  em outra porta o navegador bloquearia as chamadas com um erro de CORS pouco claro. Por isso o script usa
+  `--strictPort`: se a 5173 já estiver ocupada (por exemplo, por um `npm run dev` aberto), ele **falha na hora**
+  dizendo que a porta está em uso, em vez de subir em outra porta e quebrar. Feche o outro servidor e rode de novo.
+- **São dados reais.** Contas, cursos e matrículas criados por aí existem no site de verdade. Prefira só olhar e
+  evite criar ou apagar conteúdo em massa.
+- **O backend não roda localmente** nesse modo: quem precisa do código do backend (ou de um banco só seu) segue
+  os passos 1 e 2 acima.
+
 ### 4. Executor de código (opcional, para os exercícios de código)
 
 Sem esta etapa tudo funciona, menos rodar e corrigir exercícios de código. Detalhes em

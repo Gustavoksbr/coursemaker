@@ -4,6 +4,8 @@ import { Navigate, useNavigate, useParams, useSearchParams, Link } from 'react-r
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Eye, Mail, Pencil, Save, X, TriangleAlert } from 'lucide-react'
 import { CoursePreview } from '@/components/course/CoursePreview'
+import { CourseRail } from '@/components/course/CourseRail'
+import { SidebarDrawer } from '@/components/course/SidebarDrawer'
 import { CourseSettingsPanel } from '@/components/course/CourseSettingsPanel'
 import { CurriculumEditor } from '@/components/course/CurriculumEditor'
 import { StudentsModal } from '@/components/course/StudentsModal'
@@ -71,6 +73,8 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
   const toast = useToast()
   const [studentsOpen, setStudentsOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
+  // Telas estreitas: o curriculo abre numa gaveta; a faixa de icones das aulas fica sempre a mostra.
+  const [curriculumDrawerOpen, setCurriculumDrawerOpen] = useState(false)
 
   const course = detail.summary
   const curriculumDraft = useCurriculumDraft(course.id, detail.modules)
@@ -151,8 +155,8 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
   return (
     <>
       <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
-        <header className="sticky top-16 z-30 -mx-4 mb-6 flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6">
-          <div className="min-w-0 flex-1">
+        <header className="-mx-4 mb-6 md:sticky md:top-16 md:z-30 flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-900/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="min-w-0 basis-full sm:flex-1 sm:basis-0">
             <h1 className="truncate text-xl font-bold text-slate-100">{course.name}</h1>
             <p className="truncate text-xs text-slate-500">
               {courseHref(course)}
@@ -239,7 +243,20 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
           <RelatedItemsEditor kind="course" contentId={course.id} draft={relatedDraft} />
         </div>
 
-        <div className="mt-8 flex gap-6">
+        <div className="mt-8 flex gap-3 md:gap-6">
+          {/* Menu das aulas, sempre a mostra como para o aluno: no celular a faixa de icones (o botao
+              do topo abre o curriculo completo, para editar); a partir de md, a barra completa ao lado. */}
+          <div className="sticky top-16 -ml-4 h-[calc(100vh-4rem)] shrink-0 self-start sm:-ml-6 md:hidden">
+            <CourseRail
+              modules={curriculumDraft.modules}
+              activeLessonId={activeLessonId}
+              onSelectLesson={selectLesson}
+              onExpand={() => {}}
+              onExpandDrawer={() => setCurriculumDrawerOpen(true)}
+              showProgress={false}
+            />
+          </div>
+
           <aside className="hidden w-72 shrink-0 md:block">
             <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl border border-slate-800">
               <CurriculumEditor
@@ -283,14 +300,11 @@ function CourseEditorContent({ detail, courseQueryKey, onDeleted }) {
             )}
           </section>
         </div>
-
-        {/* Below md the curriculum sidebar has nowhere sensible to go; point people at a wider
-            viewport rather than shipping a cramped layout. */}
-        <p className="mt-6 text-center text-xs text-slate-500 md:hidden">
-          O curriculo funciona melhor em telas maiores. Use um monitor mais largo para navegar
-          entre modulos e licoes.
-        </p>
       </div>
+
+      <SidebarDrawer open={curriculumDrawerOpen} onClose={() => setCurriculumDrawerOpen(false)} title="Curriculo">
+        <CurriculumEditor draft={curriculumDraft} activeLessonId={activeLessonId} onSelectLesson={selectLesson} />
+      </SidebarDrawer>
 
       <StudentsModal open={studentsOpen} onClose={() => setStudentsOpen(false)} course={course} />
       <UnsavedChangesPrompt blocker={blocker} />

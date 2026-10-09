@@ -1,6 +1,6 @@
 import CodeMirror from '@uiw/react-codemirror'
 import { indentLess, indentMore } from '@codemirror/commands'
-import { keymap } from '@codemirror/view'
+import { EditorView, keymap } from '@codemirror/view'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
 import { java } from '@codemirror/lang-java'
@@ -45,9 +45,13 @@ function tabAtCursor(view) {
 
 const TAB_KEYMAP = keymap.of([{ key: 'Tab', run: tabAtCursor, shift: indentLess }])
 
+/** Telas estreitas: fonte menor, sem a coluna de "dobrar codigo" e com quebra de linha em vez de rolar para o lado. */
+const compactScreen = () => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches
+
 /** Editor de codigo estilo VS Code: realce de sintaxe, auto-indent, fecha ({["', numeros de linha. */
 export default function CodeEditor({ value, onChange, language = 'javascript', minHeight = '160px', readOnly = false }) {
   const languageExtension = (LANGUAGE_EXTENSIONS[language] ?? LANGUAGE_EXTENSIONS.javascript)()
+  const compact = compactScreen()
 
   return (
     <CodeMirror
@@ -56,19 +60,19 @@ export default function CodeEditor({ value, onChange, language = 'javascript', m
       theme={vscodeDark}
       indentWithTab={false}
       readOnly={readOnly}
-      extensions={[languageExtension, TAB_KEYMAP]}
+      extensions={compact ? [languageExtension, TAB_KEYMAP, EditorView.lineWrapping] : [languageExtension, TAB_KEYMAP]}
       minHeight={minHeight}
       basicSetup={{
         tabSize: 4,
         lineNumbers: true,
-        foldGutter: true,
+        foldGutter: !compact,
         autocompletion: true,
         closeBrackets: true,
         bracketMatching: true,
         indentOnInput: true,
         highlightActiveLine: true,
       }}
-      style={{ fontSize: 14, borderRadius: 6, overflow: 'hidden' }}
+      style={{ fontSize: compact ? 13 : 14, borderRadius: 6, overflow: 'hidden' }}
     />
   )
 }
