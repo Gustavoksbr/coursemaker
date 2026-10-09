@@ -6,6 +6,7 @@ import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary'
 import { PageLoader } from '@/components/ui/Feedback'
 import { usePrefetchCatalogs } from '@/hooks/usePrefetchCatalogs'
 import HomePage from '@/pages/HomePage'
+import HomeEntry from '@/pages/HomeEntry'
 import SetupNicknamePage from '@/pages/SetupNicknamePage'
 import SearchPage from '@/pages/SearchPage'
 import CertificateViewPage from '@/pages/CertificateViewPage'
@@ -50,7 +51,10 @@ const router = createBrowserRouter([
     element: <Layout />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      { path: '/', element: <HomePage /> },
+      // `/` is the front door: the home page for visitors, the library for someone already signed in (see
+      // HomeEntry). /inicio is the same home page, always reachable.
+      { path: '/', element: <HomeEntry /> },
+      { path: '/inicio', element: <HomePage /> },
       // Sign-in has no pages of its own - it is a modal (see AuthModal). This is only where the
       // link in the password-reset email lands: it opens that modal and goes home.
       { path: '/redefinir-senha', element: <ResetLinkRedirect /> },

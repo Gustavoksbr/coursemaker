@@ -53,6 +53,8 @@ export function PageMeta({ title, description, noindex = false }) {
 
 /** Titulos das paginas fixas; as de conteudo (curso, post...) usam <PageMeta> com os dados carregados. */
 const STATIC_TITLES = {
+  // A home de novo, para quem esta logado (onde `/` leva a biblioteca); o canonico dela e a raiz (ver canonicalUrl).
+  '/inicio': 'Início',
   '/pesquisar': 'Procurar cursos, trilhas e posts',
   '/escolas': 'Escolas',
   '/privacidade': 'Política de Privacidade',

@@ -7,6 +7,7 @@ import {
   Check,
   CheckCheck,
   GraduationCap,
+  Home,
   LogOut,
   Mail,
   Menu,
@@ -67,9 +68,13 @@ export function Navbar() {
   const menuRef = useRef(null)
   const notificationsRef = useRef(null)
 
+  // "Inicio" is the home page. Signed in, `/` leads to the library instead (HomeEntry), so the home page is
+  // reached at /inicio; a visitor's home is `/` itself.
+  //
   // A link to a page you cannot open (it is behind auth) is just confusing, so Biblioteca only
   // shows up once there is a library to look at.
   const navLinks = [
+    { to: isAuthenticated ? '/inicio' : '/', label: 'Início', icon: Home },
     { to: '/pesquisar', label: 'Procurar', icon: Search },
     ...(isAuthenticated ? [{ to: '/biblioteca', label: 'Biblioteca', icon: Bookmark }] : []),
   ]
@@ -127,7 +132,7 @@ export function Navbar() {
 
         <div className="hidden flex-1 items-center gap-1 md:flex">
           {navLinks.map(({ to, label }) => (
-            <NavLink key={to} to={to} className={linkClass}>
+            <NavLink key={to} to={to} end={to === '/'} className={linkClass}>
               {label}
             </NavLink>
           ))}
@@ -383,6 +388,7 @@ export function Navbar() {
             <NavLink
               key={to}
               to={to}
+              end={to === '/'}
               onClick={() => setMobileOpen(false)}
               className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800"
             >

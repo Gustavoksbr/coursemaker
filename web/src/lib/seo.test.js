@@ -32,4 +32,9 @@ describe('canonicalUrl', () => {
     expect(canonicalUrl('/')).toBe(`${SITE_URL}/`)
     expect(canonicalUrl('')).toBe(`${SITE_URL}/`)
   })
+
+  it('/inicio e a home de novo: o canonico continua sendo a raiz', () => {
+    expect(canonicalUrl('/inicio')).toBe(`${SITE_URL}/`)
+    expect(canonicalUrl('/inicio/')).toBe(`${SITE_URL}/`)
+  })
 })

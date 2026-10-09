@@ -30,5 +30,7 @@ export function plainDescription(value, max = 160) {
 /** URL canonica de uma rota: dominio fixo do site, sem query, hash nem barra final. */
 export function canonicalUrl(pathname) {
   const path = (pathname || '/').replace(/\/+$/, '')
-  return `${SITE_URL}${path || '/'}`
+  // /inicio is the home page again, for people who are signed in (where `/` leads to the library): the
+  // address search engines should know it by stays `/`.
+  return `${SITE_URL}${path === '/inicio' ? '/' : path || '/'}`
 }
