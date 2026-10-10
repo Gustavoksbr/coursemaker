@@ -7,7 +7,7 @@ export function AuthShell({ title, subtitle, children, footer }) {
     <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center px-4 py-10">
       <div className="mb-6 text-center">
         <Link to="/" className="inline-flex items-center gap-2 text-slate-100">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-500 text-white">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-500 text-brand-ink">
             <GraduationCap size={22} />
           </span>
           <span className="text-lg font-bold">CourseMaker</span>

@@ -337,7 +337,7 @@ function AreaTab({ active, onClick, children }) {
       className={cn(
         'badge border transition-colors',
         active
-          ? 'border-brand-500 bg-brand-500 text-white'
+          ? 'border-brand-500 bg-brand-500 text-brand-ink'
           : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 hover:text-slate-100',
       )}
     >

@@ -17,7 +17,7 @@
   }
 
   ::selection {
-    @apply bg-brand-500/30;
+    @apply bg-brand-500 text-brand-ink;
   }
 
   /* Firefox */
@@ -48,16 +48,17 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded px-4 py-2 font-mono text-sm font-medium
       transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-primary {
-    @apply btn bg-brand-500 text-white hover:bg-brand-600;
+    @apply btn border border-brand-500 bg-brand-500 font-semibold text-brand-ink hover:border-brand-400
+      hover:bg-brand-400;
   }
 
   .btn-secondary {
-    @apply btn border border-brand-500 text-brand-400 hover:bg-brand-500/10;
+    @apply btn border border-slate-600 text-slate-100 hover:border-slate-400;
   }
 
   .btn-ghost {
@@ -69,11 +70,11 @@
   }
 
   .card {
-    @apply rounded-xl border border-slate-700 bg-slate-800 transition-colors hover:border-brand-500;
+    @apply rounded-md border border-slate-700 bg-bg-2 transition-colors hover:border-slate-600;
   }
 
   .input {
-    @apply w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100
+    @apply w-full rounded border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100
       placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-1
       focus:ring-brand-500 disabled:opacity-60;
   }

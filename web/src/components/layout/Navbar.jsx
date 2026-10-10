@@ -6,7 +6,6 @@ import {
   Bookmark,
   Check,
   CheckCheck,
-  GraduationCap,
   Home,
   LogOut,
   Mail,
@@ -116,18 +115,25 @@ export function Navbar() {
 
   const linkClass = ({ isActive }) =>
     cn(
-      'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-      isActive ? 'bg-slate-800 text-brand-400' : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100',
+      'rounded px-3 py-2 text-sm transition-colors',
+      isActive ? 'text-ink' : 'text-ink-2 hover:text-ink',
     )
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-900/90 backdrop-blur">
-      <nav className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
-        <Link to="/" className="flex shrink-0 items-center gap-2 font-bold text-slate-100">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-white">
-            <GraduationCap size={18} />
-          </span>
-          <span className="hidden sm:inline">CourseMaker</span>
+    <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur">
+      <nav className="mx-auto flex h-[60px] max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
+        <Link
+          to="/"
+          aria-label="CourseMaker"
+          className="flex shrink-0 items-center font-mono text-base font-semibold tracking-[-0.01em] text-ink"
+        >
+          <span>course</span>
+          <span className="text-brand-500">/</span>
+          <span>maker</span>
+          <span
+            aria-hidden="true"
+            className="ml-[3px] inline-block h-[17px] w-2 animate-blink bg-brand-500 motion-reduce:animate-none"
+          />
         </Link>
 
         <div className="hidden flex-1 items-center gap-1 md:flex">
@@ -165,7 +171,7 @@ export function Navbar() {
               >
                 <Mail size={18} />
                 {messagesUnreadCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-white">
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-brand-ink">
                     {messagesUnreadCount > 9 ? '9+' : messagesUnreadCount}
                   </span>
                 )}
@@ -186,7 +192,7 @@ export function Navbar() {
                 >
                   <Bell size={18} />
                   {unreadCount > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-white">
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-brand-ink">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
@@ -361,7 +367,7 @@ export function Navbar() {
             </>
           ) : (
             <>
-              <button type="button" onClick={openLogin} className="btn-ghost">
+              <button type="button" onClick={openLogin} className="btn-ghost hidden sm:inline-flex">
                 Entrar
               </button>
               <button type="button" onClick={openRegister} className="btn-primary">
@@ -395,6 +401,19 @@ export function Navbar() {
               <Icon size={16} /> {label}
             </NavLink>
           ))}
+          {/* On a phone "Entrar" does not fit next to "Criar conta", so it lives in this menu instead. */}
+          {!isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => {
+                setMobileOpen(false)
+                openLogin()
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-slate-300 hover:bg-slate-800 sm:hidden"
+            >
+              <UserIcon size={16} /> Entrar
+            </button>
+          )}
         </div>
       )}
 

@@ -133,7 +133,7 @@ export function ChatWidget({ kind, contentId, lesson = null, raised = false }) {
         type="button"
         {...makeHandle(bubbleRef, () => setOpen((value) => !value))}
         style={{ bottom: position.bottom, right: position.right }}
-        className="fixed z-40 flex h-14 w-14 cursor-grab touch-none items-center justify-center rounded-full bg-brand-500 text-white shadow-lg shadow-brand-900/40 transition-transform hover:scale-105 hover:bg-brand-600 active:cursor-grabbing"
+        className="fixed z-40 flex h-14 w-14 cursor-grab touch-none items-center justify-center rounded-full bg-brand-500 text-brand-ink shadow-lg shadow-brand-900/40 transition-transform hover:scale-105 hover:bg-brand-600 active:cursor-grabbing"
         aria-label={open ? 'Fechar assistente' : 'Abrir assistente'}
       >
         {open ? <X size={24} /> : <MessageCircle size={24} />}
@@ -233,7 +233,7 @@ export function ChatWidget({ kind, contentId, lesson = null, raised = false }) {
             <button
               type="submit"
               disabled={sending || !input.trim()}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-brand-ink transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Enviar"
             >
               <Send size={16} />
@@ -290,7 +290,7 @@ function Bubble({ role, content }) {
         className={cn(
           'max-w-[85%] break-words rounded-2xl px-3.5 py-2',
           isUser
-            ? 'rounded-br-sm bg-brand-500 text-sm text-white'
+            ? 'rounded-br-sm bg-brand-500 text-sm text-brand-ink'
             : 'rounded-bl-sm border border-slate-700 bg-slate-800',
         )}
       >

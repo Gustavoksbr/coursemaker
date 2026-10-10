@@ -62,7 +62,7 @@ export function PickContentModal({ open, onClose, onPick, excludeCourseIds = [],
               onClick={() => setTab(value)}
               className={cn(
                 'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-sm font-medium transition-colors',
-                tab === value ? 'bg-brand-500 text-white' : 'text-slate-400 hover:text-slate-200',
+                tab === value ? 'bg-brand-500 text-brand-ink' : 'text-slate-400 hover:text-slate-200',
               )}
             >
               <Icon size={15} /> {label}
