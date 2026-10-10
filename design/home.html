@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CourseMaker — Home (proposta)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    --bg: #0e0f0c;          /* preto quente, levemente esverdeado */
+    --bg-2: #141612;        /* superfícies */
+    --bg-3: #1b1d18;        /* superfícies elevadas / editor */
+    --line: #2a2d26;
+    --line-2: #3a3e35;
+    --ink: #ecebe4;         /* texto principal (off-white) */
+    --ink-2: #a4a69c;       /* texto secundário */
+    --ink-3: #6c6f65;       /* rótulos, comentários */
+    --accent: #f5a524;      /* âmbar "fósforo" — a cor da marca */
+    --accent-ink: #1a1204;
+    --ok: #8fd16a;
+    --sans: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+    --wrap: 1180px;
+
+    /* cores de linguagem (só em pontinhos e listras, nunca em blocos grandes) */
+    --l-py: #e8c547; --l-cpp: #7aa2d6; --l-html: #e8734a; --l-logic: #8fd16a;
+    --l-js: #d9d55b; --l-go: #6cc4d4; --l-cs: #b48ee0; --l-hist: #c9a27a;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 16px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+  .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 24px; }
+  .mono { font-family: var(--mono); }
+  .muted { color: var(--ink-2); }
+  .dim { color: var(--ink-3); }
+
+  /* ---------- botões ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 14px; font-weight: 500;
+    padding: 10px 16px; border: 1px solid var(--line-2); border-radius: 4px;
+    background: transparent; color: var(--ink); cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .btn:hover { border-color: var(--ink-2); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .btn-primary:hover { background: #ffb53d; border-color: #ffb53d; }
+  .kbd {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+    border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 3px; padding: 1px 5px;
+  }
+
+  /* ---------- nav ---------- */
+  header.nav {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav .wrap { display: flex; align-items: center; height: 60px; gap: 32px; }
+  .logo { font-family: var(--mono); font-weight: 600; font-size: 16px; letter-spacing: -.01em; display: flex; align-items: center; gap: 2px; }
+  .logo .caret { display: inline-block; width: 8px; height: 17px; background: var(--accent); margin-left: 3px; animation: blink 1.1s steps(1) infinite; }
+  .logo .slash { color: var(--accent); }
+  @keyframes blink { 50% { opacity: 0; } }
+  .nav ul { display: flex; gap: 24px; list-style: none; margin: 0; padding: 0; font-size: 14px; color: var(--ink-2); }
+  .nav ul a:hover { color: var(--ink); }
+  .nav .right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+  .nav .right .link { font-size: 14px; color: var(--ink-2); }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 72px 0 88px; border-bottom: 1px solid var(--line); position: relative; overflow: hidden; }
+  .hero::before { /* grade quadriculada bem sutil */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 48px 48px; opacity: .35;
+    mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+  }
+  .hero .wrap { position: relative; display: grid; grid-template-columns: 1fr 1.05fr; gap: 56px; align-items: center; }
+  .eyebrow { font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-bottom: 20px; }
+  .eyebrow b { color: var(--ok); font-weight: 500; }
+  h1 {
+    font-size: clamp(36px, 5vw, 56px); line-height: 1.04; letter-spacing: -.035em;
+    font-weight: 700; margin: 0 0 22px;
+  }
+  h1 s { text-decoration-thickness: 3px; text-decoration-color: var(--accent); color: var(--ink-3); font-weight: 600; }
+  .lede { font-size: 18px; color: var(--ink-2); max-width: 30em; margin: 0 0 32px; }
+  .lede strong { color: var(--ink); font-weight: 500; }
+
+  .prompt {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 4px;
+    padding: 0 12px 0 14px; height: 52px; max-width: 520px;
+    font-family: var(--mono); font-size: 15px;
+    transition: border-color .15s;
+  }
+  .prompt:focus-within { border-color: var(--accent); }
+  .prompt .sigil { color: var(--accent); }
+  .prompt input { flex: 1; background: none; border: 0; outline: 0; color: var(--ink); font: inherit; min-width: 0; }
+  .prompt input::placeholder { color: var(--ink-3); }
+  .hero-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+  .hero-meta { margin-top: 36px; font-family: var(--mono); font-size: 13px; color: var(--ink-3); display: flex; gap: 18px; flex-wrap: wrap; }
+  .hero-meta span b { color: var(--ink); font-weight: 500; }
+
+  /* janela da aula (mostra o produto em vez de uma ilustração) */
+  .lesson {
+    background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 6px;
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,.7), 0 0 0 1px rgba(0,0,0,.4);
+    overflow: hidden; font-size: 13px;
+  }
+  .lesson-top {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  }
+  .lesson-top .crumb b { color: var(--ink); font-weight: 500; }
+  .lesson-top .prog { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .bar { width: 80px; height: 4px; background: var(--line-2); border-radius: 2px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--ok); }
+  .lesson-body { display: grid; grid-template-columns: 190px 1fr; min-height: 340px; }
+  .modules { border-right: 1px solid var(--line); padding: 12px 0; font-size: 12.5px; }
+  .modules .mod { padding: 6px 14px 4px; font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-transform: lowercase; }
+  .modules .item { display: flex; gap: 8px; padding: 5px 14px; color: var(--ink-2); }
+  .modules .item .ck { width: 14px; font-family: var(--mono); color: var(--ok); flex: none; }
+  .modules .item.todo .ck { color: var(--ink-3); }
+  .modules .item.now { background: var(--bg-3); color: var(--ink); box-shadow: inset 2px 0 0 var(--accent); }
+  .modules .item.now .ck { color: var(--accent); }
+  .editor { display: flex; flex-direction: column; background: var(--bg-3); }
+  .editor-tabs { display: flex; font-family: var(--mono); font-size: 12px; border-bottom: 1px solid var(--line); }
+  .editor-tabs span { padding: 8px 14px; color: var(--ink-3); border-right: 1px solid var(--line); }
+  .editor-tabs span.on { color: var(--ink); background: var(--bg-2); box-shadow: inset 0 -2px 0 var(--accent); }
+  pre.code { margin: 0; padding: 14px 0; font-family: var(--mono); font-size: 13px; line-height: 1.7; flex: 1; overflow-x: auto; }
+  pre.code .ln { display: inline-block; width: 36px; padding-right: 14px; text-align: right; color: var(--ink-3); user-select: none; opacity: .6; }
+  .tk-kw { color: #e39b5a; } .tk-fn { color: #9cc3e6; } .tk-str { color: #a9d38a; } .tk-num { color: #d7a8e0; } .tk-com { color: var(--ink-3); font-style: italic; }
+  .run-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); }
+  .run-row .btn { padding: 6px 12px; font-size: 12px; }
+  .run-row .hint { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-left: auto; }
+  .out { font-family: var(--mono); font-size: 12.5px; padding: 10px 14px 14px; color: var(--ink-2); border-top: 1px solid var(--line); background: var(--bg); min-height: 92px; white-space: pre; }
+  .out .ok { color: var(--ok); }
+
+  /* ---------- seções ---------- */
+  section.block { padding: 88px 0; border-bottom: 1px solid var(--line); }
+  .sec-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 36px; flex-wrap: wrap; }
+  .sec-num { font-family: var(--mono); font-size: 13px; color: var(--accent); margin-bottom: 10px; }
+  h2 { font-size: clamp(26px, 3vw, 34px); letter-spacing: -.025em; line-height: 1.15; font-weight: 600; margin: 0; }
+  .sec-head p { margin: 8px 0 0; color: var(--ink-2); max-width: 36em; }
+  .more { font-family: var(--mono); font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--line-2); padding-bottom: 2px; white-space: nowrap; }
+  .more:hover { color: var(--ink); border-color: var(--accent); }
+
+  /* abas de área — mantém a plataforma versátil sem perder o foco */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 28px; overflow-x: auto; }
+  .tab {
+    font-family: var(--mono); font-size: 14px; color: var(--ink-3); background: none; border: 0;
+    padding: 12px 18px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+  }
+  .tab:hover { color: var(--ink-2); }
+  .tab.on { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab sup { color: var(--ink-3); font-size: 11px; margin-left: 2px; }
+
+  .schools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; font-size: 13px; }
+  .schools .lbl { font-family: var(--mono); color: var(--ink-3); margin-right: 4px; }
+  .chip { border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 12px; color: var(--ink-2); }
+  .chip:hover { border-color: var(--ink-2); color: var(--ink); }
+
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .course { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-2); overflow: hidden; transition: border-color .15s, transform .15s; }
+  .course:hover { border-color: var(--line-2); transform: translateY(-2px); }
+  .course:hover .thumb { color: var(--ink-2); }
+  .thumb {
+    height: 128px; padding: 14px 16px; background: var(--bg-3); border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: 12px; line-height: 1.65; color: var(--ink-3); white-space: pre; overflow: hidden;
+    position: relative; transition: color .15s;
+  }
+  .thumb::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--lang); }
+  .thumb::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, var(--bg-3)); }
+  .thumb .tag { position: absolute; right: 10px; top: 10px; font-size: 11px; color: var(--ink-2); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; }
+  .course-body { padding: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .course-src { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+  .course h3 { font-size: 16.5px; line-height: 1.3; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .course-meta { margin-top: auto; padding-top: 12px; font-family: var(--mono); font-size: 12px; color: var(--ink-3); display: flex; gap: 14px; }
+
+  /* trilhas como um "git log" */
+  .trails { border: 1px solid var(--line); border-radius: 6px; background: var(--bg-2); }
+  .trail { display: grid; grid-template-columns: 44px 1fr auto; gap: 18px; padding: 24px 24px 24px 18px; border-bottom: 1px solid var(--line); transition: background .15s; }
+  .trail:last-child { border-bottom: 0; }
+  .trail:hover { background: var(--bg-3); }
+  .graph { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 4px; }
+  .graph::before { content: ""; position: absolute; top: 8px; bottom: 8px; width: 2px; background: var(--line-2); }
+  .graph i { position: relative; width: 10px; height: 10px; border-radius: 50%; background: var(--bg-2); border: 2px solid var(--ink-3); }
+  .graph i:first-child { border-color: var(--accent); background: var(--accent); }
+  .trail h3 { margin: 0 0 6px; font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
+  .trail p { margin: 0 0 12px; color: var(--ink-2); font-size: 15px; max-width: 46em; }
+  .steps { display: flex; flex-wrap: wrap; gap: 6px 0; font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+  .steps span::after { content: "→"; color: var(--ink-3); margin: 0 10px; }
+  .steps span:last-child::after { content: ""; margin: 0; }
+  .trail-side { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--ink-3); display: flex; flex-direction: column; gap: 4px; justify-content: center; white-space: nowrap; }
+  .trail-side b { color: var(--ink); font-weight: 500; font-size: 14px; }
+
+  /* aprender / ensinar */
+  .split { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .split > div { padding: 36px; }
+  .split > div + div { border-left: 1px solid var(--line); background: var(--bg-2); }
+  .split h3 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 18px; }
+  .split .who { font-family: var(--mono); font-size: 12px; color: var(--accent); margin-bottom: 8px; }
+  .feat { list-style: none; margin: 0 0 28px; padding: 0; }
+  .feat li { display: grid; grid-template-columns: 26px 1fr; padding: 12px 0; border-top: 1px dashed var(--line-2); color: var(--ink-2); font-size: 15px; }
+  .feat li b { color: var(--ink); font-weight: 500; }
+  .feat li .m { font-family: var(--mono); color: var(--ok); }
+  .tree { font-family: var(--mono); font-size: 13px; line-height: 1.75; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 16px 18px; color: var(--ink-2); white-space: pre; overflow-x: auto; }
+  .tree .d { color: var(--ink); } .tree .c { color: var(--ink-3); } .tree .a { color: var(--accent); }
+
+  /* posts como changelog */
+  .log { list-style: none; margin: 0; padding: 0; }
+  .log li { border-top: 1px solid var(--line); }
+  .log li:last-child { border-bottom: 1px solid var(--line); }
+  .log a { display: grid; grid-template-columns: 110px 1fr auto; gap: 24px; padding: 22px 4px; align-items: baseline; transition: background .15s; }
+  .log a:hover { background: var(--bg-2); }
+  .log a:hover h3 { color: var(--accent); }
+  .log time { font-family: var(--mono); font-size: 13px; color: var(--ink-3); }
+  .log h3 { margin: 0 0 4px; font-size: 18px; font-weight: 600; letter-spacing: -.01em; transition: color .15s; }
+  .log p { margin: 0; color: var(--ink-2); font-size: 15px; }
+  .log .tags { font-family: var(--mono); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+
+  /* CTA */
+  .cta { padding: 110px 0; text-align: left; }
+  .cta .wrap { display: grid; grid-template-columns: 1.1fr 1fr; gap: 56px; align-items: center; }
+  .cta h2 { font-size: clamp(30px, 4vw, 44px); }
+  .cta p { color: var(--ink-2); font-size: 17px; margin: 16px 0 28px; max-width: 30em; }
+  .term { font-family: var(--mono); font-size: 14px; line-height: 1.8; background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 22px 24px; color: var(--ink-2); }
+  .term .p { color: var(--accent); } .term .ok { color: var(--ok); } .term .w { color: var(--ink); }
+  .term .cur { display: inline-block; width: 8px; height: 15px; background: var(--ink); vertical-align: -2px; animation: blink 1.1s steps(1) infinite; }
+
+  footer { border-top: 1px solid var(--line); padding: 32px 0 48px; font-size: 13px; color: var(--ink-3); }
+  footer .wrap { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+  footer nav { display: flex; gap: 20px; margin-left: auto; }
+  footer a:hover { color: var(--ink); }
+
+  /* ---------- responsivo ---------- */
+  @media (max-width: 1020px) {
+    .hero .wrap, .cta .wrap { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .nav ul { display: none; }
+  }
+  @media (max-width: 680px) {
+    .wrap { padding: 0 16px; }
+    .hero { padding: 48px 0 56px; }
+    section.block { padding: 64px 0; }
+    .grid { grid-template-columns: 1fr; }
+    .lesson-body { grid-template-columns: 1fr; }
+    .modules { display: none; }
+    .split { grid-template-columns: 1fr; }
+    .split > div { padding: 24px; }
+    .split > div + div { border-left: 0; border-top: 1px solid var(--line); }
+    .trail { grid-template-columns: 28px 1fr; padding: 20px 16px 20px 10px; }
+    .trail-side { grid-column: 2; text-align: left; flex-direction: row; gap: 14px; }
+    .log a { grid-template-columns: 1fr; gap: 6px; }
+    .log .tags { display: none; }
+    .nav .right .link { display: none; }
+    .cta { padding: 72px 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#"><span>course</span><span class="slash">/</span><span>maker</span><span class="caret"></span></a>
+    <ul>
+      <li><a href="#explorar">Cursos</a></li>
+      <li><a href="#trilhas">Trilhas</a></li>
+      <li><a href="#posts">Posts</a></li>
+      <li><a href="#">Escolas</a></li>
+    </ul>
+    <div class="right">
+      <a class="link" href="#">Entrar</a>
+      <a class="btn btn-primary" href="#">Criar conta</a>
+    </div>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow"><b>●</b> gratuito · sem anúncio · progresso salvo</div>
+      <h1>Aquela <s>playlist de 87 vídeos</s> virou um curso de verdade.</h1>
+      <p class="lede">
+        Organizamos as melhores aulas de programação do YouTube em <strong>módulos, com exercícios que rodam no navegador</strong> e certificado no final. E quando você souber o bastante, publica o seu curso aqui também.
+      </p>
+
+      <form class="prompt" onsubmit="return false">
+        <span class="sigil">&gt;</span>
+        <input id="q" placeholder="o que você quer aprender?" autocomplete="off" />
+        <span class="kbd">/</span>
+      </form>
+
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#explorar">Explorar cursos →</a>
+        <a class="btn" href="#trilhas">Ver trilhas</a>
+      </div>
+
+      <div class="hero-meta">
+        <span><b>31</b> cursos</span>
+        <span><b>6</b> trilhas</span>
+        <span>de <b>Curso em Vídeo</b>, <b>CFBCursos</b>, <b>Alura</b>…</span>
+      </div>
+    </div>
+
+    <!-- a própria aula como "ilustração" -->
+    <div class="lesson" aria-label="Exemplo de aula">
+      <div class="lesson-top">
+        <span class="crumb">lógica-de-programação / <b>aula 07</b></span>
+        <span class="prog"><span>7/27</span><span class="bar"><i style="width:26%"></i></span></span>
+      </div>
+      <div class="lesson-body">
+        <div class="modules">
+          <div class="mod">01 · primeiros passos</div>
+          <div class="item"><span class="ck">✓</span>O que é algoritmo</div>
+          <div class="item"><span class="ck">✓</span>Variáveis e tipos</div>
+          <div class="item"><span class="ck">✓</span>Entrada e saída</div>
+          <div class="mod">02 · controle de fluxo</div>
+          <div class="item"><span class="ck">✓</span>Condicionais</div>
+          <div class="item"><span class="ck">✓</span>Escolha / caso</div>
+          <div class="item now"><span class="ck">▸</span>Laços de repetição</div>
+          <div class="item todo"><span class="ck">○</span>Exercício: tabuada</div>
+          <div class="mod">03 · vetores</div>
+          <div class="item todo"><span class="ck">○</span>Listas e índices</div>
+        </div>
+        <div class="editor">
+          <div class="editor-tabs"><span>▶ vídeo</span><span class="on">tabuada.py</span><span>anotações</span></div>
+<pre class="code"><span class="ln">1</span><span class="tk-com"># tabuada do 7 com um laço for</span>
+<span class="ln">2</span><span class="tk-kw">numero</span> = <span class="tk-num">7</span>
+<span class="ln">3</span>
+<span class="ln">4</span><span class="tk-kw">for</span> i <span class="tk-kw">in</span> <span class="tk-fn">range</span>(<span class="tk-num">1</span>, <span class="tk-num">6</span>):
+<span class="ln">5</span>    <span class="tk-fn">print</span>(<span class="tk-str">f"{i} x {numero} = {i * numero}"</span>)</pre>
+          <div class="run-row">
+            <button class="btn btn-primary" id="run">▶ executar</button>
+            <span class="hint">python 3.12 · roda no navegador</span>
+          </div>
+          <div class="out" id="out"><span class="dim">$ saída aparece aqui</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EXPLORAR ============ -->
+<section class="block" id="explorar">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">01 — cursos</div>
+        <h2>Comece por uma área</h2>
+        <p>Programação é o forte da casa, mas tem espaço pra qualquer assunto que caiba em módulos e aulas.</p>
+      </div>
+      <a class="more" href="#">ver todos os cursos →</a>
+    </div>
+
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab on" data-area="tec">tecnologia<sup>24</sup></button>
+      <button class="tab" data-area="jogos">jogos<sup>4</sup></button>
+      <button class="tab" data-area="hum">ciências humanas<sup>3</sup></button>
+    </div>
+
+    <div class="schools" id="schools"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+</section>
+
+<!-- ============ TRILHAS ============ -->
+<section class="block" id="trilhas">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">02 — trilhas</div>
+        <h2>Não sabe por onde começar? Siga uma trilha.</h2>
+        <p>Sequências de cursos na ordem que faz sentido aprender, montadas por quem já fez o caminho.</p>
+      </div>
+      <a class="more" href="#">todas as trilhas →</a>
+    </div>
+
+    <div class="trails">
+      <a class="trail" href="#">
+        <div class="graph"><i></i><i></i><i></i><i></i></div>
+        <div>
+          <h3>Fundamentos de Programação</h3>
+          <p>O ponto de partida pra quem nunca programou: lógica, controle de versão e terminal Linux.</p>
+          <div class="steps"><span>lógica</span><span>git &amp; github</span><span>terminal linux</span><span>primeiro projeto</span></div>
+        </div>
+        <div class="trail-side"><b>4 cursos</b><span>iniciante</span></div>
+      </a>
+      <a class="trail" href="#">
+        <div class="graph"><i></i><i></i><i></i><i></i></div>
+        <div>
+          <h3>Backend com Python, Node e Go</h3>
+          <p>APIs e automação de infraestrutura em três stacks diferentes, pra você entender o que muda e o que é igual.</p>
+          <div class="steps"><span>http &amp; rest</span><span>node.js</span><span>go</span><span>python</span></div>
+        </div>
+        <div class="trail-side"><b>4 cursos</b><span>intermediário</span></div>
+      </a>
+      <a class="trail" href="#">
+        <div class="graph"><i></i><i></i><i></i></div>
+        <div>
+          <h3>Unity: do zero ao jogo completo</h3>
+          <p>Instale o editor, aprenda C# na prática e termine com dois jogos: um top-down 2D e um endless runner.</p>
+          <div class="steps"><span>editor &amp; c#</span><span>top-down 2D</span><span>endless runner</span></div>
+        </div>
+        <div class="trail-side"><b>3 cursos</b><span>iniciante</span></div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ APRENDER / ENSINAR ============ -->
+<section class="block">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">03 — como funciona</div>
+        <h2>O mesmo lugar pra estudar e pra ensinar.</h2>
+      </div>
+    </div>
+
+    <div class="split">
+      <div>
+        <div class="who">// pra quem aprende</div>
+        <h3>Estude no seu ritmo, sem se perder.</h3>
+        <ul class="feat">
+          <li><span class="m">✓</span><span><b>Progresso salvo</b> em cada aula concluída. Fechou a aba, voltou de onde parou.</span></li>
+          <li><span class="m">✓</span><span><b>Código que roda no navegador</b>, sem instalar nada pra fazer os exercícios.</span></li>
+          <li><span class="m">✓</span><span><b>Certificado em PDF</b> com seu nome quando terminar um curso ou trilha.</span></li>
+        </ul>
+        <a class="btn" href="#explorar">Explorar cursos →</a>
+      </div>
+      <div>
+        <div class="who">// pra quem ensina</div>
+        <h3>Monte um curso como quem organiza um repositório.</h3>
+<div class="tree"><span class="d">meu-curso/</span>
+├── <span class="d">01-introducao/</span>
+│   ├── 01-o-que-e-uma-api      <span class="c">▶ vídeo</span>
+│   └── 02-primeiro-endpoint    <span class="c">{ } código</span>
+├── <span class="d">02-banco-de-dados/</span>
+│   ├── 01-modelando-tabelas    <span class="c">¶ texto</span>
+│   └── 02-desafio              <span class="a">✦ exercício</span>
+└── certificado.pdf             <span class="c">automático</span></div>
+        <p class="muted" style="margin:18px 0 22px;font-size:15px">Vídeos, texto, blocos de código e exercícios. A ferramenta é a mesma pra todo mundo, e publicar é gratuito.</p>
+        <a class="btn" href="#">Criar um curso →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ POSTS ============ -->
+<section class="block" id="posts">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">04 — posts</div>
+        <h2>Leituras curtas</h2>
+        <p>Artigos e tutoriais avulsos, pra quando não dá tempo de uma aula inteira.</p>
+      </div>
+      <a class="more" href="#">todos os posts →</a>
+    </div>
+    <ul class="log">
+      <li><a href="#">
+        <time>15 set 2026</time>
+        <div><h3>REST ou GraphQL? Como decidir pra próxima API</h3><p>As duas resolvem o mesmo problema de formas diferentes. Os critérios que deveriam pesar na escolha.</p></div>
+        <span class="tags">#api #graphql</span>
+      </a></li>
+      <li><a href="#">
+        <time>15 set 2026</time>
+        <div><h3>Clean Code na prática: 6 hábitos que fazem diferença</h3><p>Nem tudo em Clean Code é dogma. Estas são as práticas que compensam no código do dia a dia.</p></div>
+        <span class="tags">#boas-praticas</span>
+      </a></li>
+      <li><a href="#">
+        <time>15 set 2026</time>
+        <div><h3>Como escrever boas mensagens de commit</h3><p>Sete hábitos simples que deixam o histórico do repositório útil pro time e pro seu eu do futuro.</p></div>
+        <span class="tags">#git</span>
+      </a></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta">
+  <div class="wrap">
+    <div>
+      <div class="sec-num">05 — sua vez</div>
+      <h2>Você também tem algo pra ensinar.</h2>
+      <p>Monte os módulos, escreva as aulas, coloque exercícios e compartilhe o link. Gratuito, sem aprovação, sem burocracia.</p>
+      <a class="btn btn-primary" href="#">Criar conta grátis →</a>
+    </div>
+    <div class="term" aria-hidden="true">
+<div><span class="p">$</span> <span class="w">coursemaker new</span> "APIs com Node.js"</div>
+<div><span class="ok">✓</span> curso criado</div>
+<div><span class="ok">✓</span> 3 módulos · 12 aulas · 4 exercícios</div>
+<div><span class="ok">✓</span> publicado em coursemaker.com.br/c/apis-node</div>
+<div><span class="p">$</span> <span class="cur"></span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="logo" style="font-size:14px"><span>course</span><span class="slash">/</span><span>maker</span></span>
+    <span>Conteúdo creditado aos canais de origem. Não é parceria oficial.</span>
+    <nav><a href="#">Privacidade</a><a href="#">GitHub</a><a href="#">Contato</a></nav>
+  </div>
+</footer>
+
+<script>
+  // ---- dados de exemplo (reais do site) ----
+  const AREAS = {
+    tec: {
+      schools: ["Curso em Vídeo", "CFBCursos", "Alura"],
+      courses: [
+        { t: "Lógica de Programação", src: "Curso em Vídeo", n: 27, lang: "--l-logic", tag: "lógica",
+          code: "algoritmo \"media\"\nvar\n  n1, n2: real\ninicio\n  leia(n1, n2)\n  escreva((n1+n2)/2)" },
+        { t: "Python para Análise de Dados", src: "Alura", n: 16, lang: "--l-py", tag: "python",
+          code: "import pandas as pd\n\ndf = pd.read_csv(\"vendas.csv\")\ndf.groupby(\"mes\")[\"total\"]\n  .sum()\n  .plot()" },
+        { t: "C++: Fundamentos", src: "CFBCursos", n: 16, lang: "--l-cpp", tag: "c++",
+          code: "#include <iostream>\nusing namespace std;\n\nint main() {\n  cout << \"Olá!\";\n  return 0;\n}" },
+        { t: "HTML5 e CSS3: Fundamentos", src: "Curso em Vídeo", n: 16, lang: "--l-html", tag: "html/css",
+          code: "<!doctype html>\n<html lang=\"pt-BR\">\n<head>\n  <title>Meu site</title>\n</head>\n<body>" },
+      ],
+    },
+    jogos: {
+      schools: ["Coursemaker Curadoria"],
+      courses: [
+        { t: "Unity: o editor e o C#", src: "Curadoria", n: 14, lang: "--l-cs", tag: "c#",
+          code: "public class Player : MonoBehaviour\n{\n  public float speed = 5f;\n\n  void Update() {\n    // mover" },
+        { t: "Jogo top-down 2D", src: "Curadoria", n: 18, lang: "--l-cs", tag: "unity",
+          code: "Vector2 dir = new Vector2(\n  Input.GetAxis(\"Horizontal\"),\n  Input.GetAxis(\"Vertical\")\n);\nrb.velocity = dir * speed;" },
+        { t: "Endless runner", src: "Curadoria", n: 12, lang: "--l-cs", tag: "unity",
+          code: "void SpawnObstacle() {\n  var x = Random.Range(-2, 3);\n  Instantiate(obstacle,\n    new Vector3(x, 0, z),\n    Quaternion.identity);\n}" },
+      ],
+    },
+    hum: {
+      schools: ["Curso em Vídeo"],
+      courses: [
+        { t: "História do Brasil: Colônia", src: "Curadoria", n: 10, lang: "--l-hist", tag: "história",
+          code: "módulo 01\n  1500 · chegada portuguesa\n  1530 · capitanias\n  1549 · governo-geral\n\nmódulo 02 ↓" },
+        { t: "Filosofia para iniciantes", src: "Curadoria", n: 12, lang: "--l-hist", tag: "filosofia",
+          code: "módulo 01\n  pré-socráticos\n  sócrates\n  platão\n  aristóteles\n" },
+        { t: "Sociologia: conceitos-chave", src: "Curadoria", n: 9, lang: "--l-hist", tag: "sociologia",
+          code: "módulo 01\n  durkheim\n  weber\n  marx\n\nmódulo 02 ↓" },
+      ],
+    },
+  };
+
+  const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+  function render(area) {
+    const a = AREAS[area];
+    document.getElementById("schools").innerHTML =
+      `<span class="lbl">escolas:</span>` + a.schools.map(s => `<a class="chip" href="#">${s}</a>`).join("");
+    document.getElementById("grid").innerHTML = a.courses.map(c => `
+      <a class="course" href="#" style="--lang: var(${c.lang})">
+        <div class="thumb">${esc(c.code)}<span class="tag">${c.tag}</span></div>
+        <div class="course-body">
+          <div class="course-src">${c.src}</div>
+          <h3>${c.t}</h3>
+          <div class="course-meta"><span>${c.n} aulas</span><span>certificado</span></div>
+        </div>
+      </a>`).join("");
+  }
+
+  document.getElementById("tabs").addEventListener("click", e => {
+    const b = e.target.closest(".tab"); if (!b) return;
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t === b));
+    render(b.dataset.area);
+  });
+  render("tec");
+
+  // ---- "executar" da aula de exemplo ----
+  document.getElementById("run").addEventListener("click", () => {
+    const out = document.getElementById("out");
+    out.textContent = "";
+    const lines = [1,2,3,4,5].map(i => `${i} x 7 = ${i*7}`);
+    let k = 0;
+    const tick = () => {
+      if (k < lines.length) { out.textContent += lines[k++] + "\n"; setTimeout(tick, 90); }
+      else out.insertAdjacentHTML("beforeend", `<span class="ok">✓ executado em 0.04s</span>`);
+    };
+    tick();
+  });
+
+  // atalho "/" pra focar a busca
+  addEventListener("keydown", e => {
+    if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); document.getElementById("q").focus(); }
+  });
+</script>
+</body>
+</html>
