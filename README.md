@@ -33,7 +33,8 @@ coursemaker/
 ├── web/                # SPA (React + Tailwind)
 ├── course-seeder-bot/  # bot Python de povoamento de conteúdo
 ├── piston-gateway/     # gateway (Go) na frente do Piston, p/ execução de código
-└── docs/screenshots/   # imagens deste README
+├── design/             # maquete da home e tokens da identidade visual
+└── docs/screenshots/   # imagens deste README (geradas com `npm run docs:screenshots` em web/)
 ```
 
 ## ⚙️ Rode na sua máquina
@@ -187,7 +188,7 @@ aluno consertar), veja o [course-seeder-bot](./course-seeder-bot/README.md#exerc
 
 ### Descobrir e aprender
 
-![Página inicial: busca, números da plataforma, áreas, escolas e cursos](./docs/screenshots/01-inicio.png)
+![Página inicial: uma aula de exemplo que executa, busca, áreas, escolas e cursos](./docs/screenshots/01-inicio.png)
 
 | Explorar cursos, posts, trilhas e pessoas | Página de um curso |
 |---|---|
