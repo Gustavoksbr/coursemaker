@@ -181,7 +181,7 @@ export function MessageThread({ nickname, onNavigate }) {
                       message.deleted
                         ? 'italic text-slate-500 border border-dashed border-slate-700'
                         : mine
-                          ? 'rounded-br-sm bg-brand-500 text-white'
+                          ? 'rounded-br-sm bg-brand-500 text-brand-ink'
                           : 'rounded-bl-sm border border-slate-700 bg-slate-800 text-slate-100',
                     )}
                   >

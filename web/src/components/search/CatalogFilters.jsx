@@ -65,7 +65,7 @@ export function CatalogFilters({ filters, onChange, availableCategories = [] }) 
                 className={cn(
                   'badge border transition-colors',
                   active
-                    ? 'border-brand-500 bg-brand-500 text-white'
+                    ? 'border-brand-500 bg-brand-500 text-brand-ink'
                     : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 hover:text-slate-100',
                 )}
               >
@@ -162,7 +162,7 @@ export function CatalogFilters({ filters, onChange, availableCategories = [] }) 
               key={category}
               type="button"
               onClick={() => toggleCategory(category)}
-              className="badge max-w-full break-all bg-brand-500 text-white hover:bg-brand-600"
+              className="badge max-w-full break-all bg-brand-500 text-brand-ink hover:bg-brand-600"
             >
               <span className="truncate">{category}</span>
               <X size={12} className="shrink-0" />

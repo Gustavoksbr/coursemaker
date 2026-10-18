@@ -55,9 +55,10 @@ const lessonUrl = (lesson) => `${BASE}/courses/${OWNER.nickname}/${SLUG}?lesson=
 // 01. início
 {
   const { page, ctx } = await newPage(browser, 'student', { width: 1280, height: 1500 })
-  await page.goto(`${BASE}/`)
-  await page.getByText('Aprenda e ensine').first().waitFor()
-  await page.getByText('Cursos em Tecnologia').first().waitFor().catch(() => {})
+  // "/" leva quem está logado para a biblioteca; /inicio é sempre a página inicial.
+  await page.goto(`${BASE}/inicio`)
+  await page.getByText('virou um curso de verdade').first().waitFor()
+  await page.getByText(COURSE_BY_N(1).name).first().waitFor().catch(() => {})
   await shot(page, '01-inicio.png')
   await ctx.close()
 }
@@ -172,8 +173,8 @@ const lessonUrl = (lesson) => `${BASE}/courses/${OWNER.nickname}/${SLUG}?lesson=
 // 13. no celular: início e uma aula, lado a lado no README
 {
   const { page, ctx } = await newPage(browser, 'student', { width: 390, height: 844 })
-  await page.goto(`${BASE}/`)
-  await page.getByText('Aprenda e ensine').first().waitFor()
+  await page.goto(`${BASE}/inicio`)
+  await page.getByText('virou um curso de verdade').first().waitFor()
   await shot(page, '13-celular-inicio.png')
   await page.goto(`${BASE}/courses/${COURSE_BY_N(4).owner.nickname}/${COURSE_BY_N(4).slug}?lesson=${GIT_LESSON.modules[1].lessons[0].id}`)
   await page.getByText('Boa prática').first().waitFor()

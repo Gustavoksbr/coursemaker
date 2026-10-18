@@ -11,22 +11,25 @@ const GITHUB_URL = 'https://github.com/Gustavoksbr/coursemaker'
 /** Rodape do site: aparece em todas as paginas, inclusive nas que ocupam a tela toda (curso, editor, biblioteca). */
 function SiteFooter() {
   return (
-    <footer className="border-t border-slate-800 py-6">
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 text-center text-xs text-slate-500 sm:px-6">
-        <p>CourseMaker — aprenda ou ensine o que quiser. Matricule-se ou crie seu próprio curso.</p>
-        <div className="flex items-center gap-4">
-          <Link to="/privacidade" className="hover:text-slate-300 hover:underline">
+    <footer className="border-t border-line pb-12 pt-8 text-[13px] text-ink-3">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 sm:px-6">
+        <span className="font-mono text-sm font-semibold text-ink">
+          course<span className="text-brand-500">/</span>maker
+        </span>
+        <span>Conteúdo creditado aos canais de origem. Não é parceria oficial.</span>
+        <nav className="flex items-center gap-5 sm:ml-auto">
+          <Link to="/privacidade" className="hover:text-ink">
             Política de Privacidade
           </Link>
           <a
             href={GITHUB_URL}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 hover:text-slate-300 hover:underline"
+            className="inline-flex items-center gap-1 hover:text-ink"
           >
             <Github size={13} /> GitHub
           </a>
-        </div>
+        </nav>
       </div>
     </footer>
   )

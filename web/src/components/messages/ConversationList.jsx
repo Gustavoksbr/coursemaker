@@ -69,7 +69,7 @@ export function ConversationList({ onSelect }) {
                   </p>
                 </div>
                 {conversation.unreadCount > 0 && (
-                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-500 px-1.5 text-xs font-semibold text-white">
+                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-500 px-1.5 text-xs font-semibold text-brand-ink">
                     {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
                   </span>
                 )}
