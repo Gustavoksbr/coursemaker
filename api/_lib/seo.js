@@ -8,7 +8,7 @@
 const SITE_URL = (process.env.SITE_URL || 'https://coursemakerbr.vercel.app').replace(/\/+$/, '')
 const API_URL = (process.env.API_URL || process.env.VITE_API_URL || 'https://coursemaker-rawh.onrender.com').replace(/\/+$/, '')
 const SITE_NAME = 'CourseMaker'
-const DEFAULT_IMAGE = `${SITE_URL}/og-default.png`
+const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`
 const DEFAULT_DESCRIPTION = 'CourseMaker — aprenda ou ensine o que quiser. Matricule-se ou crie seu próprio curso.'
 const API_TIMEOUT_MS = 8000
 
