@@ -2,7 +2,11 @@
  * Gera a imagem de prévia de links (og-image.png, 1200x630) e os ícones PNG de web/public a partir de HTML,
  * no visual do design/ (preto quente, âmbar e IBM Plex). O favicon.svg é escrito à mão e serve de base aos ícones.
  *
- *   npm run brand:assets              # grava em web/public (precisa de internet para as fontes do Google)
+ * Também gera docs/github-social-preview.png (1280x640), a prévia do repositório. Ela tem cara de repositório
+ * (owner/repo, git clone, linguagens), para não se confundir com a do site. O GitHub não lê essa imagem do código:
+ * envie em Settings → General → Social preview.
+ *
+ *   npm run brand:assets              # precisa de internet para as fontes do Google
  *
  * O navegador do Playwright precisa estar instalado (npx playwright install chromium).
  */
@@ -12,6 +16,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const PUBLIC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../public')
+const DOCS = path.resolve(PUBLIC, '../../docs')
 const FAVICON = fs.readFileSync(path.join(PUBLIC, 'favicon.svg'), 'utf8')
 
 const FONTS =
@@ -70,6 +75,53 @@ const OG = `<!doctype html><html><head><meta charset="utf-8">${FONTS}<style>
   </div>
 </div></body></html>`
 
+// Proporção aproximada do código do repositório (bytes por extensão, sem imagens, fontes e JSON), com as cores
+// que o GitHub usa para cada linguagem.
+const LANGS = [
+  ['Java', 40, '#b07219'],
+  ['JavaScript', 39, '#f1e05a'],
+  ['Python', 12, '#3572a5'],
+  ['Go', 6, '#00add8'],
+  ['Outras', 3, '#6c6f65'],
+]
+
+const GITHUB = `<!doctype html><html><head><meta charset="utf-8">${FONTS}<style>
+  * { margin: 0; box-sizing: border-box; }
+  body { width: 1280px; height: 640px; overflow: hidden; background: #0e0f0c; color: #ecebe4; font-family: 'IBM Plex Sans', sans-serif; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .wrap { height: 100%; padding: 64px 80px 0; display: flex; flex-direction: column; }
+  .top { display: flex; justify-content: space-between; align-items: center; font-size: 22px; color: #6c6f65; }
+  .top svg { width: 26px; height: 26px; vertical-align: -5px; margin-right: 12px; }
+  .logo { color: #a4a69c; font-weight: 600; display: flex; align-items: center; }
+  .logo .slash { color: #f5a524; }
+  .logo i { display: inline-block; width: 10px; height: 22px; margin-left: 3px; background: #f5a524; }
+  h1 { margin-top: 44px; font-size: 76px; font-weight: 700; letter-spacing: -0.035em; line-height: 1; }
+  h1 .owner { color: #a4a69c; font-weight: 400; }
+  h1 .sep { color: #3a3e35; font-weight: 400; margin: 0 10px; }
+  .desc { margin-top: 22px; max-width: 30em; font-size: 26px; line-height: 1.4; color: #a4a69c; }
+  .clone { margin-top: 40px; align-self: flex-start; padding: 16px 22px; border: 1px solid #2a2d26; border-radius: 6px; background: #141612; font-size: 22px; color: #ecebe4; }
+  .clone .p { color: #f5a524; margin-right: 12px; }
+  .clone .g { color: #6c6f65; }
+  .chips { margin-top: auto; margin-bottom: 30px; display: flex; gap: 12px; font-size: 18px; }
+  .chips span { padding: 6px 14px; border: 1px solid #3a3e35; border-radius: 4px; color: #a4a69c; }
+  .chips .lic { margin-left: auto; border: 0; padding-right: 0; color: #6c6f65; }
+  .langs { display: flex; gap: 26px; margin-bottom: 18px; font-size: 18px; color: #a4a69c; }
+  .langs b { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+  .langs em { font-style: normal; color: #6c6f65; margin-left: 6px; }
+  .bar { display: flex; height: 12px; margin: 0 -80px; }
+</style></head><body><div class="wrap">
+  <div class="top mono">
+    <span><svg viewBox="0 0 16 16" fill="#a4a69c"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.71 1.71.75.75 0 0 1-1.07 1.05A2.5 2.5 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.71A2.5 2.5 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.09a.25.25 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>repositório público · github.com</span>
+    <span class="logo">course<span class="slash">/</span>maker<i></i></span>
+  </div>
+  <h1><span class="owner">Gustavoksbr</span><span class="sep">/</span>coursemaker</h1>
+  <p class="desc">Plataforma de cursos open source, com exercícios de código corrigidos automaticamente em 12 linguagens.</p>
+  <div class="clone mono"><span class="p">$</span>git clone <span class="g">https://github.com/</span>Gustavoksbr/coursemaker</div>
+  <div class="chips mono"><span>Spring Boot</span><span>React</span><span>PostgreSQL</span><span>Go</span><span>Piston</span><span class="lic">Unlicense · domínio público</span></div>
+  <div class="langs mono">${LANGS.map(([name, pct, color]) => `<span><b style="background:${color}"></b>${name}<em>${pct}%</em></span>`).join('')}</div>
+  <div class="bar">${LANGS.map(([, pct, color]) => `<span style="flex:${pct};background:${color}"></span>`).join('')}</div>
+</div></body></html>`
+
 const icon = (size) =>
   `<!doctype html><html><head><style>*{margin:0}body{width:${size}px;height:${size}px;overflow:hidden;background:transparent}svg{display:block;width:${size}px;height:${size}px}</style></head><body>${FAVICON}</body></html>`
 
@@ -79,12 +131,13 @@ async function render(html, file, width, height) {
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 })
   await page.setContent(html, { waitUntil: 'networkidle' })
   await page.evaluate(() => document.fonts.ready)
-  await page.screenshot({ path: path.join(PUBLIC, file), omitBackground: true })
+  await page.screenshot({ path: path.resolve(PUBLIC, file), omitBackground: true })
   await page.close()
   console.log('ok', file)
 }
 
 await render(OG, 'og-image.png', 1200, 630)
+await render(GITHUB, path.join(DOCS, 'github-social-preview.png'), 1280, 640)
 for (const [file, size] of [['icon-512.png', 512], ['icon-192.png', 192], ['apple-touch-icon.png', 180], ['favicon-32x32.png', 32]]) {
   await render(icon(size), file, size, size)
 }
